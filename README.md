@@ -6,6 +6,14 @@ An offline fan mod for ELDEN RING: play as Octane from Apex Legends. A Rust DLL 
 
 **This repository ships no game files and no game assets**: no models, textures, animations, sounds, HUD images or text from Apex Legends or ELDEN RING. You make them yourself from your own game installs with the converters in this repository's `tools/` (see [Building](#building)). You must give the Apex Legends install folder yourself.
 
+## Fastest start
+
+Copy this to any agent:
+
+```markdown
+Help me get the https://github.com/umiiii/er-apex repository running
+```
+
 ## Getting started
 
 ### Tool chain
