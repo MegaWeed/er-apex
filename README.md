@@ -11,7 +11,7 @@ An offline fan mod for ELDEN RING: play as Octane from Apex Legends. A Rust DLL 
 Copy this to any agent:
 
 ```markdown
-Help me get the https://github.com/umiiii/er-apex repository running
+Help me get https://github.com/umiiii/er-apex up and running
 ```
 
 ## Getting started
