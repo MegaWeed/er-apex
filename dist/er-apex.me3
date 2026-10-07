@@ -1,0 +1,15 @@
+profileVersion = "v1"
+# Offline only: me3 starts the game without online play and with anti-cheat off.
+# Own save file: created as a copy of the normal save on first launch (me3 behaviour).
+savefile = "ER0000_fuse.sl2"
+
+[[supports]]
+game = "eldenring"
+
+[[natives]]
+path = "er_apex.dll"
+
+# The legend's model, textures and icons, built on first launch from your own Apex Legends install
+[[packages]]
+id = "er-apex"
+path = "package"

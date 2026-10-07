@@ -1,0 +1,22 @@
+{
+  "BouncyCastle.Cryptography": {
+    "version": "2.4.0",
+    "sha256": "0e80d9356b5833ed0e2c872538467eb637065f2986957bddbead9930f9a20090"
+  },
+  "DrSwizzler": {
+    "version": "1.1.1",
+    "sha256": "c268453d80ef2e84acb8b45162bac6a0a0071ce31b75fe0f829f89c28b947572"
+  },
+  "System.Text.Encoding.CodePages": {
+    "version": "8.0.0",
+    "sha256": "7e308b41cd4f456d08c7921995d8345cabfe2750ea3d27eef698ccc8d069edd1"
+  },
+  "System.ValueTuple": {
+    "version": "4.5.0",
+    "sha256": "9e21fa9767d4e76bc0cee065c1d40cc34384a114bfec4d70e6c981168a926802"
+  },
+  "ZstdNet": {
+    "version": "1.4.5",
+    "sha256": "f2295fc91e1a8eaf615d382c6506ef7c55b44f4d017d6e42bfbec1e2a282365c"
+  }
+}

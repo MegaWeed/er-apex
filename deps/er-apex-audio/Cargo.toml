@@ -1,0 +1,16 @@
+[package]
+name = "er-apex-audio"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Preloaded one-shot audio mixer for ER-Fuse (no game dependency)"
+
+[dependencies]
+cpal = "0.15.3"
+crossbeam-queue = "0.3.12"
+hound = "3.5.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+

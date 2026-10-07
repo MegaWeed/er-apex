@@ -1,0 +1,19 @@
+[package]
+name = "er-apex-move"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Game-independent Y-up capsule movement over streamed triangle terrain"
+
+[dependencies]
+parry3d = "=0.25.1"
+
+[features]
+# counters and phase timers for examples/replay.rs
+profile = []
+
+[[bench]]
+name = "movement"
+harness = false
+
+[workspace]

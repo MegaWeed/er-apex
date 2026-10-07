@@ -1,0 +1,53 @@
+{
+  "targetMap": "m60_42_36_00",
+  "template": {
+    "map": "m10_00_00_00",
+    "npcParamId": 30001014,
+    "partName": "c3000_9117"
+  },
+  "reference": {
+    "map": "m30_16_00_00",
+    "generatorEntityId": 30163256
+  },
+  "gracePosition": [-12.83, 90.7, -54.5],
+  "waveSize": 3,
+  "testFlag": 1042360990,
+  "eventId": 1042363990,
+  "generator": {
+    "entityId": 1042363900,
+    "msbEventId": 900,
+    "name": "testarena_first_step_generator"
+  },
+  "spawnPoints": [
+    {
+      "position": [-4.83, 91.7, -60.5],
+      "yaw": -53.13,
+      "partName": "c3000_9500",
+      "partEntityId": 1042360850,
+      "instanceId": 9500,
+      "regionName": "testarena_first_step_spawn_0",
+      "regionEntityId": 1042362900,
+      "regionId": 900
+    },
+    {
+      "position": [-12.83, 91.7, -64.5],
+      "yaw": 0.0,
+      "partName": "c3000_9501",
+      "partEntityId": 1042360851,
+      "instanceId": 9501,
+      "regionName": "testarena_first_step_spawn_1",
+      "regionEntityId": 1042362901,
+      "regionId": 901
+    },
+    {
+      "position": [-20.83, 91.7, -60.5],
+      "yaw": 53.13,
+      "partName": "c3000_9502",
+      "partEntityId": 1042360852,
+      "instanceId": 9502,
+      "regionName": "testarena_first_step_spawn_2",
+      "regionEntityId": 1042362902,
+      "regionId": 902
+    }
+  ]
+}

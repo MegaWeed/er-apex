@@ -1,0 +1,39 @@
+[package]
+name = "er-apex"
+version = "0.0.1"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Play Elden Ring as an Apex Legends legend (Octane; offline fun mod, er-mario architecture)"
+
+[lib]
+name = "er_apex"
+crate-type = ["cdylib"]
+
+[dependencies]
+# game bindings: the same revision as er-mario (supports exe 2.7.1.0 / 2.7.1.1)
+eldenring = { git = "https://github.com/vswarte/fromsoftware-rs", rev = "59fbd3b3b7daaf14aca47c9f73530493dba6bc79" }
+fromsoftware-shared = { git = "https://github.com/vswarte/fromsoftware-rs", rev = "59fbd3b3b7daaf14aca47c9f73530493dba6bc79" }
+er-apex-audio = { path = "deps/er-apex-audio" }
+# Apex movement controller (T004) for spike S5
+er-apex-move = { path = "deps/er-apex-move" }
+glam = "0.30"
+hudhook = "0.9.3"
+ilhook = { version = "2.3.0", features = ["x64"] }
+pelite = "0.10"
+# the Apex HUD pack (T009): PNG images and hud_pack.json
+png = "0.17"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Threading",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Input_XboxController",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[profile.release]
+panic = "unwind"

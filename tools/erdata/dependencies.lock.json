@@ -1,0 +1,18 @@
+{
+  "SoulsFormatsNEXT": {
+    "repository": "https://github.com/soulsmods/SoulsFormatsNEXT",
+    "commit": "ee1dd61958f60bdc51ce3da548e9a90a8ab39905"
+  },
+  "HKLib": {
+    "repository": "https://github.com/The12thAvenger/HKLib",
+    "commit": "ac40bc9915d8caff0df154c2b9a79656dfca1d77"
+  },
+  "Paramdex": {
+    "repository": "https://github.com/soulsmods/Paramdex",
+    "commit": "ff7245e524329bc3eab00036723d2bd53384cedf"
+  },
+  "UXM-Selective-Unpack": {
+    "repository": "https://github.com/Nordgaren/UXM-Selective-Unpack",
+    "commit": "9501be87e272b6dae55e60a13c3f4753ca6fb3bb"
+  }
+}

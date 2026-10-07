@@ -1,0 +1,19 @@
+profileVersion = "v1"
+# Dev/test profile (tools/dev/game.ps1 installs it into scratch\mod): the release profile plus
+# game debug properties for automated runs.
+savefile = "ER0000_fuse.sl2"
+
+[[supports]]
+game = "eldenring"
+
+[[natives]]
+path = "er_apex.dll"
+
+[[packages]]
+id = "er-apex"
+path = "package"
+
+[debug_properties]
+# the game keeps reading the (synthetic) pad while its window is not focused:
+# CSPadStep::STEP_Update skips input on unfocused frames unless this is true
+"Game.Debug.IsEnableControlOnDisactiveWindow" = true

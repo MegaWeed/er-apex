@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><PlatformTarget>x64</PlatformTarget>
+    <RestorePackagesPath>$(UserProfile)\.nuget\packages</RestorePackagesPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="SoulsFormats"><HintPath>..\..\erdata\ertool\bin\Release\net8.0\SoulsFormats.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

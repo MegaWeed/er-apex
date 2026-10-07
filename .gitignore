@@ -1,0 +1,24 @@
+target/
+
+# Made from your own game installs by tools/ (never commit them: EA/Respawn and FromSoftware assets)
+/apex-data/
+/er-data/
+# Local runs: the dev install (scratch/mod), logs, screenshots, save backups
+/scratch/
+
+# Programs you download yourself (see README) and what the tools fetch or build
+/tools/bin/
+/tools/rsx-2.3.0/
+/tools/*.zip
+/tools/third_party/
+/tools/apexassets/rsx_source/
+/tools/apexassets/cast_source/
+/tools/apexassets/build.log
+/tools/apexhud/rsx_work/
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+__pycache__/
+*.pyc
+*.log

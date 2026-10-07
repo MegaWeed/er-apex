@@ -1,0 +1,5 @@
+erextract/target/
+ertool/bin/
+ertool/obj/
+**/.nuget/
+**/__pycache__/

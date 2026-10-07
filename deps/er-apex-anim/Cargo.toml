@@ -1,0 +1,14 @@
+[package]
+name = "er-apex-anim"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Game-independent Apex local animation pack reader and sampler"
+
+[dependencies]
+
+[[bench]]
+name = "sampling"
+harness = false
+
+[workspace]

@@ -1,0 +1,789 @@
+{
+ "frag_settings": {
+  "MP_BASE.viewmodel": "mdl/weapons/grenades/ptpov_frag_grenade_held.rmdl",
+  "projectilemodel": "mdl/weapons/grenades/m20_f_grenade_projectile.rmdl"
+ },
+ "hud_image": {
+  "rui/rui_screens/skull": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/gamemodes/fs_tdm/cl_gamemode_fsdm.nut:2573"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/gamemodes/fs_tdm/cl_gamemode_fsdm.nut:2583"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/gamemodes/fs_tdm/cl_gamemode_fsdm.nut:2593"
+   }
+  ],
+  "rui/hud/poi_icons/poi_dealt_damage": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/pilot/cl_pilot_tracking_vision.gnut:934"
+   }
+  ],
+  "rui/hud/poi_icons/poi_killed_other": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/pilot/cl_pilot_tracking_vision.gnut:966"
+   }
+  ],
+  "rui/hud/obituary/obituary_headshot": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/client/cl_obituary.gnut:238"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/client/cl_obituary.gnut:614"
+   }
+  ],
+  "rui/hud/obituary/obituary_downed": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/client/cl_obituary.gnut:236"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/client/cl_obituary.gnut:612"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/client/cl_obituary.gnut:616"
+   }
+  ],
+  "rui/hud/gamestate/player_kills_leader_icon": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/gamemodes/fs_tdm/cl_gamemode_fsdm.nut:520"
+   }
+  ],
+  "rui/hud/weapon_toggle/automatic": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/client/rui/cl_weapon_status.gnut:517"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/client/rui/cl_weapon_status.gnut:577"
+   }
+  ],
+  "rui/pilot_loadout/mods/empty_barrel_stabilizer": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:29"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:599"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu2.nut:645"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu3.nut:701"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/menu_weaponmods.nut:82"
+   }
+  ],
+  "rui/pilot_loadout/mods/empty_mag": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:35"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:260"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:327"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:607"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu1.nut:785"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu2.nut:760"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu3.nut:838"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu5.nut:672"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/menu_weaponmods.nut:84"
+   }
+  ],
+  "rui/pilot_loadout/mods/empty_sight": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:41"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:241"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:317"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:611"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu1.nut:674"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu2.nut:591"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu3.nut:621"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu5.nut:495"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/menu_weaponmods.nut:81"
+   }
+  ],
+  "rui/pilot_loadout/mods/empty_stock_tactical": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:31"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:32"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:33"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:603"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu2.nut:697"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu5.nut:609"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/menu_weaponmods.nut:86"
+   }
+  ],
+  "rui/hud/loot/loot_stim_shield_large": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/menu_buy.nut:141"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_ability_consumable.txt:235"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_ability_consumable.txt:262"
+   }
+  ],
+  "rui/weapon_icons/r5/weapon_charge_rifle": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu3.nut:188"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_defender.txt:15"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_defender.txt:16"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_defender_sustained.txt:13"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_defender_sustained.txt:14"
+   }
+  ],
+  "rui/hud/gametype_icons/survival/sur_ammo_sniper": [],
+  "rui/hud/weapon_toggle/single_shot": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/client/rui/cl_weapon_status.gnut:509"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/client/rui/cl_weapon_status.gnut:569"
+   }
+  ],
+  "rui/pilot_loadout/mods/empty_stock_sniper": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/sh_survival_equipment_slot.gnut:34"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/panel_buymenu3.nut:767"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/menu_weaponmods.nut:87"
+   }
+  ],
+  "rui/ordnance_icons/grenade_frag": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/ui/FRChallenges/menu_buy.nut:157"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_frag_grenade.txt:9"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_frag_grenade.txt:10"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_grenade_flashbang.txt:9"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_grenade_flashbang.txt:10"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_nuke_grenade.txt:9"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_nuke_grenade.txt:10"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_sticky_grenade.txt:9"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_sticky_grenade.txt:10"
+   }
+  ]
+ },
+ "hud_text": {
+  "#HINT_RELOAD_TAP_TO_USE": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/gamemodes/survival/cl_gamemode_survival.nut:4330"
+   }
+  ],
+  "#SCORE_EVENT_SUR_DOWNED_PILOT_HUD": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/client/rui/cl_hud.gnut:586"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/gamemodes/survival/_gamemode_survival.nut:1357"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/mp/_codecallbacks.gnut:519"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/mp/_score.nut:71"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/mp/_score.nut:238"
+   },
+   {
+    "kind": "R5Reloaded_S3_localization",
+    "source": "platform/resource/localization/base_english.txt:2539"
+   }
+  ],
+  "#SURVIVAL_PICKUP_HEALTH_COMBO_LARGE": [
+   {
+    "kind": "R5Reloaded_S3_localization",
+    "source": "platform/resource/localization/base_english.txt:3200"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_ability_consumable.txt:229"
+   }
+  ],
+  "#DENY_SHIELD_FULL": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/gamemodes/survival/sh_gamemode_survival.nut:97"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/weapons/mp_ability_consumable.nut:1535"
+   },
+   {
+    "kind": "R5Reloaded_S3_localization",
+    "source": "platform/resource/localization/base_english.txt:3204"
+   }
+  ],
+  "#DENY_NO_SHIELDS": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/gamemodes/survival/sh_gamemode_survival.nut:101"
+   },
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/weapons/mp_ability_consumable.nut:1550"
+   },
+   {
+    "kind": "R5Reloaded_S3_localization",
+    "source": "platform/resource/localization/base_english.txt:3211"
+   }
+  ],
+  "#WPN_CHARGE_RIFLE_SHORT": [
+   {
+    "kind": "R5Reloaded_S3_script",
+    "source": "platform/scripts/vscripts/_utility_shared.nut:6029"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_defender.txt:9"
+   },
+   {
+    "kind": "R5Reloaded_S3_weapon_settings",
+    "source": "platform/scripts/weapons/mp_weapon_defender_sustained.txt:9"
+   }
+  ]
+ },
+ "audio": {
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_heal.txt|charge_sound_1p|octane_stimpack_activate_1P|octane_stimpack_activate_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_heal.txt",
+    "field": "charge_sound_1p",
+    "line": 55,
+    "event": "octane_stimpack_activate_1P"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_heal.nut|EmitWeaponSound_1p3p|octane_stimpack_loop_1P|octane_stimpack_loop_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_heal.nut",
+    "field": "EmitWeaponSound_1p3p",
+    "line": 15,
+    "event": "octane_stimpack_loop_1P"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_heal.nut|EmitWeaponSound_1p3p|octane_stimpack_deactivate_1P|octane_stimpack_deactivate_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_heal.nut",
+    "field": "EmitWeaponSound_1p3p",
+    "line": 53,
+    "event": "octane_stimpack_deactivate_1P"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_heal.txt|sound_weapon_ready|survival_ui_tactical_ready|survival_ui_tactical_ready": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_heal.txt",
+    "field": "sound_weapon_ready",
+    "line": 59,
+    "event": "survival_ui_tactical_ready"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_heal.txt|sound_dryfire|Survival_UI_Ability_NotReady|Survival_UI_Ability_NotReady": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_heal.txt",
+    "field": "sound_dryfire",
+    "line": 57,
+    "event": "Survival_UI_Ability_NotReady"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_jump_pad.txt|sound_dryfire|Survival_UI_Ability_NotReady|Survival_UI_Ability_NotReady": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_jump_pad.txt",
+    "field": "sound_dryfire",
+    "line": 82,
+    "event": "Survival_UI_Ability_NotReady"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_jump_pad.txt|sound_throw_1p|JumpPad_Throw|JumpPad_Throw": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_jump_pad.txt",
+    "field": "sound_throw_1p",
+    "line": 77,
+    "event": "JumpPad_Throw"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/_jump_pads.gnut|EmitSoundOnEntity|JumpPad_Deploy_Unpack|JumpPad_Deploy_Unpack": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/_jump_pads.gnut",
+    "field": "EmitSoundOnEntity",
+    "line": 287,
+    "event": "JumpPad_Deploy_Unpack"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/cl_jump_pads.gnut|EmitSoundOnEntity|JumpPad_LaunchPlayer_1p|JumpPad_LaunchPlayer_1p": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/cl_jump_pads.gnut",
+    "field": "EmitSoundOnEntity",
+    "line": 28,
+    "event": "JumpPad_LaunchPlayer_1p"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/cl_jump_pads.gnut|EmitSoundOnEntity|JumpPad_Ascent_Windrush|JumpPad_Ascent_Windrush": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/cl_jump_pads.gnut",
+    "field": "EmitSoundOnEntity",
+    "line": 29,
+    "event": "JumpPad_Ascent_Windrush"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/_jump_pads.gnut|EmitSoundOnEntityExceptToPlayer|JumpPad_Ascent_Windrush|JumpPad_Ascent_Windrush": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/_jump_pads.gnut",
+    "field": "EmitSoundOnEntityExceptToPlayer",
+    "line": 355,
+    "event": "JumpPad_Ascent_Windrush"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/_jump_pads.gnut|EmitSoundOnEntityOnlyToPlayer|JumpPad_DoubleJump_1P|JumpPad_DoubleJump_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/_jump_pads.gnut",
+    "field": "EmitSoundOnEntityOnlyToPlayer",
+    "line": 129,
+    "event": "JumpPad_DoubleJump_1P"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_jump_pad.txt|sound_weapon_ready|survival_ui_ultimate_ready|survival_ui_ultimate_ready": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_jump_pad.txt",
+    "field": "sound_weapon_ready",
+    "line": 50,
+    "event": "survival_ui_ultimate_ready"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_heal.nut|PlayBattleChatterLineToSpeakerAndTeam|bc_tactical|diag_mp_octane_bc_tactical_1p": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_heal.nut",
+    "field": "PlayBattleChatterLineToSpeakerAndTeam",
+    "line": 38,
+    "event": "diag_mp_octane_bc_tactical_1p",
+    "chatter_line": "bc_tactical"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/_codecallbacks.gnut|EmitSoundOnEntityOnlyToPlayer|flesh_bulletimpact_downedshot_1p_vs_3p|flesh_bulletimpact_downedshot_1p_vs_3p": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/_codecallbacks.gnut",
+    "field": "EmitSoundOnEntityOnlyToPlayer",
+    "line": 508,
+    "event": "flesh_bulletimpact_downedshot_1p_vs_3p"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/_codecallbacks.gnut|EmitSoundOnEntityOnlyToPlayer|humanshield_break_1p_vs_3p|humanshield_break_1p_vs_3p": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/mp/_codecallbacks.gnut",
+    "field": "EmitSoundOnEntityOnlyToPlayer",
+    "line": 463,
+    "event": "humanshield_break_1p_vs_3p"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_consumable.txt|charge_sound_1p|Shield_Battery_Charge|Shield_Battery_Charge": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_consumable.txt",
+    "field": "charge_sound_1p",
+    "line": 231,
+    "event": "shield_battery_charge"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_consumable.nut|chargeSoundName|Shield_Battery_Charge|Shield_Battery_Charge": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_consumable.nut",
+    "field": "chargeSoundName",
+    "line": 222,
+    "event": "Shield_Battery_Charge"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_consumable.txt|fire_sound_1_player_1p|Shield_Battery_Primary|Shield_Battery_Primary": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_consumable.txt",
+    "field": "fire_sound_1_player_1p",
+    "line": 216,
+    "event": "shield_battery_primary"
+   },
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_consumable.txt",
+    "field": "fire_sound_1_player_1p",
+    "line": 246,
+    "event": "shield_battery_primary"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_consumable.txt|fire_sound_2_player_1p|Shield_Battery_Holster|Shield_Battery_Holster": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_consumable.txt",
+    "field": "fire_sound_2_player_1p",
+    "line": 217,
+    "event": "shield_battery_holster"
+   },
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_consumable.txt",
+    "field": "fire_sound_2_player_1p",
+    "line": 247,
+    "event": "shield_battery_holster"
+   },
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_ability_consumable.txt",
+    "field": "fire_sound_2_player_1p",
+    "line": 299,
+    "event": "shield_battery_holster"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_consumable.nut|cancelSoundName|Shield_Battery_Failure|Shield_Battery_Failure": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_consumable.nut",
+    "field": "cancelSoundName",
+    "line": 208,
+    "event": "shield_battery_failure"
+   },
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_consumable.nut",
+    "field": "cancelSoundName",
+    "line": 223,
+    "event": "shield_battery_failure"
+   },
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_ability_consumable.nut",
+    "field": "cancelSoundName",
+    "line": 237,
+    "event": "shield_battery_failure"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt|fire_sound_1_player_1p|Weapon_ChargeRifle_Fire_1P|Weapon_ChargeRifle_Fire_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt",
+    "field": "fire_sound_1_player_1p",
+    "line": 54,
+    "event": "Weapon_ChargeRifle_Fire_1P"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt|fire_sound_1_player_1p|Weapon_ChargeRifle_Fire_1P|Weapon_ChargeRifle_Fire_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt",
+    "field": "fire_sound_1_player_1p",
+    "line": 60,
+    "event": "Weapon_ChargeRifle_Fire_1P"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt|charge_sound_1p|Weapon_ChargeRifle_WindUp_1P|Weapon_ChargeRifle_WindUp_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt",
+    "field": "charge_sound_1p",
+    "line": 172,
+    "event": "Weapon_ChargeRifle_WindUp_1P"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt|charge_sound_1p|Weapon_ChargeRifle_WindUp_1P|Weapon_ChargeRifle_WindUp_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt",
+    "field": "charge_sound_1p",
+    "line": 197,
+    "event": "Weapon_ChargeRifle_WindUp_1P"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt|charge_drain_sound_1p|Weapon_ChargeRifle_WindDown_1P|Weapon_ChargeRifle_WindDown_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt",
+    "field": "charge_drain_sound_1p",
+    "line": 176,
+    "event": "Weapon_ChargeRifle_WindDown_1P"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt|charge_drain_sound_1p|Weapon_ChargeRifle_WindDown_1P|Weapon_ChargeRifle_WindDown_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt",
+    "field": "charge_drain_sound_1p",
+    "line": 201,
+    "event": "Weapon_ChargeRifle_WindDown_1P"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt|sound_trigger_pull|Weapon_ChargeRifle_TriggerOn|Weapon_ChargeRifle_TriggerOn": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt",
+    "field": "sound_trigger_pull",
+    "line": 49,
+    "event": "Weapon_ChargeRifle_TriggerOn"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_weapon_defender.nut|EmitWeaponSound_1p3p|Weapon_ChargeRifle_TriggerOn|Weapon_ChargeRifle_TriggerOn": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_weapon_defender.nut",
+    "field": "EmitWeaponSound_1p3p",
+    "line": 40,
+    "event": "Weapon_ChargeRifle_TriggerOn"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/exp_defender_small.txt|Sound_attacker.C|ChargeRifle_SmallBeam_Bulletimpact_1p_vs_3p|ChargeRifle_SmallBeam_Bulletimpact_1p_vs_3p": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/exp_defender_small.txt",
+    "field": "Sound_attacker.C",
+    "line": 163,
+    "event": "ChargeRifle_SmallBeam_Bulletimpact_1p_vs_3p"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/exp_defender_small.txt|Sound_attacker.F|flesh_bulletimpact_chargerifle_beam_1p_vs_3p|flesh_bulletimpact_chargerifle_beam_1p_vs_3p": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/exp_defender_small.txt",
+    "field": "Sound_attacker.F",
+    "line": 167,
+    "event": "flesh_bulletimpact_chargerifle_beam_1p_vs_3p"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/exp_defender.txt|Sound_attacker.C|ChargeRifle_FullShot_Bulletimpact_1p_vs_3p|ChargeRifle_FullShot_Bulletimpact_1p_vs_3p": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/exp_defender.txt",
+    "field": "Sound_attacker.C",
+    "line": 156,
+    "event": "ChargeRifle_FullShot_Bulletimpact_1p_vs_3p"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/exp_defender.txt|Sound_attacker.F|flesh_bulletimpact_chargerifle_shot_1p_vs_3p|flesh_bulletimpact_chargerifle_shot_1p_vs_3p": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/exp_defender.txt",
+    "field": "Sound_attacker.F",
+    "line": 160,
+    "event": "flesh_bulletimpact_chargerifle_shot_1p_vs_3p"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_weapon_defender.nut|EmitWeaponSound_1p3p|weapon_chargerifle_chargeupclick_1p|weapon_chargerifle_chargeupclick_1p": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/vscripts/weapons/mp_weapon_defender.nut",
+    "field": "EmitWeaponSound_1p3p",
+    "line": 42,
+    "event": "weapon_chargerifle_chargeupclick_1p"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt|sound_trigger_release|Weapon_ChargeRifle_TriggerOff|Weapon_ChargeRifle_TriggerOff": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt",
+    "field": "sound_trigger_release",
+    "line": 50,
+    "event": "Weapon_ChargeRifle_TriggerOff"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt|sound_trigger_release|Weapon_ChargeRifle_TriggerOff|Weapon_ChargeRifle_TriggerOff": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt",
+    "field": "sound_trigger_release",
+    "line": 56,
+    "event": "Weapon_ChargeRifle_TriggerOff"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt|sound_zoom_in|Weapon_ChargeRifle_ADS_In|Weapon_ChargeRifle_ADS_In": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt",
+    "field": "sound_zoom_in",
+    "line": 51,
+    "event": "Weapon_ChargeRifle_ADS_In"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt|sound_zoom_in|Weapon_ChargeRifle_ADS_In|Weapon_ChargeRifle_ADS_In": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt",
+    "field": "sound_zoom_in",
+    "line": 57,
+    "event": "Weapon_ChargeRifle_ADS_In"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt|sound_zoom_out|Weapon_ChargeRifle_ADS_Out|Weapon_ChargeRifle_ADS_Out": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender_sustained.txt",
+    "field": "sound_zoom_out",
+    "line": 52,
+    "event": "Weapon_ChargeRifle_ADS_Out"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt|sound_zoom_out|Weapon_ChargeRifle_ADS_Out|Weapon_ChargeRifle_ADS_Out": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_defender.txt",
+    "field": "sound_zoom_out",
+    "line": 58,
+    "event": "Weapon_ChargeRifle_ADS_Out"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/_base_sniper.txt|sound_dryfire|rifle_dryfire|rifle_dryfire": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/_base_sniper.txt",
+    "field": "sound_dryfire",
+    "line": 242,
+    "event": "rifle_dryfire"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_frag_grenade.txt|sound_deploy_1p|Weapon_FragGrenade_PinPull|Weapon_FragGrenade_PinPull": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_frag_grenade.txt",
+    "field": "sound_deploy_1p",
+    "line": 113,
+    "event": "Weapon_FragGrenade_PinPull"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_frag_grenade.txt|sound_throw_1p|Weapon_FragGrenade_Throw|Weapon_FragGrenade_Throw": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_frag_grenade.txt",
+    "field": "sound_throw_1p",
+    "line": 112,
+    "event": "Weapon_FragGrenade_Throw"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_frag_grenade.txt|battle_chatter_event|bc_frag|diag_mp_octane_bc_frag_1p": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/weapons/mp_weapon_frag_grenade.txt",
+    "field": "battle_chatter_event",
+    "line": 118,
+    "event": "diag_mp_octane_bc_frag_1p",
+    "chatter_line": "bc_frag"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/bounce_small.txt|Sound.C|Phys_Imp_FragGrenade_Concrete|Phys_Imp_FragGrenade_Concrete": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/bounce_small.txt",
+    "field": "Sound.C",
+    "line": 66,
+    "event": "Phys_Imp_FragGrenade_Concrete"
+   }
+  ],
+  "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/exp_frag_grenade.txt|Sound_attacker.C|Explo_FragGrenade_Impact_1P|Explo_FragGrenade_Impact_1P": [
+   {
+    "input": "F:/R5Reloaded/R5R Library/LIVE/platform/scripts/impacts/exp_frag_grenade.txt",
+    "field": "Sound_attacker.C",
+    "line": 109,
+    "event": "Explo_FragGrenade_Impact_1P"
+   }
+  ]
+ }
+}

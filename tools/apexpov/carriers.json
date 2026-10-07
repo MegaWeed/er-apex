@@ -1,0 +1,519 @@
+{
+ "format": "fuse-pov-carriers",
+ "version": 1,
+ "rig": "animrig/weapons/rspn101/ptpov_rspn101.rrig",
+ "models": [
+  "mdl/Weapons/arms/pov_pilot_medium_fuse.rmdl",
+  "mdl/techart/mshop/weapons/class/assault/r301/r301_base_v.rmdl"
+ ],
+ "templates": {
+  "am": "AM_M_1500",
+  "bd": "BD_M_1280"
+ },
+ "carriers": [
+  {
+   "carrier": "Spine2",
+   "owner": "def_c_spineC",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "Neck",
+   "owner": "def_c_neckB",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "L_Pectoral",
+   "owner": "def_c_base",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "R_Pectoral",
+   "owner": "def_c_bolt",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "Collar",
+   "owner": "def_c_magazine",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "L_Clavicle",
+   "owner": "def_l_clav",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "L_Shoulder",
+   "owner": "def_l_shoulder",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "L_UpArmTwist",
+   "owner": "def_l_shoulderTwist",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "L_UpArmTwist1",
+   "owner": "def_l_shoulderMid",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "L_Elbow",
+   "owner": "def_l_elbowB",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "L_UpperArm",
+   "owner": "def_l_elbow",
+   "parts": [
+    "am",
+    "bd"
+   ]
+  },
+  {
+   "carrier": "L_ForeArmTwist",
+   "owner": "def_l_forearm",
+   "parts": [
+    "am",
+    "bd"
+   ]
+  },
+  {
+   "carrier": "L_Hand",
+   "owner": "def_l_wrist",
+   "parts": [
+    "am",
+    "bd"
+   ]
+  },
+  {
+   "carrier": "L_Finger0",
+   "owner": "def_l_finThumbA",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger01",
+   "owner": "def_l_finThumbB",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger02",
+   "owner": "def_l_finThumbC",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger1",
+   "owner": "def_l_finIndexA",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger11",
+   "owner": "def_l_finIndexB",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger12",
+   "owner": "def_l_finIndexC",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger2",
+   "owner": "def_l_finMidA",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger21",
+   "owner": "def_l_finMidB",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger22",
+   "owner": "def_l_finMidC",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger3",
+   "owner": "def_l_finRingA",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger31",
+   "owner": "def_l_finRingB",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger32",
+   "owner": "def_l_finRingC",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger4",
+   "owner": "def_l_finPinkyA",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger41",
+   "owner": "def_l_finPinkyB",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "L_Finger42",
+   "owner": "def_l_finPinkyC",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Clavicle",
+   "owner": "def_r_clav",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "R_Shoulder",
+   "owner": "def_r_shoulder",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "R_UpArmTwist",
+   "owner": "def_r_shoulderTwist",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "R_UpArmTwist1",
+   "owner": "def_r_shoulderMid",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "R_Elbow",
+   "owner": "def_r_elbowB",
+   "parts": [
+    "bd"
+   ]
+  },
+  {
+   "carrier": "R_UpperArm",
+   "owner": "def_r_elbow",
+   "parts": [
+    "am",
+    "bd"
+   ]
+  },
+  {
+   "carrier": "R_ForeArmTwist",
+   "owner": "def_r_forearm",
+   "parts": [
+    "am",
+    "bd"
+   ]
+  },
+  {
+   "carrier": "R_Hand",
+   "owner": "def_r_wrist",
+   "parts": [
+    "am",
+    "bd"
+   ]
+  },
+  {
+   "carrier": "R_Finger0",
+   "owner": "def_r_finThumbA",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger01",
+   "owner": "def_r_finThumbB",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger02",
+   "owner": "def_r_finThumbC",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger1",
+   "owner": "def_r_finIndexA",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger11",
+   "owner": "def_r_finIndexB",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger12",
+   "owner": "def_r_finIndexC",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger2",
+   "owner": "def_r_finMidA",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger21",
+   "owner": "def_r_finMidB",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger22",
+   "owner": "def_r_finMidC",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger3",
+   "owner": "def_r_finRingA",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger31",
+   "owner": "def_r_finRingB",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger32",
+   "owner": "def_r_finRingC",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger4",
+   "owner": "def_r_finPinkyA",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger41",
+   "owner": "def_r_finPinkyB",
+   "parts": [
+    "am"
+   ]
+  },
+  {
+   "carrier": "R_Finger42",
+   "owner": "def_r_finPinkyC",
+   "parts": [
+    "am"
+   ]
+  }
+ ],
+ "owner_of_bone": {
+  "def_c_acgs": "def_c_base",
+  "def_c_aog": "def_c_base",
+  "def_c_backPack": "def_c_spineC",
+  "def_c_backPack_jiggle": "def_c_spineC",
+  "def_c_base": "def_c_base",
+  "def_c_bolt": "def_c_bolt",
+  "def_c_cro": "def_c_base",
+  "def_c_hcog": "def_c_base",
+  "def_c_hcog_og": "def_c_base",
+  "def_c_head": "def_c_neckB",
+  "def_c_hip": null,
+  "def_c_holo": "def_c_base",
+  "def_c_holo_mag": "def_c_base",
+  "def_c_lasersight": null,
+  "def_c_magazine": "def_c_magazine",
+  "def_c_neckA": "def_c_spineC",
+  "def_c_neckB": "def_c_neckB",
+  "def_c_proscreen": "def_c_base",
+  "def_c_sightFront": "def_c_base",
+  "def_c_sightFront_off": "def_c_base",
+  "def_c_sightRear": "def_c_base",
+  "def_c_sightRear_off": "def_c_base",
+  "def_c_spineA": null,
+  "def_c_spineB": null,
+  "def_c_spineC": "def_c_spineC",
+  "def_c_suppressor": "def_c_base",
+  "def_c_vent": null,
+  "def_l_ankle": null,
+  "def_l_ball": null,
+  "def_l_clav": "def_l_clav",
+  "def_l_cuff_1": "def_l_forearm",
+  "def_l_cuff_2": "def_l_forearm",
+  "def_l_cuff_3": "def_l_forearm",
+  "def_l_cuff_4": "def_l_forearm",
+  "def_l_elbow": "def_l_elbow",
+  "def_l_elbowB": "def_l_elbowB",
+  "def_l_finIndexA": "def_l_finIndexA",
+  "def_l_finIndexA_helper": "def_l_finIndexA",
+  "def_l_finIndexB": "def_l_finIndexB",
+  "def_l_finIndexC": "def_l_finIndexC",
+  "def_l_finMidA": "def_l_finMidA",
+  "def_l_finMidA_helper": "def_l_finMidA",
+  "def_l_finMidB": "def_l_finMidB",
+  "def_l_finMidC": "def_l_finMidC",
+  "def_l_finPinkyA": "def_l_finPinkyA",
+  "def_l_finPinkyB": "def_l_finPinkyB",
+  "def_l_finPinkyC": "def_l_finPinkyC",
+  "def_l_finRingA": "def_l_finRingA",
+  "def_l_finRingA_helper": "def_l_finRingA",
+  "def_l_finRingB": "def_l_finRingB",
+  "def_l_finRingC": "def_l_finRingC",
+  "def_l_finRingCarpal": "def_l_wrist",
+  "def_l_finThumbA": "def_l_finThumbA",
+  "def_l_finThumbB": "def_l_finThumbB",
+  "def_l_finThumbB_helper": "def_l_finThumbB",
+  "def_l_finThumbC": "def_l_finThumbC",
+  "def_l_finThumbC_helper": "def_l_finThumbC",
+  "def_l_finThumbmiddle_helper": "def_l_finThumbA",
+  "def_l_forearm": "def_l_forearm",
+  "def_l_forearm_shield": "def_l_elbow",
+  "def_l_knee": null,
+  "def_l_kneeB": null,
+  "def_l_outterwrist": "def_l_wrist",
+  "def_l_shoulder": "def_l_shoulder",
+  "def_l_shoulderMid": "def_l_shoulderMid",
+  "def_l_shoulderTwist": "def_l_shoulderTwist",
+  "def_l_thigh": null,
+  "def_l_wrist": "def_l_wrist",
+  "def_r_ankle": null,
+  "def_r_ball": null,
+  "def_r_clav": "def_r_clav",
+  "def_r_cuff_1": "def_r_forearm",
+  "def_r_cuff_2": "def_r_forearm",
+  "def_r_cuff_3": "def_r_forearm",
+  "def_r_cuff_4": "def_r_forearm",
+  "def_r_elbow": "def_r_elbow",
+  "def_r_elbowB": "def_r_elbowB",
+  "def_r_finIndexA": "def_r_finIndexA",
+  "def_r_finIndexA_helper": "def_r_finIndexA",
+  "def_r_finIndexB": "def_r_finIndexB",
+  "def_r_finIndexC": "def_r_finIndexC",
+  "def_r_finMidA": "def_r_finMidA",
+  "def_r_finMidA_helper": "def_r_finMidA",
+  "def_r_finMidB": "def_r_finMidB",
+  "def_r_finMidC": "def_r_finMidC",
+  "def_r_finPinkyA": "def_r_finPinkyA",
+  "def_r_finPinkyB": "def_r_finPinkyB",
+  "def_r_finPinkyC": "def_r_finPinkyC",
+  "def_r_finRingA": "def_r_finRingA",
+  "def_r_finRingA_helper": "def_r_finRingA",
+  "def_r_finRingB": "def_r_finRingB",
+  "def_r_finRingC": "def_r_finRingC",
+  "def_r_finRingCarpal": "def_r_wrist",
+  "def_r_finThumbA": "def_r_finThumbA",
+  "def_r_finThumbB": "def_r_finThumbB",
+  "def_r_finThumbB_helper": "def_r_finThumbB",
+  "def_r_finThumbC": "def_r_finThumbC",
+  "def_r_finThumbC_helper": "def_r_finThumbC",
+  "def_r_finThumbmiddle_helper": "def_r_finThumbA",
+  "def_r_forearm": "def_r_forearm",
+  "def_r_forearm_l_topplate_open": "def_r_elbow",
+  "def_r_forearm_r_topplate_open": "def_r_elbow",
+  "def_r_grenade": "def_r_elbow",
+  "def_r_hammer": "def_r_elbow",
+  "def_r_hammer_inner": "def_r_elbow",
+  "def_r_hammer_outer": "def_r_elbow",
+  "def_r_inner_pistons_rot": "def_r_elbow",
+  "def_r_knee": null,
+  "def_r_kneeB": null,
+  "def_r_outer_pistons_rot": "def_r_elbow",
+  "def_r_outterwrist": "def_r_wrist",
+  "def_r_pistons_inner_01": "def_r_elbow",
+  "def_r_pistons_inner_02": "def_r_elbow",
+  "def_r_pistons_inner_03": "def_r_elbow",
+  "def_r_pistons_inner_04": "def_r_elbow",
+  "def_r_pistons_inner_05": "def_r_elbow",
+  "def_r_pistons_inner_06": "def_r_elbow",
+  "def_r_pistons_inner_plier_inner": "def_r_elbow",
+  "def_r_pistons_inner_plier_outer": "def_r_elbow",
+  "def_r_pistons_inner_stretch": "def_r_elbow",
+  "def_r_pistons_outer_01": "def_r_elbow",
+  "def_r_pistons_outer_02": "def_r_elbow",
+  "def_r_pistons_outer_03": "def_r_elbow",
+  "def_r_pistons_outer_04": "def_r_elbow",
+  "def_r_pistons_outer_05": "def_r_elbow",
+  "def_r_pistons_outer_06": "def_r_elbow",
+  "def_r_pistons_outer_plier_inner": "def_r_elbow",
+  "def_r_pistons_outer_plier_outer": "def_r_elbow",
+  "def_r_pistons_outer_stretch": "def_r_elbow",
+  "def_r_shoulder": "def_r_shoulder",
+  "def_r_shoulderMid": "def_r_shoulderMid",
+  "def_r_shoulderPad": "def_r_shoulderTwist",
+  "def_r_shoulderTwist": "def_r_shoulderTwist",
+  "def_r_spring_01": "def_r_elbow",
+  "def_r_spring_02": "def_r_elbow",
+  "def_r_spring_03": "def_r_elbow",
+  "def_r_spring_stopper": "def_r_elbow",
+  "def_r_thigh": null,
+  "def_r_wrist": "def_r_wrist"
+ }
+}
