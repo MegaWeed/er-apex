@@ -21,10 +21,11 @@ CONFIG.update(model=CONFIG['assets']/('cast/'+CONFIG['model_relative']+'_LOD0.ca
 # The pistol's weighted bones (body_0 only: sights, suppressors, lasers and the boosted magazine are
 # attachments) on the only live leaf bones of part BD that are enabled in its template and no earlier
 # carrier uses (nobody's parent: see T022's Claude rework on L_Forearm/R_Forearm). Three: the frame,
-# the parts that move most (taclight: 2.2 cm in the reloads, its child taclight1 spins 180 deg;
-# detailB: 45 deg in the fire). toprail (1.7 cm), detailC (2.2 cm), trigger (still) and the other
+# the parts that move most: taclight (2.2 cm in the reloads, its child taclight1 spins 180 deg) and
+# the magazine (b3wing_magazine_0, the cylinder's speed loader: 36 cm in the reloads). detailB (the
+# hammer, 45 deg in the fire), toprail (1.7 cm), detailC (2.2 cm), trigger (still) and the other
 # children ride on their ancestors (rigid).
-OWNERS=('def_c_base','def_c_taclight','def_c_detailB')
+OWNERS=('def_c_base','def_c_taclight','def_c_magazine')
 CARRIERS=('R_ThighTwist','R_Hip','L_Hip')
 BASE_COUNTS=(170,87,301)
 # T022's Charge Rifle exclusions (attachments, optics, wallrun, inspect, sprint extras) plus the TEMP/late ones
@@ -44,9 +45,11 @@ def selected():
  mdl=model(CONFIG['model']);keep=[];omitted=[]
  for mesh in mdl.Meshes():
   row=dict(name=mesh.Name(),vertices=mesh.VertexCount(),triangles=len(mesh.FaceBuffer())//3,material=mesh.Material().Name())
-  if mesh.Name().startswith('body_0_'):keep.append(mesh)
+  # studio 0 is shown by default: the body and the magazine (`b3wing_magazine`'s only option);
+  # the attachments are studio 1 of bodygroups whose option 0 is blank
+  if mesh.Name().startswith(('body_0_','b3wing_magazine_0_')):keep.append(mesh)
   else:omitted.append(dict(row,reason='Wingman: attachment bodygroup, not shown'))
- require(len(keep)==1,'Unexpected Wingman body mesh count');return mdl,keep,omitted
+ require(len(keep)==2,'Unexpected Wingman default mesh count');return mdl,keep,omitted
 
 
 def read_pack(path):
