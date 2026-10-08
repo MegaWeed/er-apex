@@ -77,12 +77,16 @@ pub struct Pack {
     pub weapon: Option<usize>,
     /// T022: the Charge Rifle's own `def_c_base` copy (its muzzle hangs off it), if the pack has it
     pub cr_gun: Option<usize>,
+    /// the Wingman's own `def_c_base` and `weapon_bone` copies, if the pack has it
+    pub wm_gun: Option<usize>,
+    pub wm_weapon: Option<usize>,
     pub carriers: Vec<Carrier>,
     pub clips: Vec<Clip>,
     /// the clip of each sample of each sequence, by `Seq as usize`: the R-301's, the Charge Rifle's
     /// (T022 `cr_*`; all None without them)
     samples: Vec<[Option<usize>; 4]>,
     cr_samples: Vec<[Option<usize>; 4]>,
+    wm_samples: Vec<[Option<usize>; 4]>,
     /// every clip by name (the abilities' clips are found by name)
     by_name: std::collections::HashMap<String, usize>,
 }
@@ -98,6 +102,7 @@ impl Pack {
         let table = match w {
             Weapon::R301 => &self.samples,
             Weapon::ChargeRifle => &self.cr_samples,
+            Weapon::Wingman => &self.wm_samples,
         };
         table.get(seq as usize)?.get(k).copied().flatten().map(|i| &self.clips[i])
     }
@@ -105,6 +110,20 @@ impl Pack {
     /// Whether the pack has the Charge Rifle (T022: its bones and clips).
     pub fn has_rifle(&self) -> bool {
         self.cr_gun.is_some() && self.cr_samples.iter().all(|k| k[0].is_some())
+    }
+
+    /// Whether the pack has the Wingman (its bones and clips): then it is the R-301's slot's weapon.
+    pub fn has_wingman(&self) -> bool {
+        self.wm_gun.is_some() && self.wm_weapon.is_some() && self.wm_samples.iter().all(|k| k[0].is_some())
+    }
+
+    /// The gun (`def_c_base`) and `weapon_bone` of a weapon's graph: the Wingman's own copies, else
+    /// the R-301's (the Charge Rifle's sway pivots are the R-301's, as before).
+    pub fn gun_bones(&self, w: Weapon) -> (Option<usize>, Option<usize>) {
+        match w {
+            Weapon::Wingman if self.wm_gun.is_some() => (self.wm_gun, self.wm_weapon),
+            _ => (self.gun, self.weapon),
+        }
     }
 
     pub fn clip(&self, name: &str) -> Option<&Clip> {
@@ -203,12 +222,14 @@ pub fn parse(d: &[u8]) -> Result<Pack, String> {
             })
             .collect()
     };
-    let (samples, cr_samples) = (table(Weapon::R301), table(Weapon::ChargeRifle));
+    let (samples, cr_samples, wm_samples) = (table(Weapon::R301), table(Weapon::ChargeRifle), table(Weapon::Wingman));
     let gun = names.iter().position(|n| n == "def_c_base");
     let weapon = names.iter().position(|n| n == "weapon_bone");
     let cr_gun = names.iter().position(|n| n == "cr:def_c_base");
+    let wm_gun = names.iter().position(|n| n == "wm:def_c_base");
+    let wm_weapon = names.iter().position(|n| n == "wm:weapon_bone");
     let by_name = clips.iter().enumerate().map(|(i, c)| (c.name.clone(), i)).collect();
-    Ok(Pack { names, parents, camera, pov, gun, weapon, cr_gun, carriers, clips, samples, cr_samples, by_name })
+    Ok(Pack { names, parents, camera, pov, gun, weapon, cr_gun, wm_gun, wm_weapon, carriers, clips, samples, cr_samples, wm_samples, by_name })
 }
 
 static PACK: Mutex<Option<Result<Pack, String>>> = Mutex::new(None);

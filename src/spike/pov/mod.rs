@@ -40,11 +40,13 @@ use crate::{log, paths};
 
 const INCH: f32 = 0.0254;
 /// Carrier groups: 0 the arms, 1 the R-301, 2 the injector, 3 the pad, 4 the battery (T021), 5
-/// the Charge Rifle, 6 the frag grenade in the hand, 7 and 8 two thrown grenades (T022).
-const GROUPS: usize = 9;
-/// The Charge Rifle's and the thrown grenades' groups.
+/// the Charge Rifle, 6 the frag grenade in the hand, 7 and 8 two thrown grenades (T022), 9 the
+/// Wingman (in the R-301's slot: tools/apexpov/bake_wingman.py).
+const GROUPS: usize = 10;
+/// The Charge Rifle's, the hand grenade's and the Wingman's groups.
 const RIFLE: usize = 5;
 const FRAG: usize = 6;
+const WINGMAN: usize = 9;
 pub const THROWN: [u8; 2] = [7, 8];
 
 /// Where the carriers of a group that does not show go (dev `fp hide`). The renderer takes
@@ -95,6 +97,18 @@ const MUZZLE: Xf = Xf { t: Vec3::new(0.0, 3.978_2, 26.367_5), r: Quat::from_xyzw
 /// `muzzle_flash` on the Charge Rifle's `def_c_base` (retail `chargerifle_base_v.qc` `$definebone`:
 /// inches; its rotation is not needed, only where the beam starts: hud/beam.rs).
 const CR_MUZZLE: Xf = Xf { t: Vec3::new(0.0, 0.895_842, 20.380_127), r: Quat::IDENTITY };
+
+/// `muzzle_flash` on the Wingman's `def_c_base` (retail `wingman_base_v.qc` `$definebone`: inches,
+/// the R-301's -90° rotation).
+const WM_MUZZLE: Xf = Xf { t: Vec3::new(0.0, 2.795_282, 9.549_05), r: MUZZLE.r };
+
+/// A weapon's muzzle on its `def_c_base` (the Charge Rifle's turn not needed: the R-301's).
+fn muzzle_of(w: Weapon) -> Xf {
+    match w {
+        Weapon::Wingman => WM_MUZZLE,
+        _ => MUZZLE,
+    }
+}
 
 /// Whether the pack is there (then first person poses Apex's view model).
 pub fn available() -> bool {
@@ -286,20 +300,26 @@ fn sway_input(dt: f32, i: &Inputs, last: Option<(Vec3, Vec3, Vec3)>) -> SwayIn {
 
 /// The weapon whose view model the hands hold this frame (weapons.rs: the one going away during
 /// its put-away, then the one coming out): the Charge Rifle only with its clips in the pack (T022),
-/// else the R-301's graph poses as before U3's stage 2.
-fn view_weapon(rifle: bool) -> Weapon {
+/// else the R-301's slot's graph (the Wingman's with its clips in the pack) poses as before U3's
+/// stage 2.
+fn view_weapon(rifle: bool, primary: Weapon) -> Weapon {
     use super::weapons::{Phase, Slot};
     let slot = match super::weapons::phase() {
         Phase::Ready(s) | Phase::Holstering { slot: s, .. } | Phase::Drawing { slot: s, .. } => s,
     };
-    if slot == Slot::ChargeRifle && rifle { Weapon::ChargeRifle } else { Weapon::R301 }
+    if slot == Slot::ChargeRifle && rifle { Weapon::ChargeRifle } else { primary }
+}
+
+/// The weapon of the R-301's slot: the Wingman when the pack has it (bake_wingman.py), else the R-301.
+fn primary_weapon() -> Weapon {
+    if with_pack(|p| p.has_wingman()).unwrap_or(false) { Weapon::Wingman } else { Weapon::R301 }
 }
 
 /// Once a frame: steps the animation graphs by `dt` seconds and poses the view model.
 pub fn step(dt: f32, i: &Inputs) {
     let mut g = ANIM.lock().unwrap_or_else(|e| e.into_inner());
     let a = g.get_or_insert_with(|| Anim {
-        graph: Graph::new(),
+        graph: Graph::new_for(primary_weapon()),
         cr_graph: Graph::new_for(Weapon::ChargeRifle),
         cr_last_shots: None,
         view: Weapon::R301,
@@ -320,7 +340,7 @@ pub fn step(dt: f32, i: &Inputs) {
     a.sway.step(&s, &R301_HIP, &R301_ZOOMED);
     a.drawn_turn = a.posed.as_ref().map(|p| p.camera_turn);
     let rifle = with_pack(|p| p.has_rifle()).unwrap_or(false);
-    a.view = view_weapon(rifle);
+    a.view = view_weapon(rifle, a.graph.weapon());
     let r301_shot = a.last_shots.is_some_and(|n| i.shots > n);
     a.last_shots = Some(i.shots);
     let cr_shot = a.cr_last_shots.is_some_and(|n| i.cr_shots > n);
@@ -374,7 +394,7 @@ pub fn step(dt: f32, i: &Inputs) {
     // the weapon switch (weapons.rs): the R-301's or the Charge Rifle's put-away and pull-out over
     // its graph; without the rifle's clips the R-301's arms stay lowered at its put-away's end
     let swap = weapon_swap(a.view, rifle, m.duck_frac);
-    let gun_group = if a.view == Weapon::ChargeRifle { RIFLE } else { 1 };
+    let gun_group = gun_group(a.view);
     if swap.as_ref().is_some_and(|v| !v.2) && dev_state().force[gun_group].is_none() {
         show[gun_group] = false;
     }
@@ -387,7 +407,7 @@ pub fn step(dt: f32, i: &Inputs) {
         o.layers.extend(discharge_layers(t, i.cr_charge, i.ads, m.duck_frac));
     }
     let t0 = Instant::now();
-    let vis = Vis { show, hide, rifle: a.view == Weapon::ChargeRifle };
+    let vis = Vis { show, hide, weapon: a.view };
     a.posed = with_pack(|p| pose_pack(p, &out, &a.sway, posing.as_ref().or(a.ability_out.as_ref()), vis)).flatten();
     let us = t0.elapsed().as_secs_f32() * 1e6;
     if a.trace_until.is_some_and(|t| Instant::now() < t) {
@@ -491,6 +511,10 @@ const OFFSET_ADS: Vec3 = Vec3::new(0.0, 0.38, 0.0);
 /// `viewmodel_offset_ads` "0 -8 -0.45").
 const CR_OFFSET_HIP: Vec3 = Vec3::new(0.0, -3.0, -0.75);
 const CR_OFFSET_ADS: Vec3 = Vec3::new(0.0, -8.0, -0.45);
+/// The Wingman's (`mp_weapon_wingman.txt`: no `viewmodel_offset_hip` (0 0 0), `viewmodel_offset_ads`
+/// "0 1.0 0").
+const WM_OFFSET_HIP: Vec3 = Vec3::ZERO;
+const WM_OFFSET_ADS: Vec3 = Vec3::new(0.0, 1.0, 0.0);
 const OFFSET_BACK: f32 = -2.0;
 const DUCK_OFFSET: f32 = -0.751;
 
@@ -504,6 +528,7 @@ fn hold_offset(p: Params, w: Weapon) -> Vec3 {
     let (hip, ads) = match w {
         Weapon::R301 => (OFFSET_HIP, OFFSET_ADS),
         Weapon::ChargeRifle => (CR_OFFSET_HIP, CR_OFFSET_ADS),
+        Weapon::Wingman => (WM_OFFSET_HIP, WM_OFFSET_ADS),
     };
     let o = hip.lerp(ads, e) + Vec3::new(0.0, OFFSET_BACK, 0.0);
     let duck = DUCK_OFFSET * (p.crouch.clamp(0.0, 1.0) * std::f32::consts::FRAC_PI_2).sin() * (1.0 - a);
@@ -522,25 +547,26 @@ fn camera_base() -> Xf {
 
 /// The sway's pivots in CAMERA_BASE's space (r301_base_v.qc): `SWAY_ROTATE` on `weapon_bone`
 /// (rotate -90 90 0) and `SWAY_ROTATE_ZOOMED` 196.85 units out along `muzzle_flash` (rotate 0 0 90).
-fn sway_pivots(p: &Pack, world: &[Xf]) -> Option<((Vec3, Quat), (Vec3, Quat))> {
+fn sway_pivots(p: &Pack, world: &[Xf], w: Weapon) -> Option<((Vec3, Quat), (Vec3, Quat))> {
     let base_inv = camera_base().inverse().mul(world[p.pov].inverse());
     let at = |b: usize, local: Xf| {
         let x = base_inv.mul(world[b]).mul(local);
         (x.t, x.r)
     };
-    let hip = at(p.weapon?, Xf { t: Vec3::ZERO, r: Quat::from_mat3(&angle_matrix(Vec3::new(-90.0, 90.0, 0.0))) });
-    let zoomed = at(p.gun?, MUZZLE.mul(Xf { t: Vec3::new(196.85, 0.0, 0.0), r: Quat::from_mat3(&angle_matrix(Vec3::new(0.0, 0.0, 90.0))) }));
+    let (gun, weapon) = p.gun_bones(w);
+    let hip = at(weapon?, Xf { t: Vec3::ZERO, r: Quat::from_mat3(&angle_matrix(Vec3::new(-90.0, 90.0, 0.0))) });
+    let zoomed = at(gun?, muzzle_of(w).mul(Xf { t: Vec3::new(196.85, 0.0, 0.0), r: Quat::from_mat3(&angle_matrix(Vec3::new(0.0, 0.0, 90.0))) }));
     Some((hip, zoomed))
 }
 
 /// An ability's layer for bone `b`: its samples (by name) at its cycle, blended by their weights;
 /// with the bone's weights in the first sample (the QC weight list). None: a clip is missing.
-fn blend_named(p: &Pack, l: &ability::Layer, b: usize, nb: usize, rifle: bool) -> Option<(Xf, (f32, f32))> {
+fn blend_named(p: &Pack, l: &ability::Layer, b: usize, nb: usize, weapon: Weapon) -> Option<(Xf, (f32, f32))> {
     let mut x = Xf::IDENTITY;
     let mut sum = 0.0;
     let mut bone_w = (1.0, 1.0);
     for (i, (name, w)) in l.samples.iter().enumerate() {
-        let c = clip_for(p, name, rifle)?;
+        let c = clip_for(p, name, weapon)?;
         if i == 0 {
             bone_w = c.weights.get(b).copied().unwrap_or((1.0, 1.0));
         }
@@ -555,10 +581,10 @@ fn blend_named(p: &Pack, l: &ability::Layer, b: usize, nb: usize, rifle: bool) -
 /// abilities use: `holster`, `draw`, `switch_to_onehanded`, `fire_onehanded`...) is the rifle's own
 /// `cr_*` when the pack has it (its frames played at the R-301's times: 近似); the props' clips
 /// (`stim_`, `pad_`, `battery_`, `frag_`) and the rifle's as they are.
-fn clip_for<'a>(p: &'a Pack, name: &str, rifle: bool) -> Option<&'a Clip> {
-    let prop = ["stim_", "pad_", "battery_", "frag_", "cr_"].iter().any(|k| name.starts_with(k));
-    if rifle && !prop {
-        if let Some(c) = p.clip(&format!("cr_{name}")) {
+fn clip_for<'a>(p: &'a Pack, name: &str, w: Weapon) -> Option<&'a Clip> {
+    let prop = ["stim_", "pad_", "battery_", "frag_", "cr_", "wm_"].iter().any(|k| name.starts_with(k));
+    if w != Weapon::R301 && !prop {
+        if let Some(c) = p.clip(&format!("{}{name}", w.prefix())) {
             return Some(c);
         }
     }
@@ -567,11 +593,11 @@ fn clip_for<'a>(p: &'a Pack, name: &str, rifle: bool) -> Option<&'a Clip> {
 
 /// An ability's layers over the graph's pose, in order: the R-301's own clips over everything, the
 /// offhand's clips bone by bone by their weight lists, the additive ones added on by them.
-fn apply_ability(p: &Pack, ab: &ability::Out, local: &mut [Xf], rifle: bool) {
+fn apply_ability(p: &Pack, ab: &ability::Out, local: &mut [Xf], w: Weapon) {
     let nb = local.len();
     for l in &ab.layers {
         for (b, x) in local.iter_mut().enumerate() {
-            let Some((s, (wt, wr))) = blend_named(p, l, b, nb, rifle) else { break };
+            let Some((s, (wt, wr))) = blend_named(p, l, b, nb, w) else { break };
             *x = match l.mode {
                 ability::Mode::Over => Xf { t: x.t.lerp(s.t, l.weight), r: x.r.slerp(s.r, l.weight).normalize() },
                 ability::Mode::Masked => Xf { t: x.t.lerp(s.t, wt * l.weight), r: x.r.slerp(s.r, wr * l.weight).normalize() },
@@ -645,8 +671,8 @@ fn groups_shown(ab: Option<&ability::Out>, frame: u64, view: Weapon) -> [bool; G
         Some(o) => (o.show_gun, o.show_stim, o.show_pad, o.show_battery, o.show_frag),
         None => (true, false, false, false, false),
     };
-    let rifle = view == Weapon::ChargeRifle;
-    let mut s = [true, gun && !rifle, stim, pad, battery, gun && rifle, frag, false, false];
+    let held = gun_group(view);
+    let mut s = [true, gun && held == 1, stim, pad, battery, gun && held == RIFLE, frag, false, false, gun && held == WINGMAN];
     let d = dev_state();
     for (g, f) in d.force.iter().enumerate() {
         if let Some(f) = f {
@@ -659,13 +685,22 @@ fn groups_shown(ab: Option<&ability::Out>, frame: u64, view: Weapon) -> [bool; G
     s
 }
 
+/// The carrier group of a weapon's model: 1 the R-301, 5 the Charge Rifle, 9 the Wingman.
+fn gun_group(w: Weapon) -> usize {
+    match w {
+        Weapon::R301 => 1,
+        Weapon::ChargeRifle => RIFLE,
+        Weapon::Wingman => WINGMAN,
+    }
+}
+
 /// What shows this frame and how the rest is put away.
 #[derive(Clone, Copy)]
 struct Vis {
     show: [bool; GROUPS],
     hide: Hide,
-    /// the Charge Rifle in the hands: the abilities' weapon clips are its `cr_*` ones
-    rifle: bool,
+    /// the weapon in the hands: the abilities' weapon clips are its own (`cr_*`, `wm_*`) when it has them
+    weapon: Weapon,
 }
 
 fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis) -> Option<Posed> {
@@ -694,7 +729,7 @@ fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis
         local.push(x);
     }
     if let Some(ab) = ab {
-        apply_ability(p, ab, &mut local, vis.rifle);
+        apply_ability(p, ab, &mut local, vis.weapon);
     }
     let mut world: Vec<Xf> = Vec::with_capacity(nb);
     for (&l, &parent) in local.iter().zip(&p.parents) {
@@ -703,7 +738,7 @@ fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis
     let pov_inv = world[p.pov].inverse();
     // the bob and sway matrix (CAMERA_BASE's axes), in `jx_c_pov`'s
     let base = camera_base();
-    let swayed = sway_pivots(p, &world).map_or(Xf::IDENTITY, |(hip, zoomed)| {
+    let swayed = sway_pivots(p, &world, o.w).map_or(Xf::IDENTITY, |(hip, zoomed)| {
         let (r, t) = sway.matrix(hip, zoomed);
         base.mul(Xf { t, r }).mul(base.inverse())
     });
@@ -726,20 +761,22 @@ fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis
             let m = mirror(Xf { t: m.t * INCH, r: m.r }).mul(c.er_bind);
             match (shown, vis.hide) {
                 (true, _) | (false, Hide::Posed) => (m.t, m.r, at, shown),
-                (false, Hide::Hand) => (if matches!(c.group as usize, 1 | RIFLE | FRAG) { right } else { left }, Quat::IDENTITY, at, false),
+                (false, Hide::Hand) => (if matches!(c.group as usize, 1 | RIFLE | FRAG | WINGMAN) { right } else { left }, Quat::IDENTITY, at, false),
                 (false, Hide::Eye) => (Vec3::ZERO, Quat::IDENTITY, at, false),
                 (false, Hide::Behind) => (Vec3::new(0.0, 0.0, 20.0), Quat::IDENTITY, at, false),
             }
         })
         .collect();
     let shown = |g: usize| vis.show.get(g).copied().unwrap_or(false);
-    let muzzle_view = match (p.cr_gun, p.gun) {
-        (Some(cr), _) if shown(5) => Some(held.mul(world[cr]).mul(CR_MUZZLE)),
-        (_, Some(g)) if shown(1) => Some(held.mul(world[g]).mul(MUZZLE)),
+    let muzzle_view = match (p.cr_gun, p.wm_gun, p.gun) {
+        (Some(cr), _, _) if shown(RIFLE) => Some(held.mul(world[cr]).mul(CR_MUZZLE)),
+        (_, Some(wm), _) if shown(WINGMAN) => Some(held.mul(world[wm]).mul(WM_MUZZLE)),
+        (_, _, Some(g)) if shown(1) => Some(held.mul(world[g]).mul(MUZZLE)),
         _ => None,
     }
     .map(|m| mirror_point(m.t * INCH));
-    Some(Posed { carriers, camera_turn: pov_inv.mul(world[p.camera]).r, muzzle: p.gun.map(|g| pov_inv.mul(world[g]).mul(MUZZLE)), muzzle_view })
+    let gun = p.gun_bones(o.w).0;
+    Some(Posed { carriers, camera_turn: pov_inv.mul(world[p.camera]).r, muzzle: gun.map(|g| pov_inv.mul(world[g]).mul(muzzle_of(o.w))), muzzle_view })
 }
 
 /// Apex's camera axes (x left, y up, z forward) as (forward, left, up).
@@ -833,12 +870,12 @@ pub fn dev(args: &[&str]) -> String {
         }
         ["force", g, v] => match (group(Some(g)), *v) {
             (Some(g), "show" | "hide" | "auto") => d.force[g] = (*v != "auto").then_some(*v == "show"),
-            _ => return "usage: fp force <group 0-8> show|hide|auto".into(),
+            _ => return "usage: fp force <group 0-9> show|hide|auto".into(),
         },
         ["flip", "off"] => d.flip = None,
         ["flip", g, n] => match (group(Some(g)), n.parse::<u64>().ok().filter(|&n| n > 0)) {
             (Some(g), Some(n)) => d.flip = Some((g as u8, n)),
-            _ => return "usage: fp flip <group 0-8> <frames> | off".into(),
+            _ => return "usage: fp flip <group 0-9> <frames> | off".into(),
         },
         ["play", "stim", f] | ["play", "pad", f] => {
             let kind = match (args[1], f.parse::<usize>().ok()) {
@@ -914,7 +951,7 @@ mod tests {
         let Ok(d) = std::fs::read(&path) else { return };
         let p = pack::parse(&d).unwrap();
         const DT: f32 = 1.0 / 60.0;
-        let turn = |g: &Graph| muzzle_and_turn(&pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show: [true; GROUPS], hide: Hide::Hand, rifle: false }).unwrap()).1;
+        let turn = |g: &Graph| muzzle_and_turn(&pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show: [true; GROUPS], hide: Hide::Hand, weapon: Weapon::R301 }).unwrap()).1;
         let range = |v: &[Vec3], k: usize| v.iter().fold((f32::MAX, f32::MIN), |(lo, hi), t| (lo.min(t[k]), hi.max(t[k])));
         let moving = |f: &dyn Fn(&mut graph::Moving)| {
             let mut m = graph::Moving::default();
@@ -1000,7 +1037,7 @@ mod tests {
             let l = blend(&clips, b, base.cycle, nb, false);
             world.push(if p.parents[b] >= 0 { world[p.parents[b] as usize].mul(l) } else { l });
         }
-        let (hip, zoomed) = sway_pivots(&p, &world).unwrap();
+        let (hip, zoomed) = sway_pivots(&p, &world, Weapon::R301).unwrap();
         const RAMP: [f32; 11] = [0.0, 0.0, 41.67, 83.33, 125.0, 132.5, 140.0, 147.5, 155.0, 162.5, 170.0];
         let mut s = Sway::default();
         let mut frames = Vec::new();
@@ -1045,7 +1082,7 @@ mod tests {
         let p = pack::parse(&d).unwrap();
         const DT: f32 = 1.0 / 60.0;
         let smooth = |r: f32| r * r * (3.0 - 2.0 * r);
-        let turn = |g: &Graph| muzzle_and_turn(&pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show: [true; GROUPS], hide: Hide::Hand, rifle: false }).unwrap()).1;
+        let turn = |g: &Graph| muzzle_and_turn(&pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show: [true; GROUPS], hide: Hide::Hand, weapon: Weapon::R301 }).unwrap()).1;
         let emit = |name: &str, k: usize, t: Vec3| println!("{name} {k} {:.4} {:.4} {:.4}", t.x, t.y, t.z);
 
         let mut g = Graph::new();
@@ -1105,7 +1142,7 @@ mod tests {
                             assert!(p.clips.iter().any(|c| &c.name == name), "{kind:?}: clip {name} not in the pack");
                         }
                     }
-                    let posed = pose_pack(&p, &g.out(), &Sway::default(), Some(&out), Vis { show: groups_shown(Some(&out), 0, Weapon::R301), hide: Hide::Hand, rifle: false }).unwrap();
+                    let posed = pose_pack(&p, &g.out(), &Sway::default(), Some(&out), Vis { show: groups_shown(Some(&out), 0, Weapon::R301), hide: Hide::Hand, weapon: Weapon::R301 }).unwrap();
                     for (c, x) in p.carriers.iter().zip(&posed.carriers).filter(|(_, x)| !x.3) {
                         let g = c.group as usize;
                         nearest[g] = nearest[g].min(-x.0.z);
@@ -1153,14 +1190,14 @@ mod tests {
             names.extend(l.samples.iter().map(|s| s.0.clone()));
         }
         for n in &names {
-            assert!(clip_for(&p, n, true).is_some(), "clip {n} not in the pack");
+            assert!(clip_for(&p, n, Weapon::ChargeRifle).is_some(), "clip {n} not in the pack");
         }
         // the rifle at rest: its carriers in the hip view, the R-301's hidden (collapsed)
         let mut g = Graph::new_for(Weapon::ChargeRifle);
         g.step(1.0 / 60.0, &Signals::default());
         let show = groups_shown(None, 0, Weapon::ChargeRifle);
         assert!(show[RIFLE] && !show[1]);
-        let posed = pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show, hide: Hide::Hand, rifle: true }).unwrap();
+        let posed = pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show, hide: Hide::Hand, weapon: Weapon::ChargeRifle }).unwrap();
         let v = (35f32.to_radians().tan() * 0.75).atan();
         let (tv, th) = (v.tan(), v.tan() * 16.0 / 9.0);
         let in_view = |at: Vec3| at.z < -0.05 && (at.y / -at.z).abs() < tv && (at.x / -at.z).abs() < th;
@@ -1169,6 +1206,45 @@ mod tests {
         assert!(p.carriers.iter().zip(&posed.carriers).filter(|(c, _)| c.group == 1).all(|(_, x)| !x.3));
         assert!(posed.muzzle_view.is_some(), "the rifle's muzzle");
         println!("T022 pack: {} bones, {} carriers, {} clips; rifle carriers in view {rifle_in_view}; {} clip names checked", p.names.len(), p.carriers.len(), p.clips.len(), names.len());
+    }
+
+    /// The Wingman's pack (tools/apexpov/bake_wingman.py, if generated): its sequences as the graph's
+    /// table has them, the switch's and the abilities' weapon clips found as `wm_*`, and at rest (hip,
+    /// then aimed) the pistol in view with its muzzle, the R-301's carriers hidden.
+    #[test]
+    fn wingman_in_its_pack() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("apex-data/pov/octane_wingman/fuse_pov.anim");
+        let Ok(d) = std::fs::read(&path) else { return };
+        let p = pack::parse(&d).unwrap();
+        assert!(p.has_wingman() && p.has_rifle(), "{} clips", p.clips.len());
+        for s in graph::Seq::ALL {
+            let def = s.def_in(Weapon::Wingman);
+            for (k, &(frames, fps)) in def.samples.iter().enumerate() {
+                let c = p.sample_in(s, k, Weapon::Wingman).unwrap_or_else(|| panic!("{}_{k} missing", def.name));
+                assert_eq!((c.frames as u32, c.fps), (frames, fps), "{}_{k}", def.name);
+            }
+        }
+        for n in ["holster_0", "draw_0", "draw_1", "switch_to_onehanded_0", "idle_onehanded_0", "fire_onehanded_0"] {
+            assert!(clip_for(&p, n, Weapon::Wingman).is_some_and(|c| c.name == format!("wm_{n}")), "wm_{n}");
+        }
+        let v = (35f32.to_radians().tan() * 0.75).atan();
+        let (tv, th) = (v.tan(), v.tan() * 16.0 / 9.0);
+        let in_view = |at: Vec3| at.z < -0.05 && (at.y / -at.z).abs() < tv && (at.x / -at.z).abs() < th;
+        for ads in [0.0, 1.0] {
+            let mut g = Graph::new_for(Weapon::Wingman);
+            for _ in 0..60 {
+                g.step(1.0 / 60.0, &Signals { ads, ..Default::default() });
+            }
+            let show = groups_shown(None, 0, Weapon::Wingman);
+            assert!(show[WINGMAN] && !show[1] && !show[RIFLE]);
+            let posed = pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show, hide: Hide::Hand, weapon: Weapon::Wingman }).unwrap();
+            let shown = p.carriers.iter().zip(&posed.carriers).filter(|(c, x)| c.group as usize == WINGMAN && x.3 && in_view(x.2)).count();
+            assert!(shown > 0, "ads {ads}: no Wingman carrier in view");
+            assert!(p.carriers.iter().zip(&posed.carriers).filter(|(c, _)| c.group == 1).all(|(_, x)| !x.3));
+            let m = posed.muzzle_view.expect("the Wingman's muzzle");
+            println!("Wingman ads {ads}: {shown} carriers in view; muzzle {m:.3} (m, mirrored pov frame)");
+            assert!(m.z < -0.1 && m.length() < 1.0, "muzzle {m}");
+        }
     }
 
     /// U3: with the Charge Rifle out (no view model of its own yet) the R-301's put-away is held at
@@ -1187,7 +1263,7 @@ mod tests {
         let in_view = |at: Vec3| at.z < -0.05 && (at.y / -at.z).abs() < tv && (at.x / -at.z).abs() < th;
         let posed_at = |cycle: f32| {
             let out = with_swap(None, Some((vec![("holster_0".to_string(), 1.0)], cycle))).unwrap();
-            pose_pack(&p, &g.out(), &Sway::default(), Some(&out), Vis { show: [true; GROUPS], hide: Hide::Hand, rifle: false }).unwrap()
+            pose_pack(&p, &g.out(), &Sway::default(), Some(&out), Vis { show: [true; GROUPS], hide: Hide::Hand, weapon: Weapon::R301 }).unwrap()
         };
         let visible = |posed: &Posed| p.carriers.iter().zip(&posed.carriers).filter(|(c, x)| c.group <= 1 && in_view(x.2)).map(|(c, _)| c.bone.clone()).collect::<Vec<_>>();
         let start = visible(&posed_at(0.0));
@@ -1209,7 +1285,7 @@ mod tests {
         const DT: f32 = 1.0 / 60.0;
         let mut g = Graph::new();
         g.step(DT, &Signals::default());
-        let rest = pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show: [true; GROUPS], hide: Hide::Hand, rifle: false }).unwrap();
+        let rest = pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show: [true; GROUPS], hide: Hide::Hand, weapon: Weapon::R301 }).unwrap();
         let kinds: Vec<ability::Kind> = (0..ability::FLOURISHES.len()).map(ability::Kind::Stim).chain([ability::Kind::Pad]).collect();
         let mut least = vec![vec![(f32::MAX, 0.0f32); kinds.len()]; p.carriers.len()];
         for (k, kind) in kinds.iter().enumerate() {
@@ -1219,7 +1295,7 @@ mod tests {
                 g.step(DT, &Signals::default());
                 ab.step(DT, ability::Params::default());
                 let out = ab.out(ability::Params::default());
-                let posed = pose_pack(&p, &g.out(), &Sway::default(), Some(&out), Vis { show: [true; GROUPS], hide: Hide::Hand, rifle: false }).unwrap();
+                let posed = pose_pack(&p, &g.out(), &Sway::default(), Some(&out), Vis { show: [true; GROUPS], hide: Hide::Hand, weapon: Weapon::R301 }).unwrap();
                 for (i, x) in posed.carriers.iter().enumerate() {
                     if -x.2.z < least[i][k].0 {
                         least[i][k] = (-x.2.z, ab.t);
@@ -1244,7 +1320,7 @@ mod tests {
         let mut o = g.out();
         // without the additive layers: the bare hip pose (ads_out at its end)
         o.add.clear();
-        let posed = pose_pack(&p, &o, &Sway::default(), None, Vis { show: [true; GROUPS], hide: Hide::Hand, rifle: false }).unwrap();
+        let posed = pose_pack(&p, &o, &Sway::default(), None, Vis { show: [true; GROUPS], hide: Hide::Hand, weapon: Weapon::R301 }).unwrap();
         let (muzzle, turn) = muzzle_and_turn(&posed);
         let (t, r) = muzzle.unwrap();
         assert!((t - Vec3::new(32.96, 2.93, -3.52)).length() < 0.02, "{t}");

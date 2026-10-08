@@ -31,23 +31,38 @@ use glam::Vec3;
 
 use crate::{dlog, log, paths, state};
 
-const DAMAGE: f32 = 15.0;
-const FIRE_RATE: f32 = 13.5;
-const CLIP: u32 = 21;
-const RELOAD: f32 = 2.4;
-const RELOAD_EMPTY: f32 = 3.2;
-const HEAD_SCALE: f32 = 1.3;
-const LEG_SCALE: f32 = 0.75;
+// The Wingman in the R-301's place (`apex-data/export/weapon/mp_weapon_wingman.txt`): `is_semi_auto`
+// 1, damage_near/far/very_far_value 50, fire_rate 2.8, ammo_clip_size 5, reload_time and
+// reloadempty_time 2.1, damage_headshot_scale 1.5, damage_leg_scale 0.9. (The R-301's were 15, 13.5,
+// 21, 2.4 / 3.2, 1.3, 0.75, automatic.)
+const DAMAGE: f32 = 50.0;
+const FIRE_RATE: f32 = 2.8;
+const CLIP: u32 = 5;
+const RELOAD: f32 = 2.1;
+const RELOAD_EMPTY: f32 = 2.1;
+const HEAD_SCALE: f32 = 1.5;
+const LEG_SCALE: f32 = 0.9;
 /// spread_*_hip / spread_*_ads: stand, moving (stand_hip_run), sprint, crouch, air.
-const SPREAD_HIP: [f32; 5] = [3.0, 6.6, 8.4, 2.4, 8.4];
-const SPREAD_ADS: [f32; 5] = [0.0, 0.0, 0.0, 0.0, 6.0];
-const SPREAD_UP: f32 = 3.0;
-const SPREAD_DOWN: f32 = 30.0;
+const SPREAD_HIP: [f32; 5] = [2.4, 3.0, 4.0, 1.5, 6.0];
+const SPREAD_ADS: [f32; 5] = [0.0, 0.0, 0.0, 0.0, 2.0];
+const SPREAD_UP: f32 = 5.5;
+const SPREAD_DOWN: f32 = 12.0;
 /// spread_kick_on_fire_*_hip and spread_max_kick_*_hip: stand, crouch, air (the ADS ones are 0).
-const KICK_HIP: [f32; 3] = [0.2, 0.2, 0.2];
-const KICK_MAX_HIP: [f32; 3] = [2.0, 1.5, 3.0];
-const KICK_DELAY: f32 = 0.25;
-const KICK_DECAY: f32 = 100.0;
+const KICK_HIP: [f32; 3] = [2.5, 2.0, 3.0];
+const KICK_MAX_HIP: [f32; 3] = [5.5, 3.0, 4.5];
+const KICK_DELAY: f32 = 0.26;
+const KICK_DECAY: f32 = 11.0;
+/// The shot's view kick, chargerifle.rs's rule with the Wingman's numbers: (base, random, inner
+/// exclude, soft scale, hard scale) for pitch and yaw; roll (base, random min, random max, soft, hard).
+const VIEW_KICK_PITCH: [f32; 5] = [-4.4, 0.8, 0.0, 0.65, 0.35];
+const VIEW_KICK_YAW: [f32; 5] = [-0.6, 0.5, 0.0, 0.8, 0.4];
+const VIEW_KICK_ROLL: [f32; 5] = [0.1, 0.1, 0.15, 0.4, 0.2];
+/// The sounds (`--set wingman`): a shot (`fire_sound_2_player_1p` Weapon_Wingman_Fire_1P, every play
+/// action), aim in / out, an empty trigger (`sound_dryfire` pistol_dryfire).
+const FIRE_SOUNDS: [&str; 4] = ["weapon_wingman_fire_1p", "weapon_wingman_fire_1p_layer1", "weapon_wingman_fire_1p_layer2", "weapon_wingman_fire_1p_layer3"];
+const ADS_IN_SOUND: &str = "weapon_wingman_ads_in";
+const ADS_OUT_SOUND: &str = "weapon_wingman_ads_out";
+const DRY_SOUND: &str = "pistol_dryfire";
 /// Above this (m/s) Fuse counts as moving (推断).
 const MOVING: f32 = 0.5;
 /// Hitscan range (m); Apex's damage_very_far_distance is 5000 units, far beyond any arena here.
@@ -76,19 +91,22 @@ static HELD: AtomicU64 = AtomicU64::new(0);
 
 /// Sound volume of the gun (times the mixer's master `volume`).
 const GUN_VOLUME: f32 = 0.5;
-/// Reload sounds (T007's names) at their frames in the 3p reload QC `mp_pt_medium_reload_rspn101`
-/// (AE_CL_PLAYSOUND events, 30 fps; the animation is 88 frames). Frames are stretched to the
-/// reload's own length; a tactical reload (rounds left) has no bolt.
-const RELOAD_SOUNDS: [(&str, f32, bool); 7] = [
-    ("reload_magout", 2.0, false),
-    ("reload_maggrab", 19.0, false),
-    ("reload_magin_re45", 28.0, false),
-    ("reload_magin", 32.0, false),
-    ("reload_boltback", 45.0, true),
-    ("reload_boltforward", 49.0, true),
-    ("reload_handrest", 61.0, false),
+/// Reload sounds at their frames in the Wingman's view model `reload` / `reload_empty`
+/// (`wingman_base_v_animRig.qc` AE_CL_PLAYSOUND events, 30 fps; the animation is 89 frames, the
+/// same for both). Frames are stretched to the reload's own length.
+const RELOAD_SOUNDS: [(&str, f32, bool); 5] = [
+    ("wpn_wingman_reload_open", 6.0, false),
+    ("wpn_wingman_reload_eject", 22.0, false),
+    ("wpn_wingman_reload_insertmag", 53.0, false),
+    ("wpn_wingman_reload_close", 68.0, false),
+    ("wpn_wingman_reload_handgrab", 75.0, false),
 ];
 const RELOAD_QC_SECONDS: f32 = 88.0 / 30.0;
+/// A trigger pull not yet answered by a shot (semi-auto: one shot a pull; a pull during the
+/// cooldown fires when it is over).
+static PULL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// Whether the reload going on is the empty one (the HUD's).
+static RELOAD_IS_EMPTY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 /// The aim state last frame (ADS sounds on its changes).
 static WAS_AIMING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 /// The trigger last frame: a new pull cancels the shield battery (S3 `+attack`, D-032).
@@ -212,7 +230,7 @@ pub fn hud() -> Option<HudState> {
         sprinting: super::kcc::locomotion().is_some_and(|l| l.sprinting),
         last_hit: last_hit(),
         shots: g.shots,
-        reload_empty: total == RELOAD_EMPTY,
+        reload_empty: g.reloading.is_some() && RELOAD_IS_EMPTY.load(Ordering::Relaxed),
         slot: 0,
         charge: None,
     })
@@ -307,6 +325,9 @@ pub fn update(dt: f32) {
     // `+attack`); while it is out the gun neither fires nor reloads
     let was_firing = WAS_FIRING.swap(fire, Ordering::Relaxed);
     let pulled = fire && !was_firing;
+    if pulled {
+        PULL.store(true, Ordering::Relaxed);
+    }
     if pulled && super::battery::busy() {
         super::battery::cancel("fire");
     }
@@ -314,12 +335,13 @@ pub fn update(dt: f32) {
     // out; the R-301 sits out while it is put away, away or coming out
     if super::weapons::update(dt, super::weapons::Trigger { fire, aim, reload }) {
         WAS_AIMING.store(false, Ordering::Relaxed);
+        PULL.store(false, Ordering::Relaxed);
         let mut g = GUN.lock().unwrap_or_else(|e| e.into_inner());
         g.cooldown = g.cooldown.max(0.0);
         return;
     }
     if WAS_AIMING.swap(aim, Ordering::Relaxed) != aim {
-        crate::audio::play(if aim { "ads_in" } else { "ads_out" }, GUN_VOLUME);
+        crate::audio::play(if aim { ADS_IN_SOUND } else { ADS_OUT_SOUND }, GUN_VOLUME);
     }
     let mut g = GUN.lock().unwrap_or_else(|e| e.into_inner());
     let (target, kick_row) = spread_target(aim);
@@ -346,6 +368,7 @@ pub fn update(dt: f32) {
         } else {
             g.reloading = Some(left);
         }
+        PULL.store(false, Ordering::Relaxed);
         return;
     }
     if reload && g.ammo < CLIP {
@@ -357,6 +380,7 @@ pub fn update(dt: f32) {
     // (or for the frag grenade in hand: G to the R-301's pull-out after it, spike/grenade.rs)
     if super::pov::gun_away() || super::battery::busy() || super::grenade::gun_away() {
         g.cooldown = g.cooldown.max(0.0);
+        PULL.store(false, Ordering::Relaxed);
         return;
     }
     let left_busy = super::pov::left_busy();
@@ -367,13 +391,16 @@ pub fn update(dt: f32) {
         }
         super::octane::throw_injector();
     }
-    if !fire {
+    // semi-auto: a pull fires once, as soon as the fire rate allows (held, nothing more)
+    if g.cooldown > 0.0 || !PULL.load(Ordering::Relaxed) {
         g.cooldown = g.cooldown.max(0.0);
         return;
     }
-    while g.cooldown <= 0.0 {
+    PULL.store(false, Ordering::Relaxed);
+    g.cooldown = g.cooldown.max(0.0);
+    {
         if g.ammo == 0 {
-            crate::audio::play("dry_fire", GUN_VOLUME);
+            crate::audio::play(DRY_SOUND, GUN_VOLUME);
             if left_busy {
                 // once per trigger pull's worth of shots, until the injector is gone (thrown
                 // next frame for the reload)
@@ -385,7 +412,7 @@ pub fn update(dt: f32) {
             return;
         }
         g.ammo -= 1;
-        crate::audio::play("fire_3p", GUN_VOLUME);
+        FIRE_SOUNDS.iter().for_each(|n| crate::audio::play(n, GUN_VOLUME));
         g.cooldown += 1.0 / FIRE_RATE;
         g.shots += 1;
         let spread = g.spread + g.kick;
@@ -394,7 +421,11 @@ pub fn update(dt: f32) {
         }
         g.since_shot = 0.0;
         let r = (next(&mut g.rng), next(&mut g.rng));
+        // the shot goes along the camera with the kick the view does not show, then kicks it
         let out = shoot(spread, r);
+        let u = [next(&mut g.rng), next(&mut g.rng), next(&mut g.rng), next(&mut g.rng), next(&mut g.rng), next(&mut g.rng)];
+        let (soft, hard) = view_kick(u);
+        crate::viewfx::weapon_kick(soft, hard);
         if out.is_some() {
             g.hits += 1;
         }
@@ -422,14 +453,32 @@ fn spread_target(aim: bool) -> (f32, usize) {
     }
 }
 
-/// How far into a reload of `total` seconds the magazine fills: AE_WPN_FILLAMMO in the first-person
-/// `reload` (frame 38 of 66) and `reload_empty` (53 of 86) of ptpov_rspn101 (T012's sequence table).
-fn fill_at(total: f32) -> f32 {
-    if total == RELOAD_EMPTY { 53.0 / 86.0 } else { 38.0 / 66.0 }
+/// How far into a reload the magazine fills: AE_WPN_FILLAMMO in the Wingman's first-person `reload`
+/// and `reload_empty` (both frame 62 of 88, `wingman_base_v_animRig.qc`).
+fn fill_at(_total: f32) -> f32 {
+    62.0 / 88.0
+}
+
+/// One shot's view kick (chargerifle.rs `view_kick`'s rule, the Wingman's numbers): the soft part
+/// (into the spring's velocity) and the hard part (into its angle), pitch / yaw / roll in degrees;
+/// `u` uniforms in 0..1 (pitch, its sign, yaw, its sign, roll, the roll's sign).
+fn view_kick(u: [f32; 6]) -> (Vec3, Vec3) {
+    let sign = |s: f32| if s < 0.5 { 1.0 } else { -1.0 };
+    let pick = |k: [f32; 5], r: f32, s: f32| {
+        let (half, inner) = (k[1] * 0.5, k[2] * 0.5);
+        k[0] + sign(s) * (inner + (half - inner) * r)
+    };
+    let pitch = pick(VIEW_KICK_PITCH, u[0], u[1]);
+    let yaw = pick(VIEW_KICK_YAW, u[2], u[3]);
+    let roll = VIEW_KICK_ROLL[0] + sign(u[5]) * (VIEW_KICK_ROLL[1] + (VIEW_KICK_ROLL[2] - VIEW_KICK_ROLL[1]) * u[4]);
+    let soft = Vec3::new(pitch * VIEW_KICK_PITCH[3], yaw * VIEW_KICK_YAW[3], roll * VIEW_KICK_ROLL[3]);
+    let hard = Vec3::new(pitch * VIEW_KICK_PITCH[4], yaw * VIEW_KICK_YAW[4], roll * VIEW_KICK_ROLL[4]);
+    (soft, hard)
 }
 
 fn start_reload(g: &mut Gun) {
     let empty = g.ammo == 0;
+    RELOAD_IS_EMPTY.store(empty, Ordering::Relaxed);
     let t = if empty { RELOAD_EMPTY } else { RELOAD };
     g.reloading = Some(t);
     g.reload_wanted = false;
@@ -451,15 +500,16 @@ fn next(s: &mut u32) -> f32 {
     (*s >> 8) as f32 / (1u32 << 24) as f32
 }
 
-/// One R-301 shot (S3's 15 per round, head x1.3, legs x0.75, ini `gun_damage_mult`).
+/// One Wingman shot (50 per round, head x1.5, legs x0.9, ini `gun_damage_mult`), along the camera
+/// with the part of the view kick the view does not show (viewfx.rs).
 fn shoot(spread_deg: f32, r: (f32, f32)) -> Option<String> {
-    fire_ray(spread_deg, r, Vec3::ZERO, 0, |zone, _| {
+    fire_ray(spread_deg, r, crate::viewfx::weapon_aim_offset(), 0, |zone, _| {
         let scale = match zone {
             Zone::Head => HEAD_SCALE,
             Zone::Legs => LEG_SCALE,
             Zone::Body => 1.0,
         };
-        // ini `gun_damage_mult` (read fresh; the user's 3 on 2026-10-05), on S3's 15 per round
+        // ini `gun_damage_mult` (read fresh; the user's 3 on 2026-10-05), on the Wingman's 50 per round
         DAMAGE * (scale * damage_mult())
     })
 }

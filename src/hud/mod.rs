@@ -383,7 +383,7 @@ impl ImguiRenderLoop for Overlay {
                 let x = size[0] - 300.0 * s;
                 text([x, size[1] - 175.0 * s], if gun.ammo == 0 { [1.0, 0.3, 0.3, 1.0] } else { white }, &ammo);
                 ui.set_window_font_scale(1.2 * s);
-                text([x, size[1] - 140.0 * s], [0.85, 0.85, 0.85, 0.9], if gun.slot == 1 { "CHARGE RIFLE" } else { "R-301" });
+                text([x, size[1] - 140.0 * s], [0.85, 0.85, 0.85, 0.9], if gun.slot == 1 { "CHARGE RIFLE" } else { "WINGMAN" });
                 if let Some(hp) = fuse_hp {
                     text([60.0 * s, size[1] - 180.0 * s], white, &format!("FUSE {hp:.0}"));
                 }
