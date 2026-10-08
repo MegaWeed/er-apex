@@ -863,8 +863,12 @@ pub fn update(dt: f32) {
     // sinking through a floor at a shallow slant (more across than down: the check above lets it
     // pass, and once below the map nothing catches him: 2026-10-08, The First Step, walking): the
     // game's map between 0.3 and 1 m above his feet, straight up, means a floor cuts through him
-    // (a wall cannot, and no ceiling is that low)
+    // (a wall cannot, and no ceiling is that low). Only falling: on its own ground the controller
+    // walks up stairs and steep slopes with the game's ground that high under his middle (the
+    // user, 2026-10-08: the check snapped him on slopes and stairs); a floor it lacks drops him.
     if caught.is_none()
+        && !st.grounded
+        && vel.y < 0.0
         && st.pose != Pose::Mantling
         && !k.last_recovery.is_some_and(|t| t.elapsed().as_secs_f32() < RECOVER_GAP_S)
         && let Some(hit) = wall_between(pos + Vec3::Y * 1.0, pos + Vec3::Y * 0.3, 0.0, player)
