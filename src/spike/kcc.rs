@@ -818,6 +818,18 @@ pub fn update(dt: f32) {
             }
         }
     }
+    // sinking through a floor at a shallow slant (more across than down: the check above lets it
+    // pass, and once below the map nothing catches him: 2026-10-08, The First Step, walking): the
+    // game's map between 0.3 and 1 m above his feet, straight up, means a floor cuts through him
+    // (a wall cannot, and no ceiling is that low)
+    if caught.is_none()
+        && st.pose != Pose::Mantling
+        && !k.last_recovery.is_some_and(|t| t.elapsed().as_secs_f32() < RECOVER_GAP_S)
+        && let Some(hit) = wall_between(pos + Vec3::Y * 1.0, pos + Vec3::Y * 0.3, 0.0, player)
+    {
+        log(format!("kcc: SINKING: the map {:.2} m above the feet at {pos:.3?} (pose {:?})", hit.y - pos.y, st.pose));
+        caught = Some(hit + Vec3::Y * 0.05);
+    }
     if let Some(at) = caught {
         // stand him on the floor and restart the controller there next frame, with a window read
         // at once and his horizontal speed
