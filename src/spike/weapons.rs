@@ -243,14 +243,14 @@ pub fn redraw_after_offhand(by: &str) {
 }
 
 /// Keys 1 and 2 last frame (their presses are edges).
-static KEYS_WERE: Mutex<[bool; 2]> = Mutex::new([false; 2]);
+static KEYS_WERE: Mutex<[bool; 3]> = Mutex::new([false; 3]);
 /// The sounds of the phase changes already played (`Phase` index of the last frame).
 static LAST_PHASE: Mutex<Option<Phase>> = Mutex::new(None);
 static ANNOUNCED: AtomicBool = AtomicBool::new(false);
 
 /// Keys 1 and 2 (Apex's PC defaults: `weaponSelectPrimary0/1`), only while the game window has the
-/// focus (as input.rs `ability_keys`). kbd.rs hides them from the game.
-fn number_keys() -> Option<[bool; 2]> {
+/// focus (as input.rs `ability_keys`), and 5, the inspect. kbd.rs hides them from the game.
+fn number_keys() -> Option<[bool; 3]> {
     use windows::Win32::System::Threading::GetCurrentProcessId;
     use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
     use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
@@ -260,7 +260,7 @@ fn number_keys() -> Option<[bool; 2]> {
         return None;
     }
     let down = |vk: u8| unsafe { GetAsyncKeyState(vk as i32) } as u16 & 0x8000 != 0;
-    Some([down(b'1'), down(b'2')])
+    Some([down(b'1'), down(b'2'), down(b'5')])
 }
 
 /// What the gun does this frame (gun.rs `update` reads it and calls `update`).
@@ -279,10 +279,10 @@ pub fn update(dt: f32, t: Trigger) -> bool {
         log("weapons: slot 1 Wingman, slot 2 Charge Rifle (keys 1 / 2, dev `weapon 1|2`)");
     }
     if crate::fe::in_play_view() {
-        let keys = number_keys().unwrap_or([false; 2]);
+        let keys = number_keys().unwrap_or([false; 3]);
         let pressed = {
             let mut was = KEYS_WERE.lock().unwrap_or_else(|e| e.into_inner());
-            let p = [keys[0] && !was[0], keys[1] && !was[1]];
+            let p = [keys[0] && !was[0], keys[1] && !was[1], keys[2] && !was[2]];
             *was = keys;
             p
         };
@@ -290,6 +290,8 @@ pub fn update(dt: f32, t: Trigger) -> bool {
             log(select(Slot::R301, "key 1"));
         } else if pressed[1] {
             log(select(Slot::ChargeRifle, "key 2"));
+        } else if pressed[2] && ready() {
+            log(super::pov::start_inspect());
         }
     }
     let (phase, ready, active) = {

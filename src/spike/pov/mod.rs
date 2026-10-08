@@ -276,6 +276,8 @@ struct Anim {
     last_eye: Option<(Vec3, Vec3, Vec3)>,
     started: Instant,
     trace_until: Option<Instant>,
+    /// the inspect playing (key 5): whose, seconds into it
+    inspect: Option<(Weapon, f32)>,
 }
 
 static ANIM: Mutex<Option<Anim>> = Mutex::new(None);
@@ -334,6 +336,7 @@ pub fn step(dt: f32, i: &Inputs) {
         last_eye: None,
         started: Instant::now(),
         trace_until: None,
+        inspect: None,
     });
     let s = sway_input(dt, i, a.last_eye);
     a.last_eye = i.eye;
@@ -398,7 +401,27 @@ pub fn step(dt: f32, i: &Inputs) {
     if swap.as_ref().is_some_and(|v| !v.2) && dev_state().force[gun_group].is_none() {
         show[gun_group] = false;
     }
+    // the inspect (key 5): cut by a shot, aiming, a reload, a switch, sprint, an ability or another
+    // weapon in the hands (推断: Apex's inspect ends on any of them)
+    let busy = shot || i.ads > 0.02 || i.reload.is_some() || i.cr_reload.is_some() || swap.is_some() || a.ability_out.is_some() || m.sprinting;
+    let inspect_layer = match a.inspect {
+        Some((w, t)) if w == a.view && !busy && t < inspect_seconds(w) => {
+            a.inspect = Some((w, t + dt));
+            Some(inspect_layer(w, t))
+        }
+        Some((w, t)) => {
+            a.inspect = None;
+            if t < inspect_seconds(w) {
+                inspect_sounds(w).iter().for_each(|(_, n)| crate::audio::stop(n));
+            }
+            None
+        }
+        None => None,
+    };
     let mut posing = with_swap(a.ability_out.as_ref(), swap.map(|v| (v.0, v.1)));
+    if let Some(l) = inspect_layer {
+        posing.get_or_insert_with(|| ability::Out { show_gun: true, ..Default::default() }).layers.insert(0, l);
+    }
     // the Charge Rifle's discharge: `sustained_discharge` and its `charge_loop_layer` added on
     if a.view == Weapon::ChargeRifle
         && let Some(t) = i.cr_discharge
@@ -413,6 +436,63 @@ pub fn step(dt: f32, i: &Inputs) {
     if a.trace_until.is_some_and(|t| Instant::now() < t) {
         log(trace_line(a, &out, us));
     }
+}
+
+/// A weapon's inspect: its clip (Wingman `inspect`, 199 frames; Charge Rifle `inspect_basic`, 336
+/// frames; 30 fps, absolute: bake_wingman.py), and its sounds at their QC frames.
+fn inspect_clip(w: Weapon) -> Option<(&'static str, u32)> {
+    match w {
+        Weapon::Wingman => Some(("wm_inspect_0", 199)),
+        Weapon::ChargeRifle => Some(("cr_inspect_basic_0", 336)),
+        Weapon::R301 => None,
+    }
+}
+
+fn inspect_seconds(w: Weapon) -> f32 {
+    inspect_clip(w).map_or(0.0, |(_, n)| (n - 1) as f32 / 30.0)
+}
+
+fn inspect_sounds(w: Weapon) -> &'static [(u32, &'static str)] {
+    match w {
+        // `wingman_base_v_animRig.qc` inspect
+        Weapon::Wingman => &[
+            (0, "weapon_wingman_inspect_part01"),
+            (24, "weapon_wingman_inspect_part02"),
+            (77, "weapon_wingman_inspect_part03"),
+            (130, "weapon_wingman_inspect_part04"),
+            (158, "weapon_wingman_inspect_end"),
+        ],
+        // `chargerifle_base_v_animRig.qc` inspect_basic
+        Weapon::ChargeRifle => &[(4, "weapon_inspect_sniper_start"), (91, "weapon_inspect_sniper_mid"), (234, "weapon_inspect_sniper_mid"), (315, "weapon_inspect_sniper_end")],
+        Weapon::R301 => &[],
+    }
+}
+
+/// The inspect's layer `t` seconds in: over the graph, faded in and out over FADE-like 0.2 s.
+fn inspect_layer(w: Weapon, t: f32) -> ability::Layer {
+    let (name, _) = inspect_clip(w).unwrap_or(("", 2));
+    let total = inspect_seconds(w).max(1e-3);
+    let weight = (t / 0.2).min((total - t) / 0.2).clamp(0.0, 1.0);
+    ability::Layer { samples: vec![(name.to_string(), 1.0)], cycle: (t / total).clamp(0.0, 1.0), weight, mode: ability::Mode::Over }
+}
+
+/// Key 5: the weapon in the hands plays its inspect (again from the start when it is playing).
+pub fn start_inspect() -> String {
+    let mut g = ANIM.lock().unwrap_or_else(|e| e.into_inner());
+    let Some(a) = g.as_mut() else { return "inspect: no view model".into() };
+    let w = a.view;
+    let Some((name, _)) = inspect_clip(w) else { return "inspect: none for this weapon".into() };
+    if with_pack(|p| p.clip(name).is_none()).unwrap_or(true) {
+        return format!("inspect: {name} not in the pack");
+    }
+    if let Some((old, _)) = a.inspect {
+        inspect_sounds(old).iter().for_each(|(_, n)| crate::audio::stop(n));
+    }
+    a.inspect = Some((w, 0.0));
+    for &(frame, n) in inspect_sounds(w) {
+        crate::audio::play_in(n, 0.5, frame as f32 / 30.0);
+    }
+    format!("inspect: {name} ({:.1} s)", inspect_seconds(w))
 }
 
 /// The carriers' transforms in the mirrored frame of `jx_c_pov` (x left, y up, z backward: see
@@ -1223,6 +1303,13 @@ mod tests {
                 let c = p.sample_in(s, k, Weapon::Wingman).unwrap_or_else(|| panic!("{}_{k} missing", def.name));
                 assert_eq!((c.frames as u32, c.fps), (frames, fps), "{}_{k}", def.name);
             }
+        }
+        for w in [Weapon::Wingman, Weapon::ChargeRifle] {
+            let (name, frames) = inspect_clip(w).unwrap();
+            let c = p.clip(name).unwrap_or_else(|| panic!("{name} missing"));
+            assert!(c.frames as u32 == frames && c.fps == 30.0 && !c.additive, "{name}");
+            let l = inspect_layer(w, 1.0);
+            assert!(l.weight == 1.0 && l.cycle > 0.0 && l.cycle < 1.0);
         }
         for n in ["holster_0", "draw_0", "draw_1", "switch_to_onehanded_0", "idle_onehanded_0", "fire_onehanded_0"] {
             assert!(clip_for(&p, n, Weapon::Wingman).is_some_and(|c| c.name == format!("wm_{n}")), "wm_{n}");

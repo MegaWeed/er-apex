@@ -395,6 +395,13 @@ def wingman_references():
     for event in ['Wpn_Wingman_Reload_Open', 'Wpn_Wingman_Reload_Eject', 'Wpn_Wingman_Reload_InsertMag',
                   'Wpn_Wingman_Reload_Close', 'Wpn_Wingman_Reload_HandGrab']:
         specs.append((event, 'reload (QC frame)', [(qc, 'reload'), (qc, 'reload_empty')]))
+    # the inspect key: the Wingman's `inspect` and the Charge Rifle's `inspect_basic` (T022's QC record)
+    for event in ['weapon_wingman_inspect_part01', 'weapon_wingman_inspect_part02', 'weapon_wingman_inspect_part03',
+                  'weapon_wingman_inspect_part04', 'weapon_wingman_inspect_end']:
+        specs.append((event, 'inspect (QC frame)', [(qc, 'inspect')]))
+    defender_qc = REPO / 'apex-data/assets/defender/ability_sequences.json'
+    for event in ['Weapon_Inspect_Sniper_Start', 'Weapon_Inspect_Sniper_Mid', 'Weapon_Inspect_Sniper_End']:
+        specs.append((event, 'the Charge Rifle\'s inspect (QC frame)', [(defender_qc, 'inspect_basic')]))
     return _refs_from_specs(specs)
 
 
