@@ -50,8 +50,16 @@ const MAP_RAY: u32 = 0x08;
 /// Seconds to turn to (or back from) a lock-on target.
 const CONVERGE_TIME: f32 = 0.25;
 
-/// Apex's player `fov` 70 and the R-301's `zoom_fov` 55: 4:3 horizontal degrees.
+/// Apex's player `fov` 70 (the default) and the R-301's `zoom_fov` 55: 4:3 horizontal degrees.
 const FOV_HIP: f32 = 70.0;
+
+/// The first-person field of view (ini `fov`, Apex's setting: 4:3 horizontal degrees, 70 to 110;
+/// default 70). The zoom keeps Apex's magnification: a weapon's `zoom_fov` scaled by fov / 70
+/// (推断: Apex's ADS field of view follows the player's).
+fn fov_hip() -> f32 {
+    static FOV: std::sync::OnceLock<f32> = std::sync::OnceLock::new();
+    *FOV.get_or_init(|| paths::number::<f32>("fov").map_or(FOV_HIP, |f| f.clamp(70.0, 110.0)))
+}
 const FOV_ADS: f32 = 55.0;
 /// The R-301's zoom_time_in / zoom_time_out (s).
 const ZOOM_IN: f32 = 0.27;
@@ -304,7 +312,8 @@ pub fn update() {
         let s = ads * ads * (3.0 - 2.0 * ads);
         // the weapon in hand's `zoom_fov` (the Wingman 60; FOV_ADS the R-301's and the Charge Rifle's)
         let fov_ads = if crate::spike::gun::enabled() { crate::spike::weapons::zoom_fov() } else { FOV_ADS };
-        let h = (FOV_HIP + (fov_ads - FOV_HIP) * s) * crate::viewfx::current(rows[2]).1;
+        let (hip, fov_ads) = (fov_hip(), fov_ads * fov_hip() / FOV_HIP);
+        let h = (hip + (fov_ads - hip) * s) * crate::viewfx::current(rows[2]).1;
         2.0 * ((h.to_radians() / 2.0).tan() * 0.75).atan()
     });
     for cam in [&mut camera.pers_cam_1, &mut camera.pers_cam_2, &mut camera.pers_cam_3, &mut camera.pers_cam_4] {
