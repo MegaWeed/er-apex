@@ -5,15 +5,24 @@
 
 use eldenring::cs::ChrIns;
 
-/// Whether a team (`ChrIns::team_type`) is one the weapons hit and the HUD marks: 6 and 7 (enemies,
-/// strong enemies), 48 (the shield knights near The First Step, 2026-10-08: npc 43111110), and ini
-/// `enemy_teams` (a comma list) for more as they turn up (`gun: shot passed npc ... team N` in the log).
+/// Whether a team (`ChrIns::team_type`) is one the weapons hit and the HUD marks: every team but the
+/// player's side, as Elden Ring itself lets the player hit any character. 6 and 7 alone missed a
+/// whole bestiary (the user's play, 2026-10-08: dogs, crows, invaders, the Glintstone Dragon,
+/// Adan: teams 0, 9, 11, 16, 26, 27, 30, 48, 49, 51, 52, 58). Not hit: ini `friendly_teams` (a
+/// comma list; default 1 the player, 2 white phantoms, 8 allies, 12 fighting allies: the Souls
+/// games' team numbers, 推断 for Elden Ring), and ini `enemy_teams` set instead keeps only those.
 pub fn is_enemy_team(team: u8) -> bool {
-    static EXTRA: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
-    matches!(team, 6 | 7 | 48)
-        || EXTRA
-            .get_or_init(|| crate::paths::config("enemy_teams").map_or(Vec::new(), |s| s.split(',').filter_map(|t| t.trim().parse().ok()).collect()))
-            .contains(&team)
+    static TEAMS: std::sync::OnceLock<(Option<Vec<u8>>, Vec<u8>)> = std::sync::OnceLock::new();
+    let (only, friendly) = TEAMS.get_or_init(|| {
+        let list = |k: &str| crate::paths::config(k).map(|s| s.split(',').filter_map(|t| t.trim().parse().ok()).collect::<Vec<u8>>());
+        (list("enemy_teams").filter(|l| !l.is_empty()), list("friendly_teams").unwrap_or_else(|| vec![1, 2, 8, 12]))
+    });
+    // the player's own team never (whatever the ini says)
+    team != 1
+        && match only {
+            Some(l) => l.contains(&team),
+            None => !friendly.contains(&team),
+        }
 }
 
 use crate::explore::{read_u64, readable};

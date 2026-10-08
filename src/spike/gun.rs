@@ -659,7 +659,7 @@ fn note_skipped(npc: u32, team: u8) {
     let mut seen = SEEN.lock().unwrap_or_else(|e| e.into_inner());
     if seen.len() < 256 && !seen.contains(&(npc, team)) {
         seen.push((npc, team));
-        log(format!("gun: shot passed npc {npc}: team {team} is not an enemy team (6, 7, 48, ini enemy_teams): no damage"));
+        log(format!("gun: shot passed npc {npc}: team {team} is not hit (ini friendly_teams / enemy_teams): no damage"));
     }
 }
 
