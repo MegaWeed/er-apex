@@ -5,6 +5,17 @@
 
 use eldenring::cs::ChrIns;
 
+/// Whether a team (`ChrIns::team_type`) is one the weapons hit and the HUD marks: 6 and 7 (enemies,
+/// strong enemies), 48 (the shield knights near The First Step, 2026-10-08: npc 43111110), and ini
+/// `enemy_teams` (a comma list) for more as they turn up (`gun: shot passed npc ... team N` in the log).
+pub fn is_enemy_team(team: u8) -> bool {
+    static EXTRA: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+    matches!(team, 6 | 7 | 48)
+        || EXTRA
+            .get_or_init(|| crate::paths::config("enemy_teams").map_or(Vec::new(), |s| s.split(',').filter_map(|t| t.trim().parse().ok()).collect()))
+            .contains(&team)
+}
+
 use crate::explore::{read_u64, readable};
 
 /// The capsule's height and radius (the larger of the physics module's two of each; a human's

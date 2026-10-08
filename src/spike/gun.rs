@@ -590,7 +590,7 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
         if c.modules.data.hp <= 0 {
             continue;
         }
-        if !matches!(c.team_type, 6 | 7) {
+        if !crate::spike::body::is_enemy_team(c.team_type) {
             // which characters the shots pass because of their team (the user, 2026-10-08: "some
             // monsters take no damage"): once per character kind
             if deal && c.team_type != 1 {
@@ -659,7 +659,7 @@ fn note_skipped(npc: u32, team: u8) {
     let mut seen = SEEN.lock().unwrap_or_else(|e| e.into_inner());
     if seen.len() < 256 && !seen.contains(&(npc, team)) {
         seen.push((npc, team));
-        log(format!("gun: shot passed npc {npc}: team {team} is not an enemy team (6, 7): no damage"));
+        log(format!("gun: shot passed npc {npc}: team {team} is not an enemy team (6, 7, 48, ini enemy_teams): no damage"));
     }
 }
 
