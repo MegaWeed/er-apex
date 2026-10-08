@@ -773,14 +773,12 @@ pub fn update(dt: f32, t: Trigger, in_hand: bool, ready: bool) {
                 log(format!("cr: shot {} ({}), ammo {}, {}", shot.shots, if aim { "aimed" } else { "hip" }, shot.ammo, line.unwrap_or_else(|| "miss".into())));
             }
             Event::Cut => {
-                stop_sound(SOUND_WIND_UP);
-                stop_sound(SOUND_MECH);
+                stop_firing_sounds();
                 log("cr: discharge cut by the switch: no shot");
             }
             Event::Cancel => {
                 // the charge drains (`charge_drain_sound_1p`, stopped when it is empty)
-                stop_sound(SOUND_WIND_UP);
-                stop_sound(SOUND_MECH);
+                stop_firing_sounds();
                 sound(SOUND_WIND_DOWN);
                 log(format!("cr: discharge stopped with S: no shot, {ammo} left in the magazine"));
             }
@@ -816,7 +814,19 @@ pub fn update(dt: f32, t: Trigger, in_hand: bool, ready: bool) {
     }
 }
 
+/// The rifle's own firing sounds, cut (the user, 2026-10-08: "after the shooting is interrupted
+/// the sound plays on"): the charge, the mechanism, the shot's six layers (tails up to 3 s) and the
+/// drain.
+fn stop_firing_sounds() {
+    for name in [SOUND_WIND_UP, SOUND_WIND_DOWN, SOUND_MECH, SOUND_TRIGGER_ON].into_iter().chain(SOUND_FIRE) {
+        stop_sound(name);
+    }
+}
+
 pub fn sound_holster() {
+    // put away: what it was playing stops with it
+    stop_firing_sounds();
+    state().winding_down = false;
     sound(SOUND_UNEQUIP);
 }
 
