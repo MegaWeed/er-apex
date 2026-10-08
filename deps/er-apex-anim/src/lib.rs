@@ -1,7 +1,6 @@
 //! Owned validated fuse.anim v0 reader; no game or third-party dependencies.
-//! Parent-local TRS, xyzw quaternions and inches. See FORMAT for integration.
+//! Parent-local TRS, xyzw quaternions and inches.
 use std::fmt;
-pub const FORMAT: &str = include_str!("../README.md");
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Trs {
     pub translation: [f32; 3],
