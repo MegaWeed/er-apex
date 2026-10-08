@@ -182,7 +182,11 @@ const MECH_FRAMES: [f32; 4] = [0.0, 24.0, 52.0, 78.0];
 /// exp_defender), on a surface ("C": Elden Ring's surfaces have no Apex material, 推断) or flesh ("F").
 /// Each event's two play actions together.
 const SOUND_PULSE_SURFACE: [&str; 2] = ["chargerifle_smallbeam_bulletimpact_1p_vs_3p", "chargerifle_smallbeam_bulletimpact_1p_vs_3p_layer1"];
-const SOUND_PULSE_FLESH: [&str; 2] = ["flesh_bulletimpact_chargerifle_beam_1p_vs_3p", "flesh_bulletimpact_chargerifle_beam_1p_vs_3p_layer1"];
+/// (Not its second play action: `TitanCoreAbility_LaserCannon_ThickBeam_FD_1P_..._LP`, a 4.3 s loop
+/// Miles holds while the beam is on the target; played whole on each of the 14 pulses it went on for
+/// seconds after the shot: the user, 2026-10-08, "on a monster the sound is still wrong".)
+const SOUND_PULSE_FLESH: [&str; 1] = ["flesh_bulletimpact_chargerifle_beam_1p_vs_3p"];
+const SOUND_PULSE_FLESH_LOOP: &str = "flesh_bulletimpact_chargerifle_beam_1p_vs_3p_layer1";
 const SOUND_SHOT_SURFACE: [&str; 2] = ["chargerifle_fullshot_bulletimpact_1p_vs_3p", "chargerifle_fullshot_bulletimpact_1p_vs_3p_layer1"];
 const SOUND_SHOT_FLESH: [&str; 2] = ["flesh_bulletimpact_chargerifle_shot_1p_vs_3p", "flesh_bulletimpact_chargerifle_shot_1p_vs_3p_layer1"];
 const SOUND_ADS_IN: &str = "weapon_chargerifle_ads_in";
@@ -824,7 +828,7 @@ pub fn update(dt: f32, t: Trigger, in_hand: bool, ready: bool) {
 /// the sound plays on"): the charge, the mechanism, the shot's six layers (tails up to 3 s) and the
 /// drain.
 fn stop_firing_sounds() {
-    for name in [SOUND_WIND_UP, SOUND_WIND_DOWN, SOUND_MECH, SOUND_TRIGGER_ON].into_iter().chain(SOUND_FIRE_ALL) {
+    for name in [SOUND_WIND_UP, SOUND_WIND_DOWN, SOUND_MECH, SOUND_TRIGGER_ON, SOUND_PULSE_FLESH_LOOP].into_iter().chain(SOUND_FIRE_ALL) {
         stop_sound(name);
     }
 }
