@@ -422,10 +422,15 @@ fn outlined_bar(dl: &DrawListMut, a: [f32; 2], b: [f32; 2], col: [f32; 4], t: f3
     dl.add_line(a, b, col).thickness(t).build();
 }
 
-/// The player's character name from the save (the HUD's player name; not Fuse's).
+/// The HUD's player name: ini `player_name` when set, else the character name from the save (not
+/// Fuse's).
 fn player_name() -> Option<String> {
     static NAME: Mutex<Option<String>> = Mutex::new(None);
     if let Some(n) = NAME.lock().unwrap_or_else(|e| e.into_inner()).clone() {
+        return Some(n);
+    }
+    if let Some(n) = crate::paths::config("player_name").filter(|n| !n.is_empty()) {
+        *NAME.lock().unwrap_or_else(|e| e.into_inner()) = Some(n.clone());
         return Some(n);
     }
     let wcm = unsafe { WorldChrMan::instance() }.ok()?;
