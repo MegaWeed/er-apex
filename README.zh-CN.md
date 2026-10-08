@@ -6,12 +6,24 @@
 
 **本仓库不附带任何游戏文件或游戏资源**，包括《Apex 英雄》和《艾尔登法环》的模型、贴图、动画、音效、HUD 图片和文本。这些资源用本仓库 `tools/` 下的转换工具，从你自己安装的游戏里生成（见[编译](#编译)）。《Apex 英雄》的安装目录必须由你自己指定。
 
+## 这个 fork 的改动
+
+本仓库 fork 自 [umiiii/er-apex](https://github.com/umiiii/er-apex)，在原版基础上：
+
+- **1 号武器换成 Wingman**（顶替 R-301）：第一人称模型、全部动画、音效、HUD 图标都从本机 Apex 导出；半自动、5 发、单发 50、爆头 ×1.5、换弹 2.1 秒、开镜 60°，后坐力用 Apex 的 Wingman 数值。2 号仍是 Charge Rifle。
+- **检视动作**：按 5 播放手中武器的检视（Wingman、Charge Rifle 各自的原版动画和音效），开火、开镜、换弹、切枪、冲刺或用技能会打断。
+- **自定义皮肤**：`python tools/fusepov/build_wingman.py --skin <文件夹> --cr-skin <文件夹>`。`--skin` 放 `Wingman_Default_col.dds`（可选 `_spc`、`_nml`、`_gls`）；`--cr-skin` 放 `col/`、`nml/`、`gls/` 子文件夹，各含若干尺寸的 `.dds`，取最大的一张。皮肤贴图不在仓库里。
+- **没装 DLC 也能导出**：没有《黄金树幽影》时 `erextract` 跳过 `DLC.bhd`。
+- `export-assets.ps1` 新增第 8 步生成 Wingman 资源。
+
+已知限制：第三人称身体手里仍是 R-301；Wingman 击锤不单独动作；自发光贴图未使用。
+
 ## 极简开始
 
 复制这段 markdown 给任意 agent：
 
 ```markdown
-帮我把 https://github.com/umiiii/er-apex 仓库跑起来
+帮我把 https://github.com/MegaWeed/er-apex 仓库跑起来
 ```
 
 ## 开始使用

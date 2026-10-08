@@ -6,12 +6,24 @@ An offline fan mod for ELDEN RING: play as Octane from Apex Legends. A Rust DLL 
 
 **This repository ships no game files and no game assets**: no models, textures, animations, sounds, HUD images or text from Apex Legends or ELDEN RING. You make them yourself from your own game installs with the converters in this repository's `tools/` (see [Building](#building)). You must give the Apex Legends install folder yourself.
 
+## What this fork changes
+
+Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
+
+- **Weapon slot 1 is the Wingman** (in the R-301's place): first-person model, every animation, sounds and HUD icon exported from your Apex install; semi-auto, 5 rounds, 50 a shot, head x1.5, reload 2.1 s, zoom 60°, Apex's Wingman view kick. Slot 2 is still the Charge Rifle.
+- **Inspect**: key 5 plays the weapon in hand's inspect (the Wingman's and the Charge Rifle's own animations and sounds); a shot, aiming, a reload, a switch, sprint or an ability cuts it.
+- **Custom skins**: `python tools/fusepov/build_wingman.py --skin <folder> --cr-skin <folder>`. `--skin` holds `Wingman_Default_col.dds` (optional `_spc`, `_nml`, `_gls`); `--cr-skin` holds `col/`, `nml/`, `gls/`, each with `.dds` files in several sizes (the largest is used). No skin textures are in the repository.
+- **No DLC needed**: without Shadow of the Erdtree, `erextract` skips `DLC.bhd`.
+- `export-assets.ps1` has a step 8 that makes the Wingman's assets.
+
+Known limits: the third-person body still holds the R-301; the Wingman's hammer does not move on its own; emissive textures are not used.
+
 ## Fastest start
 
 Copy this to any agent:
 
 ```markdown
-Help me get https://github.com/umiiii/er-apex up and running
+Help me get https://github.com/MegaWeed/er-apex up and running
 ```
 
 ## Getting started
