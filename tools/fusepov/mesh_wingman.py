@@ -23,12 +23,35 @@ def mapping(data):
  return dict(carriers=carriers,owner_of_bone={n:by_name[c] for n,c in data['maps'][wm.KEY+'-carriers'].items()})
 
 
-def texture_sources(meshes):
+# A skin: a folder with `Wingman_Default_col` / `_spc` (.png, or .dds converted with texconv into the
+# output's inputs/skin/) replacing the base material's albedo and specular (build_wingman.py --skin).
+SKIN={'dir':None}
+SKIN_MATERIAL='wingman_base_main'
+
+
+def skin_paths(out):
+ folder=SKIN['dir']
+ if folder is None:return {}
+ folder=Path(folder);dest=out/'inputs/skin';dest.mkdir(parents=True,exist_ok=True);paths={}
+ for usage in ('col','spc','nml','gls'):
+  png=folder/f'Wingman_Default_{usage}.png';dds=folder/f'Wingman_Default_{usage}.dds'
+  if png.is_file():shutil.copyfile(png,dest/png.name);paths[usage]=dest/png.name
+  elif dds.is_file():
+   import subprocess
+   subprocess.run([str(ROOT/'tools/bin/texconv/texconv.exe'),'-nologo','-y','-ft','png','-f','R8G8B8A8_UNORM','-o',str(dest),str(dds)],check=True,capture_output=True)
+   paths[usage]=dest/f'Wingman_Default_{usage}.png'
+ wm.require('col' in paths,f'No Wingman_Default_col in the skin folder {folder}')
+ return paths
+
+
+def texture_sources(meshes,out=None):
  result={}
  materials=read(wm.CONFIG['assets']/'materials.json')['materials']
+ skin=skin_paths(out) if out is not None else {}
  for mesh in meshes:
   mat=next(m for m in materials if m['guid']==f'{mesh.Material().Hash():016x}');paths={}
   for t in sorted(mat['textures'],key=lambda t:t['slot']):paths.setdefault(t['usage'].lstrip('_'),wm.CONFIG['assets']/next(p for p in t['files'] if p.endswith('.png')))
+  if mesh.Material().Name()==SKIN_MATERIAL:paths.update(skin)
   wm.require('col' in paths,'Missing local albedo texture');result[mesh.Material().Name()]=paths
  return result
 
@@ -41,7 +64,7 @@ def make_textures(out,meshes):
   for rel in set(mat['textures'].values())|set(mat['sampler_textures'].values()):
    source=old_input()/rel;target=out/rel;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target)
  report={}
- for name,paths in texture_sources(meshes).items():
+ for name,paths in texture_sources(meshes,out).items():
   col,normal,metal=converted_arrays(paths)
   for suffix,pixels in [('a',col),('n',normal),('m',np.rint(metal*255).astype(np.uint8))]:Image.fromarray(pixels).save(folder/f'{name}_{suffix}.png')
   report[name]=dict(sources={k:file_info(p) for k,p in paths.items()},albedo='Source RGB; alpha 255',normal='Source nml RG; gls R in B',metal='T011/T005 heuristic',missing_channels=[k for k in ('nml','gls','spc') if k not in paths])
