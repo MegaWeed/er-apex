@@ -61,4 +61,8 @@ def verify(out):
 
 
 if __name__=='__main__':
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path);p.add_argument('--matbin-bnd',type=Path,default=DEFAULT_MATBIN);a=p.parse_args();build(a.out,a.matbin_bnd)
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path);p.add_argument('--matbin-bnd',type=Path,default=DEFAULT_MATBIN)
+ p.add_argument('--skin',type=Path,help='folder with Wingman_Default_col (and _spc, _nml, _gls) .png or .dds: the base material\'s textures replaced')
+ a=p.parse_args()
+ import mesh_wingman;mesh_wingman.SKIN['dir']=a.skin
+ build(a.out,a.matbin_bnd)
