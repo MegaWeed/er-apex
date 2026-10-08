@@ -152,8 +152,14 @@ pub const SPRING_C_ADS: Vec3 = Vec3::new(20.0, 13.5, 7.0);
 // ---- sounds: play names of tools/fuseaudio/export_audio.py `--set defender` (the events' lower case)
 
 const VOLUME: f32 = 0.5;
-/// `fire_sound_1_player_1p`: the event's six play actions together.
-const SOUND_FIRE: [&str; 6] = [
+/// `fire_sound_1_player_1p`: of the event's six play actions, the punch, the close laser and the 1p
+/// beam. Layers 2, 4 and 5 are third-person sounds (`3p_Shot_CloseSizzle`, `3p_Fire_Beam_Mid`,
+/// `3p_Fire_Beam_Dist`: their sources' names) that Miles picks by distance; played together they
+/// went on loudly for a second after the shot (the user, 2026-10-08: "after firing normally there
+/// is still a firing sound").
+const SOUND_FIRE: [&str; 3] = ["weapon_chargerifle_fire_1p", "weapon_chargerifle_fire_1p_layer1", "weapon_chargerifle_fire_1p_layer3"];
+/// All six, to stop them all whatever an older build played.
+const SOUND_FIRE_ALL: [&str; 6] = [
     "weapon_chargerifle_fire_1p",
     "weapon_chargerifle_fire_1p_layer1",
     "weapon_chargerifle_fire_1p_layer2",
@@ -777,9 +783,9 @@ pub fn update(dt: f32, t: Trigger, in_hand: bool, ready: bool) {
                 log("cr: discharge cut by the switch: no shot");
             }
             Event::Cancel => {
-                // the charge drains (`charge_drain_sound_1p`, stopped when it is empty)
+                // everything stops at once (the user, 2026-10-08: the drain sound after a cancel
+                // read as the shot going on)
                 stop_firing_sounds();
-                sound(SOUND_WIND_DOWN);
                 log(format!("cr: discharge stopped with S: no shot, {ammo} left in the magazine"));
             }
             Event::Release => sound(SOUND_TRIGGER_OFF),
@@ -818,7 +824,7 @@ pub fn update(dt: f32, t: Trigger, in_hand: bool, ready: bool) {
 /// the sound plays on"): the charge, the mechanism, the shot's six layers (tails up to 3 s) and the
 /// drain.
 fn stop_firing_sounds() {
-    for name in [SOUND_WIND_UP, SOUND_WIND_DOWN, SOUND_MECH, SOUND_TRIGGER_ON].into_iter().chain(SOUND_FIRE) {
+    for name in [SOUND_WIND_UP, SOUND_WIND_DOWN, SOUND_MECH, SOUND_TRIGGER_ON].into_iter().chain(SOUND_FIRE_ALL) {
         stop_sound(name);
     }
 }
