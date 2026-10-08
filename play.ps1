@@ -6,11 +6,12 @@ test save ER0000_fuse.sl2 (backed up to scratch\saves before each start).
   pwsh play.ps1             gun damage x3 and no Jump Pad cooldown (play-test values)
   pwsh play.ps1 -Season3    Season 3 values
   pwsh play.ps1 -NoSpawn    no soldiers at the grace
+  pwsh play.ps1 -Fov 90 -FpsLimit 120   first-person field of view (70-110), frame cap (0: the game's 60)
   pwsh play.ps1 -PlayerName "name"   the HUD's player name (default: ER_APEX_PLAYER_NAME, else the save's character)
 
 Quit: pwsh tools/dev/game.ps1 stop
 #>
-param([switch]$Season3, [switch]$NoSpawn, [string]$PlayerName = $env:ER_APEX_PLAYER_NAME)
+param([switch]$Season3, [switch]$NoSpawn, [string]$PlayerName = $env:ER_APEX_PLAYER_NAME, [int]$Fov = 90, [int]$FpsLimit = 120)
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 $Game = "$Root\tools\dev\game.ps1"
@@ -43,6 +44,9 @@ $set = "quickboot = 1;qb_place = first_step;kcc = 1;fuse_model = 1;lethal_guard 
     ";audio_dir = $Root\apex-data\audio;hud_dir = $Root\apex-data\hud\octane;npc_names = $Root\er-data\json\NpcName_zhocn.json"
 if (-not $Season3) { $set += ';gun_damage_mult = 3;pad_cooldown = 0' }
 if ($PlayerName) { $set += ";player_name = $PlayerName" }
+# first-person field of view (Apex's setting: 4:3 horizontal degrees) and the game's frame cap (0: the game's 60)
+$set += ";fov = $Fov"
+if ($FpsLimit -gt 0) { $set += ";fps_limit = $FpsLimit" }
 $arena = Test-Path "$Root\er-data\test_arena\package"
 if ($arena) { & $Game install -Legend octane -Set $set } else { & $Game install -Legend octane -Set $set -NoArena }
 & $Game start
