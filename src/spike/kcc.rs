@@ -205,6 +205,10 @@ struct Kcc {
     /// with, and when it was caught.
     carry: Option<(Vec3, Instant)>,
     last_recovery: Option<Instant>,
+    /// The game's ground under his feet last frame (its height) and the frames in a row it moved
+    /// while he stood still: a lift (`on_moving_ground`)
+    ground: Option<f32>,
+    ground_moving: u32,
     /// In the air: where the flight comes down (the game's map ray along the arc) and when that
     /// was worked out (`window_centre`).
     landing: Option<(Vec3, Instant)>,
@@ -245,6 +249,8 @@ impl Kcc {
             loco_frame: 0,
             carry: None,
             last_recovery: None,
+            ground: None,
+            ground_moving: 0,
             landing: None,
         }
     }
@@ -513,6 +519,20 @@ fn window_centre(k: &mut Kcc, at: Vec3, player: &PlayerIns) -> Vec3 {
     centre
 }
 
+/// While the ground moved under him the game keeps him this long before the controller tries again.
+const LIFT_HOLD_MS: u64 = 1500;
+
+/// Whether the game's ground under his feet has moved up or down for 3 frames in a row while he
+/// stood still (across and on the controller's ground): a lift or another moving platform.
+fn on_moving_ground(k: &mut Kcc, st: &er_apex_move::MoveState, pos: Vec3, player: &PlayerIns) -> bool {
+    let ground = st.grounded.then(|| wall_between(pos + Vec3::Y * 0.6, pos - Vec3::Y * 0.6, 0.0, player)).flatten().map(|g| g.y);
+    let still = k.last.is_some_and(|l| Vec3::new(pos.x - l.x, 0.0, pos.z - l.z).length() < 0.01);
+    let moved = matches!((ground, k.ground), (Some(g), Some(p)) if (g - p).abs() > 0.005);
+    k.ground_moving = if still && moved { k.ground_moving + 1 } else { 0 };
+    k.ground = ground;
+    k.ground_moving >= 3
+}
+
 fn wall_between(a: Vec3, b: Vec3, h: f32, player: &PlayerIns) -> Option<Vec3> {
     let havok = unsafe { CSHavokMan::instance() }.ok()?;
     let (a, d) = (a + Vec3::Y * h, b - a);
@@ -591,6 +611,7 @@ pub fn update(dt: f32) {
             super::octane::world_shift(d);
             super::grenade::world_shift(d);
             k.last = Some(here);
+            k.ground = None;
             k.fetching = None;
             k.building = None;
             for (t, _, _) in k.last_window.iter_mut() {
@@ -797,6 +818,18 @@ pub fn update(dt: f32) {
     k.stats.frame(frame_t0.elapsed().as_secs_f32() * 1e6);
     if st.stuck {
         k.stats.stuck += 1;
+    }
+
+    // a lift: the game's ground under him moves while he stands still (the controller's triangles
+    // are a still copy of it: the lift went up and he stayed, 2026-10-08): the game carries him
+    // until it stops
+    if on_moving_ground(k, &st, pos, player) {
+        log(format!("kcc: the ground moves under him at {pos:.2?} (a lift): the game carries him"));
+        k.ground = None;
+        k.ground_moving = 0;
+        k.release(Some(player));
+        k.retry_at = Some(Instant::now() + std::time::Duration::from_millis(LIFT_HOLD_MS));
+        return;
     }
 
     // a step through a wall would show as map geometry between the last position and this one
