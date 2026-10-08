@@ -63,6 +63,7 @@ def verify(out):
 if __name__=='__main__':
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path);p.add_argument('--matbin-bnd',type=Path,default=DEFAULT_MATBIN)
  p.add_argument('--skin',type=Path,help='folder with Wingman_Default_col (and _spc, _nml, _gls) .png or .dds: the base material\'s textures replaced')
+ p.add_argument('--cr-skin',type=Path,help='folder with col/, nml/, gls/ <size>.dds: the Charge Rifle\'s main material replaced')
  a=p.parse_args()
- import mesh_wingman;mesh_wingman.SKIN['dir']=a.skin
+ import mesh_wingman;mesh_wingman.SKIN['dir']=a.skin;mesh_wingman.CR_SKIN['dir']=a.cr_skin
  build(a.out,a.matbin_bnd)
