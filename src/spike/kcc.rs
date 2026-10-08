@@ -62,6 +62,8 @@ const WINDOW: Window = Window { radius: 12.0, down: 6.0, up: 6.0, column: 2.0, b
 const RECOVER_GAP_S: f32 = 2.0;
 /// Metres from the window's centre before the next window is fetched.
 const REFETCH: f32 = 4.0;
+/// A window is read again at least this often (seconds): the map's collision streams in late.
+const WINDOW_MAX_AGE_S: f32 = 1.0;
 /// Havok bodies read per frame while fetching a window (the world has ~4000; reading them all in
 /// one frame took 3-4 ms, journal 2026-10-04).
 const BODIES_PER_FRAME: usize = 400;
@@ -176,6 +178,10 @@ struct Kcc {
     origin: Vec3,
     /// Centre of the installed triangle window.
     window: Vec3,
+    /// When the window installed was read: re-read after `WINDOW_MAX_AGE_S` even standing still (the
+    /// game streams a map tile's collision in after he enters it: read too early, the window lacks
+    /// the floor ahead, 2026-10-08)
+    window_read: Instant,
     /// A window being read from the game, a few hundred bodies a frame.
     fetching: Option<QueryRun>,
     /// A window being built off-thread: its centre, its triangle count, the result.
@@ -226,6 +232,7 @@ impl Kcc {
             ctl: None,
             origin: Vec3::ZERO,
             window: Vec3::ZERO,
+            window_read: Instant::now(),
             fetching: None,
             building: None,
             last: None,
@@ -621,6 +628,7 @@ pub fn update(dt: f32) {
                 }
                 k.ctl = Some(c);
                 k.window = here;
+                k.window_read = Instant::now();
                 k.stats.tris = tris.len();
                 k.stats.starts += 1;
                 log(format!("kcc: controller on at {here:.2?} ({} triangles, anim {anim})", tris.len()));
@@ -640,7 +648,7 @@ pub fn update(dt: f32) {
     if k.building.is_none() {
         let (want, win) = window_for(k, at, player);
         match k.fetching.as_ref() {
-            None if want.distance(k.window) > REFETCH => k.fetching = Some(QueryRun::new(want, win)),
+            None if want.distance(k.window) > REFETCH || k.window_read.elapsed().as_secs_f32() > WINDOW_MAX_AGE_S => k.fetching = Some(QueryRun::new(want, win)),
             // in the air a window still being read for somewhere else (where he took off) is
             // dropped for the landing's: it would come too late
             Some(run) if airborne && want.distance(run.center) > REFETCH && want.distance(k.window) > REFETCH => {
@@ -687,6 +695,7 @@ pub fn update(dt: f32) {
             let old = std::mem::replace(&mut k.last_window, raw);
             std::thread::spawn(move || drop(old));
             k.window = centre;
+            k.window_read = Instant::now();
             k.stats.tris = n;
             k.stats.build_ms_max = k.stats.build_ms_max.max(ms);
             k.building = None;
