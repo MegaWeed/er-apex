@@ -74,6 +74,10 @@ const CHARGE_RIFLE_ICON: &str = "rui/weapon_icons/r5/weapon_charge_rifle";
 const SNIPER_BADGE: &str = "rui/hud/gametype_icons/survival/sur_ammo_sniper";
 const SINGLE_SHOT: &str = "rui/hud/weapon_toggle/single_shot";
 const EMPTY_STOCK_SNIPER: &str = "rui/pilot_loadout/mods/empty_stock_sniper";
+/// The Wingman in slot 1 (in the R-301's place; tools/apexhud/export_wingman.py): its `hud_icon`
+/// (the retail weapon settings), retail's `ammo_pool_type` "sniper", semi-auto (single shot), its
+/// empty slots the magazine and the sight (推断: the pistol's attachments as retail's loot has them).
+const WINGMAN_ICON: &str = "rui/weapon_icons/r5/weapon_wingman";
 pub const IMAGES: &[(&str, tex::Kind)] = &[
     (BATTERY_ICON, tex::Kind::Color),
     (AMMO_BADGE, tex::Kind::Color),
@@ -89,6 +93,7 @@ pub const IMAGES: &[(&str, tex::Kind)] = &[
     (SNIPER_BADGE, tex::Kind::Color),
     (SINGLE_SHOT, tex::Kind::Color),
     (EMPTY_STOCK_SNIPER, tex::Kind::Faint),
+    (WINGMAN_ICON, tex::Kind::Color),
     // the frag grenade's `hud_icon` (U9; tools/apexhud/export_extra.py)
     (super::grenade::ICON, tex::Kind::Color),
 ];
@@ -108,7 +113,7 @@ struct Look {
     slots: &'static [&'static str],
 }
 
-const R301_SLOTS: [&str; 4] = EMPTY_SLOTS;
+const WINGMAN_SLOTS: [&str; 2] = [EMPTY_SLOTS[1], EMPTY_SLOTS[2]];
 const CHARGE_RIFLE_SLOTS: [&str; 2] = [EMPTY_SLOTS[2], EMPTY_STOCK_SNIPER];
 
 fn look(slot: u8) -> Look {
@@ -125,14 +130,14 @@ fn look(slot: u8) -> Look {
         }
     } else {
         Look {
-            name_key: "#WPN_RSPN101_SHORT",
-            fallback: "R-301",
-            icon: "weapon_slot",
-            ammo_key: "AMMO_SMALL_COLOR",
-            ammo_fallback: [180, 123, 68],
-            badge: AMMO_BADGE,
-            mode: FIRE_MODE,
-            slots: &R301_SLOTS,
+            name_key: "#WPN_WINGMAN_SHORT",
+            fallback: "Wingman",
+            icon: WINGMAN_ICON,
+            ammo_key: "AMMO_SNIPER_COLOR",
+            ammo_fallback: [110, 95, 206],
+            badge: SNIPER_BADGE,
+            mode: SINGLE_SHOT,
+            slots: &WINGMAN_SLOTS,
         }
     }
 }

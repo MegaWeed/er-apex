@@ -302,7 +302,9 @@ pub fn update() {
         let (_, _, from, to) = crate::spike::weapons::zoom();
         let ads = if to > from { ((ads - from) / (to - from)).clamp(0.0, 1.0) } else { ads };
         let s = ads * ads * (3.0 - 2.0 * ads);
-        let h = (FOV_HIP + (FOV_ADS - FOV_HIP) * s) * crate::viewfx::current(rows[2]).1;
+        // the weapon in hand's `zoom_fov` (the Wingman 60; FOV_ADS the R-301's and the Charge Rifle's)
+        let fov_ads = if crate::spike::gun::enabled() { crate::spike::weapons::zoom_fov() } else { FOV_ADS };
+        let h = (FOV_HIP + (fov_ads - FOV_HIP) * s) * crate::viewfx::current(rows[2]).1;
         2.0 * ((h.to_radians() / 2.0).tan() * 0.75).atan()
     });
     for cam in [&mut camera.pers_cam_1, &mut camera.pers_cam_2, &mut camera.pers_cam_3, &mut camera.pers_cam_4] {

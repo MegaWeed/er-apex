@@ -1,4 +1,5 @@
-//! The two primary weapon slots (U3): 1 the R-301 (gun.rs), 2 the Charge Rifle (chargerifle.rs,
+//! The two primary weapon slots (U3): 1 the Wingman in the R-301's place (gun.rs; the slot keeps
+//! its `R301` name in the code), 2 the Charge Rifle (chargerifle.rs,
 //! S3 `mp_weapon_defender`). Keys 1 and 2 are S3's `weaponSelectPrimary0` / `weaponSelectPrimary1`
 //! (dev `weapon 1|2`).
 //!
@@ -40,7 +41,7 @@ impl Slot {
 
     pub fn name(self) -> &'static str {
         match self {
-            Slot::R301 => "R-301",
+            Slot::R301 => "Wingman",
             Slot::ChargeRifle => "Charge Rifle",
         }
     }
@@ -56,7 +57,10 @@ pub struct Timing {
     pub ready_first: f32,
 }
 
-pub const R301_TIMING: Timing = Timing { holster: 0.55, deploy: 0.6, deploy_first: 1.1, ready: 12.0 / 25.0, ready_first: 38.0 / 44.0 };
+/// The Wingman in the R-301's slot (`mp_weapon_wingman.txt`: `holster_time` 0.36, `deploy_time` 0.4,
+/// `deployfirst_time` 1.45; retail `wingman_base_v_animRig.qc`: draw's `AE_WPN_READYTOFIRE` 14 of 20
+/// (21 frames), drawfirst's 41 of 48). The R-301's were 0.55 / 0.6 / 1.1, 12 of 25, 38 of 44.
+pub const R301_TIMING: Timing = Timing { holster: 0.36, deploy: 0.4, deploy_first: 1.45, ready: 14.0 / 20.0, ready_first: 41.0 / 48.0 };
 /// The sustained-discharge Charge Rifle (`mp_weapon_defender_sustained.txt`): `holster_time` 0.5,
 /// `deploy_time` 0.8; `deployfirst_time` not set (the engine's 0): every draw the normal one (推断);
 /// ready at `draw`'s AE_WPN_READYTOFIRE (retail QC frame 12 of 20).
@@ -272,7 +276,7 @@ pub struct Trigger {
 /// Rifle. Whether the R-301 sits this frame out (put away, coming out, or the Charge Rifle out).
 pub fn update(dt: f32, t: Trigger) -> bool {
     if !ANNOUNCED.swap(true, Ordering::Relaxed) {
-        log("weapons: slot 1 R-301, slot 2 Charge Rifle (keys 1 / 2, dev `weapon 1|2`)");
+        log("weapons: slot 1 Wingman, slot 2 Charge Rifle (keys 1 / 2, dev `weapon 1|2`)");
     }
     if crate::fe::in_play_view() {
         let keys = number_keys().unwrap_or([false; 2]);
@@ -309,8 +313,10 @@ pub fn update(dt: f32, t: Trigger) -> bool {
 /// The R-301's put-away and pull-out sounds (`ptpov_rspn101.qc`: `holster` frame 0
 /// `Weapon_R101_UnEquip`, `draw` frame 0 `Weapon_R101_Equip`; tools/fuseaudio/export_audio.py
 /// `--set defender`), each event's play actions together.
-const R301_UNEQUIP: [&str; 2] = ["weapon_r101_unequip", "weapon_r101_unequip_layer1"];
-const R301_EQUIP: [&str; 3] = ["weapon_r101_equip", "weapon_r101_equip_layer1", "weapon_r101_equip_layer2"];
+/// The Wingman's in the R-301's slot (`wingman_base_v_animRig.qc`: `holster` frame 0
+/// `Weapon_Wingman_UnEquip`, `draw` frame 0 `Weapon_Wingman_Equip`; `--set wingman`).
+const R301_UNEQUIP: [&str; 3] = ["weapon_wingman_unequip", "weapon_wingman_unequip_layer1", "weapon_wingman_unequip_layer2"];
+const R301_EQUIP: [&str; 3] = ["weapon_wingman_equip", "weapon_wingman_equip_layer1", "weapon_wingman_equip_layer2"];
 const R301_VOLUME: f32 = 0.5;
 
 /// The holster and draw sounds as the phases begin (the view models' QCs: `holster` frame 0
@@ -365,8 +371,32 @@ pub fn r301_view_of(p: Phase) -> Option<R301View> {
 /// (`mp_weapon_defender.txt`). Both `zoom_fov` 55.
 pub fn zoom() -> (f32, f32, f32, f32) {
     match active() {
-        Slot::R301 => (0.27, 0.23, 0.0, 1.0),
+        // the Wingman: `zoom_time_in` / `_out` 0.18 / 0.16, the default fractions
+        Slot::R301 => (0.18, 0.16, 0.0, 1.0),
         Slot::ChargeRifle => (super::chargerifle::ZOOM_IN, super::chargerifle::ZOOM_OUT, super::chargerifle::ADS_FOV_FROM, super::chargerifle::ADS_FOV_TO),
+    }
+}
+
+/// The weapon in hand's `zoom_fov` (4:3 horizontal degrees, camera.rs): the Wingman 60, the Charge
+/// Rifle 55.
+pub fn zoom_fov() -> f32 {
+    match active() {
+        Slot::R301 => 60.0,
+        Slot::ChargeRifle => 55.0,
+    }
+}
+
+/// The weapon in hand's view kick spring (`viewkick_spring`, springs.txt: stiffness and damping,
+/// pitch / yaw / roll, hip then aimed) and `viewkick_*_weaponFraction` (hip, aimed): the Wingman's
+/// `wingman`, 0.4 / 0.3; the Charge Rifle's `titan_arc`, 0.5 / 0.6 (chargerifle.rs).
+pub fn kick_spring() -> ([glam::Vec3; 4], (f32, f32)) {
+    use glam::Vec3;
+    match active() {
+        Slot::R301 => ([Vec3::new(120.0, 60.0, 150.0), Vec3::new(30.0, 30.0, 30.0), Vec3::new(100.0, 55.0, 150.0), Vec3::new(25.0, 25.0, 20.0)], (0.4, 0.3)),
+        Slot::ChargeRifle => {
+            use super::chargerifle::*;
+            ([SPRING_K_HIP, SPRING_C_HIP, SPRING_K_ADS, SPRING_C_ADS], (WEAPON_FRACTION_HIP, WEAPON_FRACTION_ADS))
+        }
     }
 }
 
@@ -407,42 +437,42 @@ mod tests {
         }
     }
 
-    /// R-301 -> Charge Rifle: the R-301 put away over 0.55 s (no shots), the rifle's first draw (no
-    /// `deployfirst_time` for the sustained rifle: a plain one) over 0.8 s, ready from 12/20 of it.
+    /// Wingman -> Charge Rifle: the Wingman put away over 0.36 s (no shots), the rifle's first draw
+    /// (no `deployfirst_time` for the sustained rifle: a plain one) over 0.8 s, ready from 12/20 of it.
     #[test]
     fn switch_to_the_charge_rifle_and_back() {
         let mut l = Loadout::default();
         assert_eq!(l.phase(), Phase::Ready(Slot::R301));
         assert!(l.request(Slot::ChargeRifle));
         assert!(!l.request(Slot::ChargeRifle), "same slot again: nothing");
-        run(&mut l, 0.5);
+        run(&mut l, 0.3);
         assert!(matches!(l.phase(), Phase::Holstering { slot: Slot::R301, .. }) && !l.ready() && l.active() == Slot::R301);
         run(&mut l, 0.1);
         assert!(matches!(l.phase(), Phase::Drawing { slot: Slot::ChargeRifle, first: true, ready: false, .. }), "{:?}", l.phase());
         assert_eq!(l.active(), Slot::ChargeRifle);
-        // ready at 0.55 + 0.8 x 12/20 = 1.03 s
-        run(&mut l, 1.03 - 0.6 - 0.05);
+        // ready at 0.36 + 0.8 x 12/20 = 0.84 s
+        run(&mut l, 0.84 - 0.4 - 0.05);
         assert!(!l.ready(), "{:?}", l.phase());
         run(&mut l, 0.1);
         assert!(l.ready(), "{:?}", l.phase());
         run(&mut l, 0.5);
         assert_eq!(l.phase(), Phase::Ready(Slot::ChargeRifle));
-        // back: the rifle away over 0.5 s, the R-301 drawn (not a first draw) over 0.6 s, ready at 12/25
+        // back: the rifle away over 0.5 s, the Wingman drawn (not a first draw) over 0.4 s, ready at 14/20
         assert!(l.request(Slot::R301));
         run(&mut l, 0.45);
         assert!(matches!(l.phase(), Phase::Holstering { slot: Slot::ChargeRifle, .. }));
         run(&mut l, 0.1);
         assert!(matches!(l.phase(), Phase::Drawing { slot: Slot::R301, first: false, .. }));
-        run(&mut l, 0.6 * 12.0 / 25.0 - 0.05 - 0.02);
+        run(&mut l, 0.4 * 14.0 / 20.0 - 0.05 - 0.02);
         assert!(!l.ready());
         run(&mut l, 0.05);
         assert!(l.ready());
-        // the rifle again: its plain draw now, ready at 0.55 + 0.8 x 12/20 = 1.03 s
+        // the rifle again: its plain draw now, ready at 0.36 + 0.8 x 12/20 = 0.84 s
         run(&mut l, 1.0);
         assert!(l.request(Slot::ChargeRifle));
-        run(&mut l, 1.0);
+        run(&mut l, 0.8);
         assert!(!l.ready() && matches!(l.phase(), Phase::Drawing { first: false, .. }));
-        run(&mut l, 0.05);
+        run(&mut l, 0.06);
         assert!(l.ready());
     }
 

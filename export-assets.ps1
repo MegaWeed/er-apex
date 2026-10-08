@@ -16,7 +16,7 @@ The game folders are only read, never written.
 param(
     [string]$ApexDir,
     [string]$EldenRingDir,
-    [ValidateRange(1, 7)][int]$From = 1,
+    [ValidateRange(1, 8)][int]$From = 1,
     [switch]$NoArena,
     [switch]$Force
 )
@@ -130,7 +130,7 @@ function Run {
 function Step([int]$n, [string]$name, [scriptblock]$body) {
     if ($n -lt $From) { return }
     $t0 = Get-Date
-    Write-Host "`n== step $n/7: $name ==" -ForegroundColor Cyan
+    Write-Host "`n== step $n/8: $name ==" -ForegroundColor Cyan
     try { & $body } catch { Write-Host "step $n failed; fix the cause and run export-assets.ps1 again" -ForegroundColor Red; throw }
     Write-Host "== step $n done in $([int]((Get-Date) - $t0).TotalMinutes) min ==" -ForegroundColor Cyan
 }
@@ -234,6 +234,14 @@ Step 7 'first-person base pose (about 1 min)' {
     Run 'apex-data\anim\fuse.anim' python tools/fuseanim/export_anim.py
     Run 'er-data\s3\fuse\align.json' python tools/fusemesh/convert_fuse.py --geometry-only
     Run 'er-data\s4\fuse_er.anim' python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS
+}
+
+Step 8 'the Wingman in the R-301''s place (about 4 min)' {
+    Run 'apex-data\assets\wingman\verification.json' python tools/apexassets/wingman_assets.py
+    Run 'apex-data\pov\octane_wingman\fuse_pov.anim' python tools/apexpov/bake_wingman.py
+    Run 'er-data\s3\octane_pov_wingman\wingman-verification.json' python tools/fusepov/build_wingman.py
+    Run 'apex-data\audio\wingman\manifest.json' python tools/fuseaudio/export_audio.py --set wingman
+    Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_wingman.png' python tools/apexhud/export_wingman.py --legend octane
 }
 
 "`nall assets ready ($made made, $skipped already there). Start the game: pwsh play.ps1"
