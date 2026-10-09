@@ -327,7 +327,7 @@ struct KunaiInspect {
     sounds: &'static [(u32, &'static str)],
 }
 const KUNAI_BASIC_SOUNDS: &[(u32, &str)] = &[(1, "wraith_mvmt_kunai_inspect_basic_p1"), (43, "wraith_mvmt_kunai_inspect_basic_p2"), (124, "wraith_mvmt_kunai_inspect_basic_p3")];
-const KUNAI_INSPECTS: [KunaiInspect; 4] = [
+const KUNAI_INSPECTS: [KunaiInspect; 5] = [
     KunaiInspect { clip: "kn_inspect_0", frames: 145, weight: 5, crouched: false, sounds: KUNAI_BASIC_SOUNDS },
     KunaiInspect {
         clip: "kn_inspect_fly_0",
@@ -344,7 +344,12 @@ const KUNAI_INSPECTS: [KunaiInspect; 4] = [
         crouched: true,
         sounds: &[(0, "wraith_mvmt_kunai_inspect_insignia_p1"), (42, "wraith_mvmt_kunai_inspect_insignia_charged"), (58, "wraith_mvmt_kunai_inspect_insignia_p2"), (68, "wraith_mvmt_kunai_inspect_insignia_w_appears")],
     },
+    // the run's (never picked at random): `drawsprint_twirl` (ACT_VM_DRAW_TO_SPRINT, the first draw's
+    // twirl), key 5 on a sprint, again from its start on every press
+    KunaiInspect { clip: "kn_drawsprint_twirl_0", frames: 63, weight: 0, crouched: false, sounds: &[(0, "wraith_mvmt_kunai_firstdraw")] },
 ];
+/// `KUNAI_INSPECTS`' sprint twirl.
+const KUNAI_TWIRL: usize = 4;
 /// A new press's crossfade from the inspect it cuts (seconds).
 const KUNAI_INSPECT_BLEND: f32 = 0.15;
 
@@ -489,7 +494,7 @@ pub fn step(dt: f32, i: &Inputs) {
     });
     let mut s = sway_input(dt, i, a.last_eye);
     // the kunai's inspect on the run: the hands as when standing (no run bob or sway under it)
-    if a.kunai_inspect.is_some() {
+    if a.kunai_inspect.is_some_and(|(k, _)| k != KUNAI_TWIRL) {
         (s.velocity, s.sliding) = (Vec3::ZERO, false);
     }
     a.last_eye = i.eye;
@@ -698,12 +703,9 @@ pub fn start_inspect() -> String {
     let mut g = ANIM.lock().unwrap_or_else(|e| e.into_inner());
     let Some(a) = g.as_mut() else { return "inspect: no view model".into() };
     if melee_slot() {
-        // on the run: no inspect, the sprint's knife pose starts over (the user's 2026-10-09 ask, as
+        // on the run: the sprint twirl, from its start on every press (the user's 2026-10-09 ask, as
         // Apex does on a sprint)
-        if a.signals.moving.is_some_and(|m| m.sprinting && !m.sliding) {
-            a.kunai.sprint_t = 0.0;
-            return "inspect: on the run, the kunai's sprint from its start".into();
-        }
+        let twirl = a.signals.moving.is_some_and(|m| m.sprinting && !m.sliding);
         // Apex: a random one of them by weight, every press (again while one plays: the new one
         // crossfades over it)
         let crouched = a.signals.moving.is_some_and(|m| m.crouched);
@@ -715,7 +717,7 @@ pub fn start_inspect() -> String {
             return "inspect: no kunai inspect in the pack".into();
         }
         let mut roll = ((a.started.elapsed().as_nanos() as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 33) % total as u64;
-        let k = ok
+        let k = if twirl { KUNAI_TWIRL } else { ok
             .iter()
             .copied()
             .find(|&k| {
@@ -727,7 +729,7 @@ pub fn start_inspect() -> String {
                     false
                 }
             })
-            .unwrap_or(ok[0]);
+            .unwrap_or(ok[0]) };
         if let Some((old, t)) = a.kunai_inspect.take() {
             stop_kunai_sounds(old);
             let w = kunai_inspect_layer(old, t, 1.0).weight;

@@ -22,6 +22,8 @@ def generate():
    for sample in local['blends']:
     i=sample['blend_index'];path=config['assets']/sample['cast_file'];rawpath=config['assets']/local['raw_file']
     try:
+     # the kunai's twirls scale the knife (0.64..1): played without the squash
+     ac.DROP_SCALE=key=='kn'
      source=wm.wc.decode_source(path,rig,seq,qc,sample,rawpath)
     except ValueError as e:
      # a scaled bone (the R-99's drawfirst shows a prop by scale): the pack has no scale, the
