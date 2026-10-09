@@ -73,6 +73,8 @@ pub struct Spec {
     regen: Option<f32>,
     /// its shots home on the enemy nearest the crosshair (homing.rs)
     homing: bool,
+    /// every hit is a headshot (its damage, the headshot mark: the Sentinel, the user's 2026-10-09 ask)
+    head_only: bool,
 }
 
 /// The R-301 (`apex-data/fuse_data.json`, `mp_weapon_rspn101`): 15 a round, fire_rate 13.5,
@@ -116,6 +118,7 @@ pub const R301: Spec = Spec {
     fill: (38.0 / 66.0, 53.0 / 86.0),
     regen: None,
     homing: false,
+    head_only: false,
 };
 
 /// The R-99 (`apex-data/export/weapon/mp_weapon_r97.txt`): 12 a round, fire_rate 18, ammo_clip_size
@@ -163,6 +166,7 @@ pub const R99: Spec = Spec {
     fill: (57.0 / 72.0, 74.0 / 93.0),
     regen: None,
     homing: false,
+    head_only: false,
 };
 
 /// The Wingman (`apex-data/export/weapon/mp_weapon_wingman.txt`): `is_semi_auto` 1, 50 a round,
@@ -204,6 +208,7 @@ pub const WINGMAN: Spec = Spec {
     fill: (62.0 / 88.0, 62.0 / 88.0),
     regen: None,
     homing: false,
+    head_only: false,
 };
 
 /// The VK-47 Flatline (`apex-data/export/weapon/mp_weapon_vinson.txt`): 20 a round, fire_rate 10,
@@ -257,6 +262,7 @@ pub const FLATLINE: Spec = Spec {
     fill: (45.0 / 69.0, 74.0 / 93.0),
     regen: None,
     homing: false,
+    head_only: false,
 };
 
 /// The Sentinel (`apex-data/export/weapon/mp_weapon_sentinel.txt`) as the user asked on 2026-10-09:
@@ -292,6 +298,7 @@ pub const SENTINEL: Spec = Spec {
     fill: (71.0 / 112.0, 71.0 / 112.0),
     regen: Some(0.4),
     homing: true,
+    head_only: true,
 };
 
 /// A gun's numbers.
@@ -827,7 +834,7 @@ fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
     // a homing gun (the Sentinel): a round that flies to an enemy in the cone ahead (homing.rs),
     // else the shot goes as any other
     if sp.homing
-        && let Some(line) = super::homing::fire(|zone| {
+        && let Some(line) = super::homing::fire(sp.head_only, |zone| {
             let scale = match zone {
                 Zone::Head => head,
                 Zone::Legs => legs,
@@ -838,6 +845,7 @@ fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
     {
         return Some(line);
     }
+    HEAD_ONLY.store(sp.head_only, Ordering::Relaxed);
     let out = fire_ray(spread_deg, r, crate::viewfx::weapon_aim_offset(), 0, |zone, _| {
         let scale = match zone {
             Zone::Head => head,
@@ -847,8 +855,12 @@ fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
         // ini `gun_damage_mult` (read fresh; the user's 3 on 2026-10-05)
         damage * (scale * damage_mult())
     });
+    HEAD_ONLY.store(false, Ordering::Relaxed);
     out
 }
+
+/// This shot's hits are headshots (a `head_only` gun: set by `shoot`, read by `fire_ray_ex`).
+static HEAD_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// The hit sound: the enemies it has played for (their handles), how loud.
 static HIT_SOUND: Mutex<std::collections::BTreeSet<u64>> = Mutex::new(std::collections::BTreeSet::new());
@@ -978,7 +990,7 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
     if !deal {
         return Some(RayOut { line: None, end, on: RayEnd::Target });
     }
-    let zone = zone_at(y);
+    let zone = if HEAD_ONLY.load(Ordering::Relaxed) { Zone::Head } else { zone_at(y) };
     let amount = damage(zone, t);
     let line = apply_hit(handle, amount, zone, end, weapon);
     Some(RayOut { line: Some(format!("hit npc {npc} {} at {t:.1} m for {amount:.1}: {line}", zone.name())), end, on: RayEnd::Target })
