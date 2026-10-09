@@ -547,7 +547,8 @@ pub fn step(dt: f32, i: &Inputs) {
         let o = posing.get_or_insert_with(|| ability::Out { show_gun: true, ..Default::default() });
         let mut layers = a.kunai.layers(m.duck_frac);
         // its inspect (key 5) over the loops, cut as the guns' is
-        let kunai_busy = swapping || a.ability_out.is_some() || m.sprinting || super::weapons::swing_age().is_some_and(|t| t < 1.0);
+        // (not sprint: the kunai is inspected on the run too, the user's 2026-10-09 ask)
+        let kunai_busy = swapping || a.ability_out.is_some() || super::weapons::swing_age().is_some_and(|t| t < 1.0);
         a.kunai_inspect = match a.kunai_inspect {
             Some(t) if !kunai_busy && t < (KUNAI_INSPECT_FRAMES - 1) as f32 / 30.0 => {
                 let total = (KUNAI_INSPECT_FRAMES - 1) as f32 / 30.0;
