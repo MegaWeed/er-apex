@@ -22,7 +22,7 @@
 //! degrees (its unit in Apex is to be confirmed).
 
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use eldenring::cs::{CSCamera, CSHavokMan, ChrIns, FieldInsHandle, WorldChrMan};
 use eldenring::position::{HavokPosition, PositionDelta};
@@ -68,6 +68,11 @@ pub struct Spec {
     reload_frames: f32,
     /// where the magazine fills (AE_WPN_FILLAMMO, fraction): tactical, empty
     fill: (f32, f32),
+    /// a round back into the magazine every so many seconds while the gun is in hand (no reload:
+    /// the Sentinel, the user's 2026-10-09 ask); None: reloads as Apex's
+    regen: Option<f32>,
+    /// its shots home on the enemy nearest the crosshair (homing.rs)
+    homing: bool,
 }
 
 /// The R-301 (`apex-data/fuse_data.json`, `mp_weapon_rspn101`): 15 a round, fire_rate 13.5,
@@ -109,6 +114,8 @@ pub const R301: Spec = Spec {
     ],
     reload_frames: 88.0,
     fill: (38.0 / 66.0, 53.0 / 86.0),
+    regen: None,
+    homing: false,
 };
 
 /// The R-99 (`apex-data/export/weapon/mp_weapon_r97.txt`): 12 a round, fire_rate 18, ammo_clip_size
@@ -154,6 +161,8 @@ pub const R99: Spec = Spec {
     ],
     reload_frames: 73.0,
     fill: (57.0 / 72.0, 74.0 / 93.0),
+    regen: None,
+    homing: false,
 };
 
 /// The Wingman (`apex-data/export/weapon/mp_weapon_wingman.txt`): `is_semi_auto` 1, 50 a round,
@@ -193,6 +202,8 @@ pub const WINGMAN: Spec = Spec {
     ],
     reload_frames: 88.0,
     fill: (62.0 / 88.0, 62.0 / 88.0),
+    regen: None,
+    homing: false,
 };
 
 /// The VK-47 Flatline (`apex-data/export/weapon/mp_weapon_vinson.txt`): 20 a round, fire_rate 10,
@@ -244,6 +255,43 @@ pub const FLATLINE: Spec = Spec {
     ],
     reload_frames: 70.0,
     fill: (45.0 / 69.0, 74.0 / 93.0),
+    regen: None,
+    homing: false,
+};
+
+/// The Sentinel (`apex-data/export/weapon/mp_weapon_sentinel.txt`) as the user asked on 2026-10-09:
+/// automatic at 3 a second, a magazine of 7 that takes a round back every 0.4 s (no reload), shots
+/// that home (homing.rs); 70 a round, head x1.8, legs x0.9 and its spread from the retail settings;
+/// its amped shot's sound (the shield-charged mod's `weapon_sentinel_fire_alt_1p`, `--set sentinel`).
+pub const SENTINEL: Spec = Spec {
+    gun: super::weapons::Gun::Sentinel,
+    damage: 70.0,
+    fire_rate: 3.0,
+    clip: 7,
+    reload: 3.0,
+    reload_empty: 4.0,
+    head_scale: 1.8,
+    leg_scale: 0.9,
+    spread_hip: [8.0, 10.0, 11.0, 6.0, 10.0],
+    spread_ads: [0.0, 0.0, 0.0, 0.0, 6.0],
+    spread_up: 4.0,
+    spread_down: 4.0,
+    kick_hip: [1.0, 1.0, 1.0],
+    kick_max_hip: [12.0, 10.0, 12.0],
+    kick_delay: 0.1,
+    kick_decay: 4.0,
+    semi_auto: false,
+    view_kick: None,
+    fire_sounds: &["weapon_sentinel_fire_alt_1p", "weapon_sentinel_fire_alt_1p_layer1", "weapon_sentinel_fire_alt_1p_layer2", "weapon_sentinel_fire_alt_1p_layer3", "weapon_sentinel_fire_alt_1p_layer4"],
+    burst: None,
+    ads_in: "weapon_sentinel_ads_in",
+    ads_out: "weapon_sentinel_ads_out",
+    dry: "rifle_dryfire",
+    reload_sounds: &[],
+    reload_frames: 113.0,
+    fill: (71.0 / 112.0, 71.0 / 112.0),
+    regen: Some(0.4),
+    homing: true,
 };
 
 /// A gun's numbers.
@@ -253,6 +301,7 @@ pub fn spec_of(gun: super::weapons::Gun) -> &'static Spec {
         super::weapons::Gun::R99 => &R99,
         super::weapons::Gun::Wingman => &WINGMAN,
         super::weapons::Gun::Flatline => &FLATLINE,
+        super::weapons::Gun::Sentinel => &SENTINEL,
     }
 }
 
@@ -301,7 +350,7 @@ static WAS_FIRING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool
 struct Gun {
     /// slot 1's gun these numbers are of (the magazines of the others in `stash`)
     gun: super::weapons::Gun,
-    stash: [u32; 4],
+    stash: [u32; 5],
     /// Movement spread now (degrees) and the kick on top, seconds since the last shot.
     spread: f32,
     kick: f32,
@@ -321,7 +370,7 @@ struct Gun {
 
 static GUN: Mutex<Gun> = Mutex::new(Gun {
     gun: super::weapons::Gun::Wingman,
-    stash: [R301.clip, R99.clip, WINGMAN.clip, FLATLINE.clip],
+    stash: [R301.clip, R99.clip, WINGMAN.clip, FLATLINE.clip, SENTINEL.clip],
     spread: 3.0,
     kick: 0.0,
     since_shot: 1.0,
@@ -534,7 +583,7 @@ pub fn interrupt_reload() {
     if g.reloading.take().is_some() {
         g.reload_wanted = false;
         drop(g);
-        for s in [&R301, &R99, &WINGMAN, &FLATLINE] {
+        for s in [&R301, &R99, &WINGMAN, &FLATLINE, &SENTINEL] {
             for (name, _, _) in s.reload_sounds {
                 crate::audio::stop(name);
             }
@@ -574,6 +623,19 @@ pub fn update(dt: f32) {
     let mut g = GUN.lock().unwrap_or_else(|e| e.into_inner());
     if g.take(sp.gun) {
         log(format!("gun: {} in hand, {} in the magazine", sp.gun.name(), g.ammo));
+    }
+    // a round back every `regen` seconds (the Sentinel): no reload for it
+    if let Some(every) = sp.regen {
+        let mut t = REGEN.lock().unwrap_or_else(|e| e.into_inner());
+        if g.ammo >= sp.clip {
+            *t = 0.0;
+        } else {
+            *t += dt;
+            while *t >= every && g.ammo < sp.clip {
+                *t -= every;
+                g.ammo += 1;
+            }
+        }
     }
     if WAS_AIMING.swap(aim, Ordering::Relaxed) != aim {
         crate::audio::play(if aim { sp.ads_in } else { sp.ads_out }, GUN_VOLUME);
@@ -621,7 +683,7 @@ pub fn update(dt: f32) {
         PULL.store(false, Ordering::Relaxed);
         return;
     }
-    if reload && g.ammo < sp.clip {
+    if reload && g.ammo < sp.clip && sp.regen.is_none() {
         g.reload_wanted = true;
     }
     // the gun is away for an ability (switching to one hand for the stim, the pad's toss:
@@ -651,6 +713,11 @@ pub fn update(dt: f32) {
         PULL.store(false, Ordering::Relaxed);
         if g.ammo == 0 {
             crate::audio::play(sp.dry, GUN_VOLUME);
+            if sp.regen.is_some() {
+                // the next round comes by itself: one dry click per pull's worth of shots
+                g.cooldown += 1.0 / sp.fire_rate;
+                return;
+            }
             if left_busy {
                 // once per trigger pull's worth of shots, until the injector is gone (thrown
                 // next frame for the reload)
@@ -757,7 +824,8 @@ fn next(s: &mut u32) -> f32 {
 /// camera with the part of the view kick the view does not show (viewfx.rs).
 fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
     let (damage, head, legs) = (sp.damage, sp.head_scale, sp.leg_scale);
-    fire_ray(spread_deg, r, crate::viewfx::weapon_aim_offset(), 0, |zone, _| {
+    HOMING.store(sp.homing, Ordering::Relaxed);
+    let out = fire_ray(spread_deg, r, crate::viewfx::weapon_aim_offset(), 0, |zone, _| {
         let scale = match zone {
             Zone::Head => head,
             Zone::Legs => legs,
@@ -765,8 +833,16 @@ fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
         };
         // ini `gun_damage_mult` (read fresh; the user's 3 on 2026-10-05)
         damage * (scale * damage_mult())
-    })
+    });
+    HOMING.store(false, Ordering::Relaxed);
+    out
 }
+
+/// This shot homes (set by `shoot` for a homing gun, taken by `fire_ray_ex`).
+static HOMING: AtomicBool = AtomicBool::new(false);
+/// Seconds towards the next round back (a `regen` gun).
+static REGEN: Mutex<f32> = Mutex::new(0.0);
+
 /// ini `gun_damage_mult`, read fresh (both weapons).
 pub(super) fn damage_mult() -> f32 {
     paths::number::<f32>("gun_damage_mult").map_or(1.0, |m| m.max(0.0))
@@ -823,7 +899,13 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
     }
     // uniform in the cone's disc: angle a around the axis, radius sqrt(r) of the half-angle
     let (a, rad) = (r.0 * std::f32::consts::TAU, r.1.sqrt() * spread_deg.to_radians().tan());
-    let dir = (fwd + right * (rad * a.cos()) + up * (rad * a.sin())).normalize();
+    let mut dir = (fwd + right * (rad * a.cos()) + up * (rad * a.sin())).normalize();
+    // a homing gun's shot (the Sentinel: homing.rs) turns to the enemy nearest the crosshair
+    if deal && HOMING.swap(false, Ordering::Relaxed) {
+        if let Some(d) = super::homing::steer(origin, fwd) {
+            dir = d;
+        }
+    }
     // `fp trace`: the shot goes along the render camera (the crosshair), the view punch included
     // (D-023), not along the eye's line
     if crate::spike::pov::tracing() {

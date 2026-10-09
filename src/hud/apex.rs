@@ -87,6 +87,9 @@ const R99_SLOTS: [&str; 4] = EMPTY_SLOTS;
 const FLATLINE_ICON: &str = "rui/weapon_icons/r5/weapon_flatline";
 /// The kunai (a swing in the holstered mode): its melee skin's `equipImage` (export_wingman.py
 /// `--weapon kunai`), the kill feed's icon for it.
+/// The Sentinel (the weapon wheel; tools/apexhud/export_wingman.py `--weapon sentinel`): its
+/// `hud_icon`, sniper ammo, automatic here (the user's), the sniper's slots.
+const SENTINEL_ICON: &str = "rui/weapon_icons/r5/weapon_sentinel";
 const KUNAI_ICON: &str = "rui/menu/buttons/melee_skins/wraith_kunai";
 pub const IMAGES: &[(&str, tex::Kind)] = &[
     (BATTERY_ICON, tex::Kind::Color),
@@ -106,6 +109,7 @@ pub const IMAGES: &[(&str, tex::Kind)] = &[
     (WINGMAN_ICON, tex::Kind::Color),
     (R99_ICON, tex::Kind::Color),
     (FLATLINE_ICON, tex::Kind::Color),
+    (SENTINEL_ICON, tex::Kind::Color),
     (KUNAI_ICON, tex::Kind::Color),
     // the frag grenade's `hud_icon` (U9; tools/apexhud/export_extra.py)
     (super::grenade::ICON, tex::Kind::Color),
@@ -173,6 +177,17 @@ fn look(slot: u8) -> Look {
             badge: AMMO_BADGE,
             mode: FIRE_MODE,
             slots: &EMPTY_SLOTS,
+        }
+    } else if slot == 0 && crate::spike::weapons::primary_gun() == crate::spike::weapons::Gun::Sentinel {
+        Look {
+            name_key: "#WPN_SENTINEL_SHORT",
+            fallback: "Sentinel",
+            icon: SENTINEL_ICON,
+            ammo_key: "AMMO_SNIPER_COLOR",
+            ammo_fallback: [110, 95, 206],
+            badge: SNIPER_BADGE,
+            mode: FIRE_MODE,
+            slots: &CHARGE_RIFLE_SLOTS,
         }
     } else {
         Look {
@@ -554,16 +569,17 @@ fn weapon_wheel(p: &Pen, pack: &Pack, hovered: Option<usize>, c: &Colors) {
     let (cx, cy) = (960.0, 540.0);
     let (r0, r1) = (110.0, 260.0);
     let held = match spike::weapons::active() {
-        Slot::ChargeRifle => 4,
+        Slot::ChargeRifle => 5,
         // the kunai is not on the wheel: slot 1's gun marked
         Slot::R301 | Slot::Melee => match spike::weapons::primary_gun() {
             Gun::R301 => 0,
             Gun::R99 => 1,
             Gun::Wingman => 2,
             Gun::Flatline => 3,
+            Gun::Sentinel => 4,
         },
     };
-    let icons = ["weapon_slot", R99_ICON, WINGMAN_ICON, FLATLINE_ICON, CHARGE_RIFLE_ICON];
+    let icons = ["weapon_slot", R99_ICON, WINGMAN_ICON, FLATLINE_ICON, SENTINEL_ICON, CHARGE_RIFLE_ICON];
     let n = spike::weapons::WHEEL.len();
     let sector = std::f32::consts::TAU / n as f32;
     for (k, (_, name)) in spike::weapons::WHEEL.iter().enumerate() {

@@ -240,14 +240,15 @@ Step 7 'first-person base pose (about 1 min)' {
     Run 'er-data\s4\fuse_er.anim' python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS
 }
 
-Step 8 'the Wingman, the R-99, the Flatline and the kunai (about 16 min)' {
+Step 8 'the Wingman, the R-99, the Flatline, the Sentinel and the kunai (about 20 min)' {
     Run 'apex-data\assets\wingman\verification.json' python tools/apexassets/wingman_assets.py
     Run 'apex-data\assets\r99\verification.json' python tools/apexassets/r99_assets.py
     Run 'apex-data\assets\r99_ascension\verification.json' python tools/apexassets/r99_ascension_assets.py
     Run 'apex-data\assets\kunai\verification.json' python tools/apexassets/kunai_assets.py
     Run 'apex-data\assets\flatline\verification.json' python tools/apexassets/flatline_assets.py
-    # (its last output: the Flatline's table, so a pack baked before the Flatline is baked again)
-    Run 'apex-data\pov\octane_wingman\flatline_sequences.json' python tools/apexpov/bake_wingman.py
+    Run 'apex-data\assets\sentinel\verification.json' python tools/apexassets/sentinel_assets.py
+    # (its last output: the Sentinel's table, so a pack baked before the Sentinel is baked again)
+    Run 'apex-data\pov\octane_wingman\sentinel_sequences.json' python tools/apexpov/bake_wingman.py
     # optional skins (not in git): each folder that is there replaces that weapon's textures; model 998
     # is made again when the set of skins changes
     $skinArgs = @()
@@ -257,8 +258,8 @@ Step 8 'the Wingman, the R-99, the Flatline and the kunai (about 16 min)' {
     }
     $built = 'er-data\s3\octane_pov_wingman\wingman-verification.json'
     $mark = Join-Path $Root 'er-data\s3\octane_pov_wingman\skins.txt'
-    # (the mark names the weapons too: a 998 made before the Flatline is made again)
-    $want = (@('wingman r99 kunai flatline') + $skinArgs) -join ' '
+    # (the mark names the weapons too: a 998 made before the Sentinel is made again)
+    $want = (@('wingman r99 kunai flatline sentinel') + $skinArgs) -join ' '
     $had = if (Test-Path $mark) { (Get-Content $mark -Raw).Trim() } else { '' }
     if ($had -ne $want -and (Test-Path (Join-Path $Root $built))) {
         Write-Host "skins changed ($(if ($skinArgs) { $skinArgs -join ' ' } else { 'none' })): model 998 again" -ForegroundColor DarkGray
@@ -270,9 +271,11 @@ Step 8 'the Wingman, the R-99, the Flatline and the kunai (about 16 min)' {
     Run 'apex-data\audio\r99\manifest.json' python tools/fuseaudio/export_audio.py --set r99
     Run 'apex-data\audio\kunai\manifest.json' python tools/fuseaudio/export_audio.py --set kunai
     Run 'apex-data\audio\flatline\manifest.json' python tools/fuseaudio/export_audio.py --set flatline
+    Run 'apex-data\audio\sentinel\manifest.json' python tools/fuseaudio/export_audio.py --set sentinel
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_wingman.png' python tools/apexhud/export_wingman.py --legend octane
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_r97.png' python tools/apexhud/export_wingman.py --legend octane --weapon r99
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_flatline.png' python tools/apexhud/export_wingman.py --legend octane --weapon flatline
+    Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_sentinel.png' python tools/apexhud/export_wingman.py --legend octane --weapon sentinel
     Run 'apex-data\hud\octane\extra\rui\menu\buttons\melee_skins\wraith_kunai.png' python tools/apexhud/export_wingman.py --legend octane --weapon kunai
     # optional HUD fonts (not in git): the .ttf/.otf files in apex-data\fonts for the HUD's digits and letters
     if (Get-ChildItem (Join-Path $Root 'apex-data\fonts') -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in '.ttf', '.otf' }) {

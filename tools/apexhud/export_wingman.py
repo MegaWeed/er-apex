@@ -22,6 +22,7 @@ REPO = Path(__file__).resolve().parents[2]
 WEAPONS = {'wingman': ('mp_weapon_wingman.txt', 'rui/weapon_icons/r5/weapon_wingman', '#WPN_WINGMAN_SHORT'),
            'r99': ('mp_weapon_r97.txt', 'rui/weapon_icons/r5/weapon_r97', '#WPN_R97_SHORT'),
            'flatline': ('mp_weapon_vinson.txt', 'rui/weapon_icons/r5/weapon_flatline', '#WPN_VINSON_SHORT'),
+           'sentinel': ('mp_weapon_sentinel.txt', 'rui/weapon_icons/r5/weapon_sentinel', '#WPN_SENTINEL_SHORT'),
            # the kunai (the kill feed's icon for a swing): its melee skin's `equipImage` (item flavour
            # settings/itemflav/melee_skin/kunai.rpak; its weapon settings' hud_icon is the generic fist)
            'kunai': ('melee_wraith_kunai.txt', 'rui/menu/buttons/melee_skins/wraith_kunai', None)}

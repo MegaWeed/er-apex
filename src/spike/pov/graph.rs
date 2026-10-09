@@ -87,6 +87,7 @@ pub enum Weapon {
     Wingman,
     R99,
     Flatline,
+    Sentinel,
 }
 
 impl Weapon {
@@ -98,6 +99,7 @@ impl Weapon {
             Weapon::Wingman => "wm_",
             Weapon::R99 => "r9_",
             Weapon::Flatline => "fl_",
+            Weapon::Sentinel => "sn_",
         }
     }
 }
@@ -202,6 +204,26 @@ static FL_DEFS: [SeqDef; 15] = [
     def("fl_wind_effect_layer", &[(1, 30.0), (16, 30.0)], Axes::Velocity, FADE, FADE, false),
 ];
 
+/// The Sentinel's (retail `sentinel_base_v_animRig.qc` through
+/// apex-data/pov/octane_wingman/sentinel_sequences.json; QC fades as given, else FADE).
+static SN_DEFS: [SeqDef; 15] = [
+    def("sn_ads_in", &[(11, 30.0), (11, 30.0)], Axes::Crouch, 0.1, FADE, false),
+    def("sn_ads_out", &[(11, 30.0), (11, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("sn_idle", &[(231, 30.0), (231, 30.0)], Axes::Ads, 0.3, 0.3, true),
+    def("sn_crouch", &[(231, 30.0), (231, 30.0)], Axes::Ads, 0.3, 0.3, true),
+    def("sn_idle_to_crouch", &[(29, 30.0), (191, 30.0)], Axes::Ads, FADE, FADE, false),
+    def("sn_crouch_to_idle", &[(29, 30.0), (191, 30.0)], Axes::Ads, FADE, FADE, false),
+    def("sn_fire", &[(33, 30.0), (33, 30.0), (32, 30.0), (33, 30.0)], Axes::AdsCrouch, 0.05, FADE, false),
+    def("sn_jump", &[(31, 30.0), (22, 30.0), (31, 30.0), (22, 30.0)], Axes::AdsCrouch, FADE, 0.35, false),
+    def("sn_land", &[(19, 30.0), (19, 30.0), (19, 30.0), (19, 30.0)], Axes::AdsCrouch, 0.05, 0.35, false),
+    def("sn_sprint", &[(21, 36.0)], Axes::One, FADE, FADE, true),
+    def("sn_sprintraise", &[(11, 30.0)], Axes::One, FADE, FADE, false),
+    def("sn_sprintslide", &[(14, 30.0)], Axes::One, FADE, FADE, false),
+    def("sn_reload", &[(113, 30.0), (113, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("sn_reload_empty", &[(131, 30.0), (131, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("sn_wind_effect_layer", &[(1, 30.0), (16, 30.0)], Axes::Velocity, FADE, FADE, false),
+];
+
 impl Seq {
     pub const ALL: [Seq; 15] = [
         Seq::AdsIn,
@@ -234,6 +256,7 @@ impl Seq {
             Weapon::Wingman => &WM_DEFS[self as usize],
             Weapon::R99 => &R9_DEFS[self as usize],
             Weapon::Flatline => &FL_DEFS[self as usize],
+            Weapon::Sentinel => &SN_DEFS[self as usize],
         }
     }
 

@@ -62,8 +62,10 @@ fn run(dir: PathBuf, rx: mpsc::Receiver<Msg>) {
     let kunai = dir.join("kunai");
     // the Flatline's (the weapon wheel; `--set flatline`)
     let flatline = dir.join("flatline");
+    // the Sentinel's (`--set sentinel`)
+    let sentinel = dir.join("sentinel");
     let mut dirs = vec![dir.as_path()];
-    for set in [&octane, &defender, &frag, &wingman, &r99, &kunai, &flatline] {
+    for set in [&octane, &defender, &frag, &wingman, &r99, &kunai, &flatline, &sentinel] {
         if set.join("manifest.json").exists() {
             dirs.push(set.as_path());
         }
