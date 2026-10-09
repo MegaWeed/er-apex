@@ -8,8 +8,9 @@
 //!   over `grapple_speedRampTime` 1.5 s, the velocity turned onto it at `grapple_accel` 1500 u/s²,
 //!   gravity at `grapple_gravityFracMin`..`Max` 0.25..0.7 of itself (the less, the steeper up the
 //!   pull: 推断 how the game picks between them), `grapple_attachVerticalBoost` 200 up off the ground;
-//!   the controller's own air control on top of it (`grapple_airAccel` 650: the player's air
-//!   acceleration stands in, 推断);
+//!   only along the cable: the speed across it is kept, so the body swings, and the move keys
+//!   push across the cable at `grapple_airAccel` 650 u/s² up to `grapple_airSpeedMax` 420 in the
+//!   keys' direction (Apex's air strafing; the user's 2026-10-09 report: WASD did nothing);
 //! - it lets go within `grapple_detachLengthMax` 50 of the hook, on a jump or Q, after
 //!   `grapple_detachLowSpeedTime` 1.5 s under `grapple_detachLowSpeedThreshold` 250 u/s, or after
 //!   MAX_ATTACHED; letting go adds `grapple_detachVerticalBoost` 200 up to
@@ -32,6 +33,8 @@ const RAMP_MIN: f32 = 50.0;
 const RAMP_MAX: f32 = 800.0;
 const RAMP_TIME: f32 = 1.5;
 const ACCEL: f32 = 1500.0;
+const AIR_ACCEL: f32 = 650.0;
+const AIR_SPEED_MAX: f32 = 420.0;
 const GRAVITY_MIN: f32 = 0.25;
 const GRAVITY_MAX: f32 = 0.7;
 const ATTACH_BOOST: f32 = 200.0;
@@ -187,10 +190,23 @@ pub fn update(dt: f32) {
             }
             let dir = to / dist;
             let speed = RAMP_MIN + (RAMP_MAX - RAMP_MIN) * (t / RAMP_TIME).min(1.0);
-            let want = dir * speed;
-            let dv = want - v;
+            // the pull works along the cable; across it the body keeps its speed (the swing)
+            let along = v.dot(dir);
+            let across = v - dir * along;
             let step = ACCEL * dt;
-            let v = if dv.length() <= step { want } else { v + dv.normalize() * step };
+            let along = if (speed - along).abs() <= step { speed } else { along + (speed - along).signum() * step };
+            // the move keys push across the cable, Quake-style: up to AIR_SPEED_MAX their way
+            let wish = super::kcc::wish();
+            let wish = wish - dir * wish.dot(dir);
+            let mut across = across;
+            if wish.length() > 1e-3 {
+                let w = wish.normalize();
+                let room = AIR_SPEED_MAX * wish.length().min(1.0) - across.dot(w);
+                if room > 0.0 {
+                    across += w * (AIR_ACCEL * dt).min(room);
+                }
+            }
+            let v = dir * along + across;
             let gravity = GRAVITY_MAX - (GRAVITY_MAX - GRAVITY_MIN) * dir.y.max(0.0);
             super::kcc::pull(v / UPM, gravity);
             State::Attached { anchor, t: t + dt, slow }
