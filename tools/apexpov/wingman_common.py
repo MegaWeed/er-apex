@@ -38,6 +38,10 @@ CONFIGS={
  # latline_v20_trshunter_v) on the Flatline's rig ptpov_vinson: the frame, the magazine, the
  # top cover (def_front_top: the charging handle side); the release and the barrel ride on them
  'fl':_config('fl','apex-data/assets/flatline','lg',12,'mdl/techart/mshop/weapons/class/assault/flatline/flatline_v20_trshunter_v','animrig/weapons/vinson/ptpov_vinson','flatline_v20_trshunter_v',('body_0_','sight_rear_on_1_','_0_'),('def_c_base','def_magazine','def_front_top'),('L_ThighTwist','L_CalfTwist','R_CalfTwist'),'Flatline'),
+ # the Sentinel (2026-10-09) on part LG's last free leaves (the feet's: the controller writes them in
+ # model space, the game's foot IK under them does not reach them): its base model, the frame, the
+ # bolt, the magazine; the bullet, the second magazine, its clip and the charge bolts ride on them
+ 'sn':_config('sn','apex-data/assets/sentinel','lg',13,'mdl/techart/mshop/weapons/class/sniper/sentinel/sentinel_base_v','animrig/techart/mshop/weapons/class/sniper/sentinel/sentinel_base_v_animRig','sentinel_base_v',('MAINBODY_0_','sight_front_1_'),('def_c_base','def_c_boltA','def_c_magazineA'),('L_FootTwist','R_FootTwist','L_Toe0'),'Sentinel'),
  'kn':_config('kn','apex-data/assets/kunai','lg',11,'mdl/techart/mshop/weapons/class/heirloom/wraith/v18_kunai/heirloom_wraith_v18_kunai_v','animrig/techart/mshop/weapons/class/heirloom/wraith/v18_kunai/heirloom_wraith_v18_kunai_v_animRig','heirloom_wraith_v18_kunai_v',('projectile_0_',),('def_magazine',),('R_CalfTwist1',),'kunai'),
 }
 def _braced_qc(c):
@@ -75,7 +79,8 @@ def selected(key=KEY):
   row=dict(name=mesh.Name(),vertices=mesh.VertexCount(),triangles=len(mesh.FaceBuffer())//3,material=mesh.Material().Name())
   if mesh.Name().startswith(c['meshes']):keep.append(mesh)
   else:omitted.append(dict(row,reason=f'{c["note"]}: attachment bodygroup, not shown'))
- require(len(keep)==len(c['meshes']),f'Unexpected {c["note"]} default mesh count');return mdl,keep,omitted
+ # every default prefix found (the Sentinel's MAINBODY has two meshes: its frame and its charge lights)
+ require(all(any(m.Name().startswith(p) for m in keep) for p in c['meshes']) and len(keep)>=len(c['meshes']),f'Unexpected {c["note"]} default mesh count');return mdl,keep,omitted
 
 def read_pack(path):
  """weapons_common.read_pack with group 9 allowed."""

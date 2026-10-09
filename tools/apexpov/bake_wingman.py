@@ -75,7 +75,7 @@ def bake(out=None):
  wm.require(all(a['raw']==b['raw'] for a,b in zip(back['bones'],base['bones'])) and all(a['raw']==b['raw'] and a['group']==b['group'] for a,b in zip(back['carrier_records'],base['carrier_records'])),'T022 records changed')
  old=len(base['bones'])
  for n,c in base['clips'].items():wm.require(np.array_equal(back['clips'][n]['poses'][:,:old],c['poses']) and np.array_equal(back['clips'][n]['weights'][:old],c['weights']),f'T022 clip changed: {n}')
- audit['output']=wm.info(path);wm.save(out/'wingman-pack-audit.json',audit);wm.save(out/'wingman_carriers.json',carriers);wm.save(out/'wingman_sequences.json',table['wm']);wm.save(out/'r99_sequences.json',table['r9']);wm.save(out/'kunai_sequences.json',table['kn']);wm.save(out/'flatline_sequences.json',table['fl'])
+ audit['output']=wm.info(path);wm.save(out/'wingman-pack-audit.json',audit);wm.save(out/'wingman_carriers.json',carriers);wm.save(out/'wingman_sequences.json',table['wm']);wm.save(out/'r99_sequences.json',table['r9']);wm.save(out/'kunai_sequences.json',table['kn']);wm.save(out/'flatline_sequences.json',table['fl']);wm.save(out/'sentinel_sequences.json',table['sn'])
  print(f'PASS wingman bake: {len(pack["bones"])} bones / {len(pack["carrier_records"])} carriers / {len(pack["clips"])} clips; {path.stat().st_size} bytes',flush=True);return path
 
 

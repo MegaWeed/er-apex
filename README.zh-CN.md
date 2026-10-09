@@ -12,7 +12,8 @@
 
 **武器**
 
-- **五把枪**：Wingman（开局拿在手上）、R-99、R-301、平行步枪（青色热情皮肤模型）、Charge Rifle。第一人称模型、动画、音效、HUD 图标都由 `export-assets.ps1` 第 8 步从本机 Apex 导出。
+- **六把枪**：Wingman（开局拿在手上）、R-99、R-301、平行步枪（青色热情皮肤模型）、哨兵、Charge Rifle。
+- **哨兵**（特意改过）：全自动每秒 3 发，弹匣 7 发，每 0.4 秒自动补 1 发（不用换弹），用充能后的开火音效；**子弹自动追踪**：开枪时转向准星附近 60 米、20° 内最近的敌人（ini `homing`、`homing_range`、`homing_angle`、`homing_height` 可改，默认值写在 `src/spike/homing.rs` 开头）。第一人称模型、动画、音效、HUD 图标都由 `export-assets.ps1` 第 8 步从本机 Apex 导出。
 - **武器轮盘**：按住 Tab，转视角（或按 1～3）选枪，松开就换。按 2 仍是 Charge Rifle。
 - **R-99 用刀锋（Cutting Edge）模型**（进化皮肤模型 `r99_react_v20_ascension_v`），套在原版 R-99 的骨架上播放动画。
 - **检视动作**：按 5 播放手中武器的检视和音效，开火、开镜、换弹、切枪、冲刺或用技能会打断。
@@ -256,7 +257,7 @@ python tools/fusemesh/convert_fuse.py --geometry-only   # 只算骨架对齐 →
 python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS   # → er-data\s4\fuse_er.anim
 ```
 
-**8. Wingman、R-99、平行步枪与苦无（约 16 分钟，本 fork 新增）**
+**8. Wingman、R-99、平行步枪、哨兵与苦无（约 20 分钟，本 fork 新增）**
 
 和前面几步一样，从本机 Apex 导出 Wingman、R-99、R-99 的刀锋模型和恶灵的传家宝苦无。`build_wingman.py` 在第 6 步 `octane_pov_weapons` 的基础上，把它们加进模型 998 和动画包，并套用可选的皮肤。
 
@@ -266,15 +267,18 @@ python tools/apexassets/r99_assets.py
 python tools/apexassets/r99_ascension_assets.py       # 刀锋（r99_react_v20_ascension_v）
 python tools/apexassets/kunai_assets.py               # 恶灵传家宝苦无（heirloom_wraith_v18_kunai_v）
 python tools/apexassets/flatline_assets.py            # 平行步枪，青色热情（flatline_v20_trshunter_v）
+python tools/apexassets/sentinel_assets.py            # 哨兵（sentinel_base_v）
 python tools/apexpov/bake_wingman.py                  # → apex-data\pov\octane_wingman\fuse_pov.anim
 python tools/fusepov/build_wingman.py                 # → er-data\s3\octane_pov_wingman（模型 998）；皮肤见下
 python tools/fuseaudio/export_audio.py --set wingman
 python tools/fuseaudio/export_audio.py --set r99
 python tools/fuseaudio/export_audio.py --set kunai
 python tools/fuseaudio/export_audio.py --set flatline
+python tools/fuseaudio/export_audio.py --set sentinel
 python tools/apexhud/export_wingman.py --legend octane
 python tools/apexhud/export_wingman.py --legend octane --weapon r99
 python tools/apexhud/export_wingman.py --legend octane --weapon flatline
+python tools/apexhud/export_wingman.py --legend octane --weapon sentinel
 python tools/apexhud/export_wingman.py --legend octane --weapon kunai
 python tools/apexhud/custom_font.py                   # 仅当 apex-data\fonts 里有字体：→ apex-data\hud\custom_font
 ```
