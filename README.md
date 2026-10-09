@@ -275,6 +275,7 @@ python tools/fuseaudio/export_audio.py --set flatline
 python tools/apexhud/export_wingman.py --legend octane
 python tools/apexhud/export_wingman.py --legend octane --weapon r99
 python tools/apexhud/export_wingman.py --legend octane --weapon flatline
+python tools/apexhud/export_wingman.py --legend octane --weapon kunai
 python tools/apexhud/custom_font.py                   # only with fonts in apex-data\fonts: -> apex-data\hud\custom_font
 ```
 

@@ -85,6 +85,9 @@ const R99_SLOTS: [&str; 4] = EMPTY_SLOTS;
 /// The VK-47 Flatline (the weapon wheel; tools/apexhud/export_wingman.py `--weapon flatline`): its
 /// `hud_icon`, heavy ammo (its colour; the R-301's badge stands in: 推断), automatic, the R-301's slots.
 const FLATLINE_ICON: &str = "rui/weapon_icons/r5/weapon_flatline";
+/// The kunai (a swing in the holstered mode): its melee skin's `equipImage` (export_wingman.py
+/// `--weapon kunai`), the kill feed's icon for it.
+const KUNAI_ICON: &str = "rui/menu/buttons/melee_skins/wraith_kunai";
 pub const IMAGES: &[(&str, tex::Kind)] = &[
     (BATTERY_ICON, tex::Kind::Color),
     (AMMO_BADGE, tex::Kind::Color),
@@ -103,6 +106,7 @@ pub const IMAGES: &[(&str, tex::Kind)] = &[
     (WINGMAN_ICON, tex::Kind::Color),
     (R99_ICON, tex::Kind::Color),
     (FLATLINE_ICON, tex::Kind::Color),
+    (KUNAI_ICON, tex::Kind::Color),
     // the frag grenade's `hud_icon` (U9; tools/apexhud/export_extra.py)
     (super::grenade::ICON, tex::Kind::Color),
 ];
@@ -684,6 +688,11 @@ fn kill_feed(p: &Pen, pack: &Pack) {
         if weapon == 2 {
             let s = H - 6.0;
             p.image(super::grenade::ICON, [x - (GUN + s) * 0.5, y + 3.0, s, s], a);
+        } else if weapon == 3 {
+            // the kunai's picture (98 x 112) on its side would be too small: upright, as tall as the line
+            let h = H - 4.0;
+            let w = h * 98.0 / 112.0;
+            p.image(KUNAI_ICON, [x - (GUN + w) * 0.5, y + 2.0, w, h], a);
         } else {
             p.image(look(weapon).icon, [x - GUN, y + 3.0, GUN, H - 6.0], a);
         }

@@ -574,7 +574,8 @@ fn melee_update(fire: bool, can: bool) {
     // the swing's sounds (`melee_idle_swipe` frames 0 and 2; stand-ins: export_audio.py --set kunai)
     crate::audio::play("karambit_mvmt_melee_idle_swipe_1p", R301_VOLUME);
     crate::audio::play_in("octane_effort_melee_1p", R301_VOLUME, 2.0 / 30.0);
-    let hit = super::gun::fire_ray_ex(0.0, (0.0, 0.0), glam::Vec3::ZERO, 2, MELEE_RANGE, true, |_, _| MELEE_DAMAGE * super::gun::damage_mult());
+    // (the kill feed's icon: 3 the kunai: hud/apex.rs kill_feed)
+    let hit = super::gun::fire_ray_ex(0.0, (0.0, 0.0), glam::Vec3::ZERO, 3, MELEE_RANGE, true, |_, _| MELEE_DAMAGE * super::gun::damage_mult());
     if let Some(line) = hit.and_then(|o| o.line) {
         crate::audio::play("generic_kunaiimpact_1p_vs_3p", R301_VOLUME);
         log(format!("melee: {line}"));
