@@ -434,7 +434,7 @@ pub fn holster_check() {
 
 pub fn enabled() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| paths::flag("gun"))
+    *ON.get_or_init(|| paths::flag("gun")) && crate::mode::apex()
 }
 
 /// ChrIns_PreBehaviorSafe, right after the game turned the pad / mouse into character actions:

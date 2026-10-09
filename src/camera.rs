@@ -76,6 +76,10 @@ pub enum Mode {
 }
 
 pub fn mode() -> Mode {
+    // F5 (mode.rs): the Tarnished has the game's own camera
+    if !crate::mode::apex() {
+        return Mode::Game;
+    }
     static M: std::sync::OnceLock<Mode> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
         if paths::flag("first_person") {

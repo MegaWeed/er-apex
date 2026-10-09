@@ -256,7 +256,7 @@ fn stim_severity(t: f32) -> f32 {
 /// Once a frame (before the movement controller steps): the ability keys, the tossed pad's flight,
 /// the pad's launch.
 pub fn update(dt: f32) {
-    if !crate::state::in_world() || lethal::fuse_hp().is_some_and(|hp| hp <= 0.0) {
+    if !crate::state::in_world() || !crate::mode::apex() || lethal::fuse_hp().is_some_and(|hp| hp <= 0.0) {
         let mut o = octane();
         o.stim_started = None;
         o.stim_begun = false;

@@ -84,7 +84,16 @@ const TAKEN: u64 = (1 << 5) | (1 << 6) | (1 << 13) | (1 << 16) | (1 << 17) | (1 
 
 pub fn enabled() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| paths::flag("kcc"))
+    *ON.get_or_init(|| paths::flag("kcc")) && crate::mode::apex()
+}
+
+/// F5 to the Tarnished (mode.rs): the controller lets go of the player now (update stops calling).
+pub fn hands_off() {
+    let player = (unsafe { WorldChrMan::instance_mut() }).ok().and_then(|w| w.main_player.as_mut()).map(|p| &mut **p);
+    if let Some(k) = KCC.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+        k.release(player);
+    }
+    MOVEMENT_TAKEN.store(false, Ordering::Relaxed);
 }
 
 fn params() -> MoveParams {

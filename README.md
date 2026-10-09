@@ -16,6 +16,7 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 - **No DLC needed**: without Shadow of the Erdtree, `erextract` skips `DLC.bhd`.
 - `export-assets.ps1` has a step 8 that makes the Wingman's assets.
 - **Weapon wheel**: hold Tab, turn the view (or press 1-3) to pick the R-301, the R-99, the Wingman or the Charge Rifle, let go to switch; the R-99 is exported like the Wingman (step 8).
+- **F5**: back to the Elden Ring character (the game's own movement, camera, HUD, armour and weapons; the mod's guns and abilities off), F5 again for Octane.
 - **Magazines**: Wingman 8, Charge Rifle 8.
 - **Targets**: every character but the player's side (teams 1, 2, 8, 12; ini `friendly_teams`) can be hit, as in Elden Ring.
 - **Movement**: the ground's collision is read again every second and a fall into the ground is caught; on a lift the game carries the player until it stops.
