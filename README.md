@@ -13,7 +13,7 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 **Weapons**
 
 - **Six guns**: the Wingman (in hand at the start), the R-99, the R-301, the VK-47 Flatline (its Teal Zeal skin model), the Sentinel and the Charge Rifle.
-- **Sentinel** (changed on purpose): automatic at 3 a second, 7 rounds, a round back into the magazine every 0.4 s (no reload), the amped shot's sound, and **homing shots**: a shot turns to the enemy nearest the crosshair within 60 m and 20° (ini `homing`, `homing_range`, `homing_angle`, `homing_height`; the defaults are at the top of `src/spike/homing.rs`). Their first-person models, animations, sounds and HUD icons are all exported from your Apex install by `export-assets.ps1` step 8.
+- **Sentinel** (changed on purpose): automatic at 3 a second, 7 rounds, a round back into the magazine every 0.4 s (no reload), the amped shot's sound, and **homing rounds**: with an enemy in a cone straight ahead (60 m, 30° each side; the crosshair does not move), a shot is a glowing round that flies from the muzzle, curves after the enemy and hits it when it gets there (ini `homing`, `homing_range`, `homing_angle`, `homing_height`, `homing_speed`; the defaults are at the top of `src/spike/homing.rs`). Their first-person models, animations, sounds and HUD icons are all exported from your Apex install by `export-assets.ps1` step 8.
 - **Weapon wheel**: hold Tab, turn the view (or press 1-3) to pick a gun, let go to switch. Key 2 is still the Charge Rifle.
 - **The R-99 is the Cutting Edge model** (reactive skin model `r99_react_v20_ascension_v`), animated on the base R-99's rig.
 - **Inspect**: key 5 plays the inspect of the gun in hand, with its sounds; a shot, aiming, a reload, a switch, sprint or an ability cuts it.
