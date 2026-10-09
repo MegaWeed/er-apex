@@ -416,8 +416,25 @@ fn number_keys() -> Option<[bool; 6]> {
     Some([down(b'1'), down(b'2'), down(b'5'), down(0x09), down(b'3'), down(b'4')])
 }
 
+/// A choice of the weapon wheel: a gun into slot 1, the Charge Rifle (slot 2), or Q's ability (the
+/// stim or Pathfinder's grapple: grapple.rs; the user's 2026-10-09 ask).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Pick {
+    Gun(Option<Gun>),
+    Q(super::grapple::QAbility),
+}
+
 /// The weapon wheel's choices, clockwise from the top.
-pub const WHEEL: [(Option<Gun>, &str); 6] = [(Some(Gun::R301), "R-301"), (Some(Gun::R99), "R-99"), (Some(Gun::Wingman), "Wingman"), (Some(Gun::Flatline), "Flatline"), (Some(Gun::Sentinel), "Sentinel"), (None, "Charge Rifle")];
+pub const WHEEL: [(Pick, &str); 8] = [
+    (Pick::Gun(Some(Gun::R301)), "R-301"),
+    (Pick::Gun(Some(Gun::R99)), "R-99"),
+    (Pick::Gun(Some(Gun::Wingman)), "Wingman"),
+    (Pick::Gun(Some(Gun::Flatline)), "Flatline"),
+    (Pick::Gun(Some(Gun::Sentinel)), "Sentinel"),
+    (Pick::Gun(None), "Charge Rifle"),
+    (Pick::Q(super::grapple::QAbility::Stim), "Stim"),
+    (Pick::Q(super::grapple::QAbility::Grapple), "Grapple"),
+];
 /// How far the view must turn (degrees) to point at a choice of the wheel.
 const WHEEL_DEADZONE: f32 = 2.0;
 
@@ -472,7 +489,10 @@ fn wheel_step(tab: bool, pick: Option<usize>) {
             *w = None;
             drop(w);
             if let Some(k) = chosen {
-                log(select_gun(WHEEL[k].0, "wheel"));
+                log(match WHEEL[k].0 {
+                    Pick::Gun(g) => select_gun(g, "wheel"),
+                    Pick::Q(a) => super::grapple::select(a, "wheel"),
+                });
             }
         }
         (false, None) => {}

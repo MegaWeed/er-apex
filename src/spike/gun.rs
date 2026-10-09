@@ -995,6 +995,16 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
     Some(RayOut { line: Some(format!("hit npc {npc} {} at {t:.1} m for {amount:.1}: {line}", zone.name())), end, on: RayEnd::Target })
 }
 
+/// Where a ray from `start` along `delta` (world metres) first meets the map (the game's own ray
+/// cast, as the shots' walls; the grapple's hook).
+pub(super) fn map_ray(start: Vec3, delta: Vec3) -> Option<Vec3> {
+    let wcm = unsafe { WorldChrMan::instance() }.ok()?;
+    let me = wcm.main_player.as_ref()?;
+    let h = unsafe { CSHavokMan::instance() }.ok()?;
+    let w = h.phys_world.cast_ray(MAP_RAY, &HavokPosition(start.x, start.y, start.z, 0.0), PositionDelta(delta.x, delta.y, delta.z), me)?;
+    Some(Vec3::new(w.0, w.1, w.2))
+}
+
 /// The zone at a height on a target (0 its feet .. 1 its top).
 pub(super) fn zone_at(y: f32) -> Zone {
     if y >= HEAD_ZONE { Zone::Head } else if y < LEG_ZONE { Zone::Legs } else { Zone::Body }

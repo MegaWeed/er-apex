@@ -420,6 +420,21 @@ pub fn launch(velocity: Vec3, double_jump: bool, gravity_scale: f32) -> bool {
     ctl.launch(v3(velocity / MPU), double_jump, gravity_scale).is_ok()
 }
 
+/// Sets the velocity (world m/s) with gravity so scaled (Pathfinder's grapple each frame:
+/// er-apex-move `Controller::pull`). False with the controller off.
+pub fn pull(velocity: Vec3, gravity_scale: f32) -> bool {
+    let mut g = KCC.lock().unwrap_or_else(|e| e.into_inner());
+    let Some(ctl) = g.as_mut().and_then(|k| k.ctl.as_mut()) else { return false };
+    ctl.pull(v3(velocity / MPU), gravity_scale).is_ok()
+}
+
+/// The velocity (world m/s), whether on the ground.
+pub fn velocity() -> Option<(Vec3, bool)> {
+    let g = KCC.lock().unwrap_or_else(|e| e.into_inner());
+    let ctl = g.as_ref()?.ctl.as_ref()?;
+    Some((g3(&ctl.state.velocity) * MPU, ctl.state.grounded))
+}
+
 /// A step's events for `kcc trace` ("-": none).
 fn events_line(e: &MoveEvents) -> String {
     let mut s: Vec<String> = Vec::new();

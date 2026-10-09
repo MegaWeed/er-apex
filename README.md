@@ -31,6 +31,7 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 - **Keyboard and mouse prompts**: by default the game sees no controller, so its button prompts are keyboard and mouse. To play with a controller: `pwsh play.ps1 -Pad`.
 - **Targets**: every character but the player's side (teams 1, 2, 8, 12; ini `friendly_teams`) can be hit, as in ELDEN RING: dogs, birds, invaders, dragons and bosses too.
 - **Movement**: the ground's collision is read again every second and a fall into the ground is caught (late-loaded map tiles); on a lift, up or down, the game carries the player until it stops.
+- **Pathfinder's grapple**: the weapon wheel (hold Tab) also picks Q's ability, the stim or the grapple. With the grapple, Q fires the hook (out to 850 units, about 21 m) and it pulls you in with Apex's own numbers (speed ramping 50 to 800 over 1.5 s, 1500 acceleration, lighter gravity on the way up, a boost when it lets go); Space, Q again, reaching the hook or slowing down lets go. No cooldown. Its sounds are Apex's; a cable is drawn to the hook (no first-person animation yet).
 - **Kill feed names**: a monster shows its kind's name from the game (its spirit ashes' name, in the game's language) where the game has one, else its Chinese community name (`tools/apexhud/monster_names_zhocn.json`, by its Paramdex name), else that English name; only then "enemy".
 - **Hit sound**: the first hit that hurts an enemy plays Apex's armour-break shatter, once per enemy (`--set hits`).
 - **Charge Rifle sounds** stop with the shot: no firing sound after a cancel, no loop when a beam hits flesh.
@@ -278,11 +279,13 @@ python tools/fuseaudio/export_audio.py --set kunai
 python tools/fuseaudio/export_audio.py --set flatline
 python tools/fuseaudio/export_audio.py --set sentinel
 python tools/fuseaudio/export_audio.py --set hits
+python tools/fuseaudio/export_audio.py --set grapple
 python tools/apexhud/export_wingman.py --legend octane
 python tools/apexhud/export_wingman.py --legend octane --weapon r99
 python tools/apexhud/export_wingman.py --legend octane --weapon flatline
 python tools/apexhud/export_wingman.py --legend octane --weapon sentinel
 python tools/apexhud/export_wingman.py --legend octane --weapon kunai
+python tools/apexhud/export_wingman.py --legend octane --weapon grapple
 python tools/apexhud/custom_font.py                   # only with fonts in apex-data\fonts: -> apex-data\hud\custom_font
 ```
 

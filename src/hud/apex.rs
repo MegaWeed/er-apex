@@ -90,6 +90,9 @@ const FLATLINE_ICON: &str = "rui/weapon_icons/r5/weapon_flatline";
 /// The Sentinel (the weapon wheel; tools/apexhud/export_wingman.py `--weapon sentinel`): its
 /// `hud_icon`, sniper ammo, automatic here (the user's), the sniper's slots.
 const SENTINEL_ICON: &str = "rui/weapon_icons/r5/weapon_sentinel";
+/// Pathfinder's grapple (Q's other ability: spike/grapple.rs): its item flavour's icon
+/// (`settings/itemflav/ability/pathfinder_tac_grapple.rpak`; export_wingman.py `--weapon grapple`).
+pub const GRAPPLE_ICON: &str = "rui/hud/tactical_icons/tactical_pathfinder";
 const KUNAI_ICON: &str = "rui/menu/buttons/melee_skins/wraith_kunai";
 pub const IMAGES: &[(&str, tex::Kind)] = &[
     (BATTERY_ICON, tex::Kind::Color),
@@ -111,6 +114,7 @@ pub const IMAGES: &[(&str, tex::Kind)] = &[
     (FLATLINE_ICON, tex::Kind::Color),
     (SENTINEL_ICON, tex::Kind::Color),
     (KUNAI_ICON, tex::Kind::Color),
+    (GRAPPLE_ICON, tex::Kind::Color),
     // the frag grenade's `hud_icon` (U9; tools/apexhud/export_extra.py)
     (super::grenade::ICON, tex::Kind::Color),
 ];
@@ -564,6 +568,7 @@ pub fn draw(dl: &DrawListMut, pack: &Pack, size: [f32; 2], fov: f32) {
 /// The weapon wheel (Tab held: spike/weapons.rs): a sector each round the screen's centre, clockwise
 /// from the top the R-301, the R-99, the Wingman, the Flatline and the Charge Rifle, each with its
 /// icon and name; the one pointed at bright, the one in hand marked.
+/// Then Q's two abilities (the stim, Pathfinder's grapple).
 fn weapon_wheel(p: &Pen, pack: &Pack, hovered: Option<usize>, c: &Colors) {
     use spike::weapons::{Gun, Slot};
     let (cx, cy) = (960.0, 540.0);
@@ -579,7 +584,12 @@ fn weapon_wheel(p: &Pen, pack: &Pack, hovered: Option<usize>, c: &Colors) {
             Gun::Sentinel => 4,
         },
     };
-    let icons = ["weapon_slot", R99_ICON, WINGMAN_ICON, FLATLINE_ICON, SENTINEL_ICON, CHARGE_RIFLE_ICON];
+    let icons = ["weapon_slot", R99_ICON, WINGMAN_ICON, FLATLINE_ICON, SENTINEL_ICON, CHARGE_RIFLE_ICON, "tactical", GRAPPLE_ICON];
+    // Q's ability in use marked as well
+    let q_held = match spike::grapple::q_ability() {
+        spike::grapple::QAbility::Stim => 6,
+        spike::grapple::QAbility::Grapple => 7,
+    };
     let n = spike::weapons::WHEEL.len();
     let sector = std::f32::consts::TAU / n as f32;
     for (k, (_, name)) in spike::weapons::WHEEL.iter().enumerate() {
@@ -601,10 +611,12 @@ fn weapon_wheel(p: &Pen, pack: &Pack, hovered: Option<usize>, c: &Colors) {
             p.line(w[0], w[1], rim, if on { 3.0 } else { 1.5 });
         }
         let centre = at(mid, (r0 + r1) * 0.5);
-        p.image(icons[k], [centre[0] - 70.0, centre[1] - 38.0, 140.0, 56.0], if on { 1.0 } else { 0.8 });
+        let ability = matches!(spike::weapons::WHEEL[k].0, spike::weapons::Pick::Q(_));
+        let rect = if ability { [centre[0] - 19.0, centre[1] - 44.0, 38.0, 49.0] } else { [centre[0] - 55.0, centre[1] - 34.0, 110.0, 44.0] };
+        p.image(icons[k], rect, if on { 1.0 } else { 0.8 });
         let label = if k == 0 { pack.weapon_name.as_str() } else { name };
-        p.text(Face::Bold, label, centre[0], centre[1] + 26.0, 14.0, if on { c.white } else { alpha(c.white, 0.75) }, Align::Center);
-        if k == held {
+        p.text(Face::Bold, label, centre[0], centre[1] + 22.0, 13.0, if on { c.white } else { alpha(c.white, 0.75) }, Align::Center);
+        if k == held || k == q_held {
             p.text(Face::Body, "IN HAND", centre[0], centre[1] + 46.0, 10.0, alpha(c.white, 0.6), Align::Center);
         }
     }
@@ -876,7 +888,9 @@ fn player_frame(p: &Pen, pack: &Pack, hp: f32, c: &Colors) {
     p.image(BATTERY_ICON, centred(&q, 23.0, 44.0), 1.0);
     p.text(Face::Bold, "∞", 534.0, 1010.0, 14.0, alpha(c.white, 0.95), Align::Right);
     key_cap(p, [505.0, 1035.0, 20.0, 18.0], "4");
-    let cooling = !state.tactical_active && state.tactical_left > 0.0;
+    // Q's ability: the stim, or the grapple the weapon wheel picked (no cooldown: grapple.rs)
+    let grapple = spike::grapple::q_ability() == spike::grapple::QAbility::Grapple;
+    let cooling = !grapple && !state.tactical_active && state.tactical_left > 0.0;
     let q = slot(560.0);
     p.poly(&q, rgb(34, 33, 34, 0.7));
     dots(p, &q, rgb(150, 150, 150, 0.12));
@@ -884,7 +898,12 @@ fn player_frame(p: &Pen, pack: &Pack, hp: f32, c: &Colors) {
         p.poly(&q, [0.0, 0.0, 0.0, 0.45]);
     }
     p.outline(&q, alpha(c.rim, if cooling { 0.45 } else { 0.8 }), 1.5);
-    p.image("tactical", [570.0, 979.0, 62.0, 44.0], if cooling { 0.4 } else { 1.0 });
+    if grapple {
+        // (its icon is 252 x 324)
+        p.image(GRAPPLE_ICON, centred(&q, 34.0, 44.0), 1.0);
+    } else {
+        p.image("tactical", [570.0, 979.0, 62.0, 44.0], if cooling { 0.4 } else { 1.0 });
+    }
     if cooling {
         let n = format!("{:.0}", state.tactical_left.floor());
         let s = pack.strings.get("0xf90fd1bcaaced48a").filter(|s| !s.is_empty()).map_or(n.clone(), |f| f.replace("%s1", &n));
