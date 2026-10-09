@@ -20,6 +20,10 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 - **Wingman**: semi-auto, 8 rounds, 50 a shot, head ×1.5, reload 2.1 s, zoom 60°, Apex's view kick. **Charge Rifle**: 8 rounds.
 - **Custom skins (optional)**: put your own textures in `apex-data\skins\` and step 8 uses them (see [Weapon skins](#weapon-skins-optional)). No skin textures are in the repository.
 
+**HUD fonts (optional)**
+
+- Put your own `.ttf` / `.otf` files in `apex-data\fonts\` and the HUD draws its digits and English letters with them (everything else, Chinese included, stays in Apex's font). By default every text uses `Apex Regular` if it is there, else the first font; ini `hud_font_body`, `hud_font_numeric`, `hud_font_bold` (the file name without extension, lower case, or `off`) pick per face, `hud_font = off` turns them off. Make the atlas with `pwsh export-assets.ps1` (step 8) or `python tools/apexhud/custom_font.py`. No font files are in the repository.
+
 **Playing**
 
 - **F5**: back to your own ELDEN RING character, with the game's own movement and collision, camera, HUD, armour and weapons; the mod's guns, abilities and HUD are off. F5 again: Octane.
@@ -267,6 +271,7 @@ python tools/fuseaudio/export_audio.py --set wingman
 python tools/fuseaudio/export_audio.py --set r99
 python tools/apexhud/export_wingman.py --legend octane
 python tools/apexhud/export_wingman.py --legend octane --weapon r99
+python tools/apexhud/custom_font.py                   # only with fonts in apex-data\fonts: -> apex-data\hud\custom_font
 ```
 
 #### Weapon skins (optional)
