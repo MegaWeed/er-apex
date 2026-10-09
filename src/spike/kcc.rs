@@ -62,6 +62,8 @@ const WINDOW: Window = Window { radius: 12.0, down: 6.0, up: 6.0, column: 2.0, b
 const RECOVER_GAP_S: f32 = 2.0;
 /// Metres from the window's centre before the next window is fetched.
 const REFETCH: f32 = 4.0;
+/// A window is read again at least this often (seconds): the map's collision streams in late.
+const WINDOW_MAX_AGE_S: f32 = 1.0;
 /// Havok bodies read per frame while fetching a window (the world has ~4000; reading them all in
 /// one frame took 3-4 ms, journal 2026-10-04).
 const BODIES_PER_FRAME: usize = 400;
@@ -176,6 +178,10 @@ struct Kcc {
     origin: Vec3,
     /// Centre of the installed triangle window.
     window: Vec3,
+    /// When the window installed was read: re-read after `WINDOW_MAX_AGE_S` even standing still (the
+    /// game streams a map tile's collision in after he enters it: read too early, the window lacks
+    /// the floor ahead, 2026-10-08)
+    window_read: Instant,
     /// A window being read from the game, a few hundred bodies a frame.
     fetching: Option<QueryRun>,
     /// A window being built off-thread: its centre, its triangle count, the result.
@@ -199,6 +205,13 @@ struct Kcc {
     /// with, and when it was caught.
     carry: Option<(Vec3, Instant)>,
     last_recovery: Option<Instant>,
+    /// The game's ground under his feet last frame (its height) and the frames in a row it moved
+    /// while he stood still: a lift (`on_moving_ground`)
+    ground: Option<f32>,
+    ground_moving: u32,
+    /// On a lift: the game's ground under him last frame (released) and since when it has not moved:
+    /// the controller takes him back only once the lift has stood still for `LIFT_HOLD_MS`
+    lift: Option<(Option<f32>, Instant)>,
     /// In the air: where the flight comes down (the game's map ray along the arc) and when that
     /// was worked out (`window_centre`).
     landing: Option<(Vec3, Instant)>,
@@ -226,6 +239,7 @@ impl Kcc {
             ctl: None,
             origin: Vec3::ZERO,
             window: Vec3::ZERO,
+            window_read: Instant::now(),
             fetching: None,
             building: None,
             last: None,
@@ -238,6 +252,9 @@ impl Kcc {
             loco_frame: 0,
             carry: None,
             last_recovery: None,
+            ground: None,
+            ground_moving: 0,
+            lift: None,
             landing: None,
         }
     }
@@ -506,6 +523,20 @@ fn window_centre(k: &mut Kcc, at: Vec3, player: &PlayerIns) -> Vec3 {
     centre
 }
 
+/// The game keeps him on a lift until the ground under him has not moved for this long.
+const LIFT_HOLD_MS: u64 = 1500;
+
+/// Whether the game's ground under his feet has moved up or down for 3 frames in a row while he
+/// stood still (across and on the controller's ground): a lift or another moving platform.
+fn on_moving_ground(k: &mut Kcc, st: &er_apex_move::MoveState, pos: Vec3, player: &PlayerIns) -> bool {
+    let ground = st.grounded.then(|| wall_between(pos + Vec3::Y * 0.6, pos - Vec3::Y * 0.6, 0.0, player)).flatten().map(|g| g.y);
+    let still = k.last.is_some_and(|l| Vec3::new(pos.x - l.x, 0.0, pos.z - l.z).length() < 0.01);
+    let moved = matches!((ground, k.ground), (Some(g), Some(p)) if (g - p).abs() > 0.005);
+    k.ground_moving = if still && moved { k.ground_moving + 1 } else { 0 };
+    k.ground = ground;
+    k.ground_moving >= 3
+}
+
 fn wall_between(a: Vec3, b: Vec3, h: f32, player: &PlayerIns) -> Option<Vec3> {
     let havok = unsafe { CSHavokMan::instance() }.ok()?;
     let (a, d) = (a + Vec3::Y * h, b - a);
@@ -584,6 +615,7 @@ pub fn update(dt: f32) {
             super::octane::world_shift(d);
             super::grenade::world_shift(d);
             k.last = Some(here);
+            k.ground = None;
             k.fetching = None;
             k.building = None;
             for (t, _, _) in k.last_window.iter_mut() {
@@ -596,6 +628,22 @@ pub fn update(dt: f32) {
 
     // (re)start where the Tarnished stands, with a window fetched right away
     if k.ctl.is_none() {
+        // on a lift the game carries him until it has stood still a while (a lift going down left
+        // him standing on the air when the controller took him back mid-way, 2026-10-08)
+        if let Some((last, still)) = k.lift {
+            let ground = wall_between(here + Vec3::Y * 0.5, here - Vec3::Y * 3.0, 0.0, player).map(|g| g.y);
+            let moved = match (ground, last) {
+                (Some(g), Some(l)) => (g - l).abs() > 0.003,
+                (a, b) => a.is_some() != b.is_some(),
+            };
+            let still = if moved { Instant::now() } else { still };
+            if still.elapsed().as_millis() < LIFT_HOLD_MS as u128 {
+                k.lift = Some((ground, still));
+                return;
+            }
+            log(format!("kcc: the lift stopped at {here:.2?}: the controller takes him back"));
+            k.lift = None;
+        }
         if k.retry_at.is_some_and(|t| Instant::now() < t) {
             return;
         }
@@ -621,6 +669,7 @@ pub fn update(dt: f32) {
                 }
                 k.ctl = Some(c);
                 k.window = here;
+                k.window_read = Instant::now();
                 k.stats.tris = tris.len();
                 k.stats.starts += 1;
                 log(format!("kcc: controller on at {here:.2?} ({} triangles, anim {anim})", tris.len()));
@@ -640,7 +689,7 @@ pub fn update(dt: f32) {
     if k.building.is_none() {
         let (want, win) = window_for(k, at, player);
         match k.fetching.as_ref() {
-            None if want.distance(k.window) > REFETCH => k.fetching = Some(QueryRun::new(want, win)),
+            None if want.distance(k.window) > REFETCH || k.window_read.elapsed().as_secs_f32() > WINDOW_MAX_AGE_S => k.fetching = Some(QueryRun::new(want, win)),
             // in the air a window still being read for somewhere else (where he took off) is
             // dropped for the landing's: it would come too late
             Some(run) if airborne && want.distance(run.center) > REFETCH && want.distance(k.window) > REFETCH => {
@@ -687,6 +736,7 @@ pub fn update(dt: f32) {
             let old = std::mem::replace(&mut k.last_window, raw);
             std::thread::spawn(move || drop(old));
             k.window = centre;
+            k.window_read = Instant::now();
             k.stats.tris = n;
             k.stats.build_ms_max = k.stats.build_ms_max.max(ms);
             k.building = None;
@@ -790,6 +840,18 @@ pub fn update(dt: f32) {
         k.stats.stuck += 1;
     }
 
+    // a lift: the game's ground under him moves while he stands still (the controller's triangles
+    // are a still copy of it: the lift went up and he stayed, 2026-10-08): the game carries him
+    // until it stops
+    if on_moving_ground(k, &st, pos, player) {
+        log(format!("kcc: the ground moves under him at {pos:.2?} (a lift): the game carries him"));
+        k.ground = None;
+        k.ground_moving = 0;
+        k.release(Some(player));
+        k.lift = Some((None, Instant::now()));
+        return;
+    }
+
     // a step through a wall would show as map geometry between the last position and this one
     let mut caught = None;
     if let Some(last) = k.last.filter(|_| st.pose != Pose::Mantling) {
@@ -817,6 +879,22 @@ pub fn update(dt: f32) {
                 break;
             }
         }
+    }
+    // sinking through a floor at a shallow slant (more across than down: the check above lets it
+    // pass, and once below the map nothing catches him: 2026-10-08, The First Step, walking): the
+    // game's map between 0.3 and 1 m above his feet, straight up, means a floor cuts through him
+    // (a wall cannot, and no ceiling is that low). Only falling: on its own ground the controller
+    // walks up stairs and steep slopes with the game's ground that high under his middle (the
+    // user, 2026-10-08: the check snapped him on slopes and stairs); a floor it lacks drops him.
+    if caught.is_none()
+        && !st.grounded
+        && vel.y < 0.0
+        && st.pose != Pose::Mantling
+        && !k.last_recovery.is_some_and(|t| t.elapsed().as_secs_f32() < RECOVER_GAP_S)
+        && let Some(hit) = wall_between(pos + Vec3::Y * 1.0, pos + Vec3::Y * 0.3, 0.0, player)
+    {
+        log(format!("kcc: SINKING: the map {:.2} m above the feet at {pos:.3?} (pose {:?})", hit.y - pos.y, st.pose));
+        caught = Some(hit + Vec3::Y * 0.05);
     }
     if let Some(at) = caught {
         // stand him on the floor and restart the controller there next frame, with a window read
