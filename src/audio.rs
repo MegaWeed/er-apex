@@ -64,8 +64,10 @@ fn run(dir: PathBuf, rx: mpsc::Receiver<Msg>) {
     let flatline = dir.join("flatline");
     // the Sentinel's (`--set sentinel`)
     let sentinel = dir.join("sentinel");
+    // a damaging hit's (the armour break, `--set hits`)
+    let hits = dir.join("hits");
     let mut dirs = vec![dir.as_path()];
-    for set in [&octane, &defender, &frag, &wingman, &r99, &kunai, &flatline, &sentinel] {
+    for set in [&octane, &defender, &frag, &wingman, &r99, &kunai, &flatline, &sentinel, &hits] {
         if set.join("manifest.json").exists() {
             dirs.push(set.as_path());
         }
