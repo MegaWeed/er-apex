@@ -1,13 +1,16 @@
 <#
 Make the game assets (apex-data\, er-data\) from your own Apex Legends and ELDEN RING installs.
 Asks for the two game folders (found through Steam when it can), checks the tool chain, then runs
-the seven steps in order (about an hour, about 45 GB). Step 4 starts the game once.
+the eight steps in order (about 70 minutes, about 45 GB). Step 4 starts the game once.
 
   pwsh export-assets.ps1                              ask for the folders, run all steps
   pwsh export-assets.ps1 -ApexDir <dir> -EldenRingDir <dir>   no questions
   pwsh export-assets.ps1 -NoArena                     no test area (game.ps1 spawn then does nothing)
   pwsh export-assets.ps1 -Force                       make everything again, even what is already there
-  pwsh export-assets.ps1 -From 5 -Force               make steps 5 to 7 again
+  pwsh export-assets.ps1 -From 5 -Force               make steps 5 to 8 again
+  pwsh export-assets.ps1 -Skins <dir>                 weapon skins (default apex-data\skins): <dir>\wingman,
+                                                      <dir>\chargerifle, <dir>\r99; step 8 makes model 998
+                                                      again when the set of skins changes
 
 A command whose outputs are already there is skipped, so after a failure just run it again.
 
@@ -18,6 +21,7 @@ param(
     [string]$EldenRingDir,
     [ValidateRange(1, 8)][int]$From = 1,
     [switch]$NoArena,
+    [string]$Skins = 'apex-data\skins',
     [switch]$Force
 )
 $ErrorActionPreference = 'Stop'
@@ -241,7 +245,22 @@ Step 8 'the Wingman and the R-99 (about 8 min)' {
     Run 'apex-data\assets\r99\verification.json' python tools/apexassets/r99_assets.py
     Run 'apex-data\assets\r99_ascension\verification.json' python tools/apexassets/r99_ascension_assets.py
     Run 'apex-data\pov\octane_wingman\fuse_pov.anim' python tools/apexpov/bake_wingman.py
-    Run 'er-data\s3\octane_pov_wingman\wingman-verification.json' python tools/fusepov/build_wingman.py
+    # optional skins (not in git): each folder that is there replaces that weapon's textures; model 998
+    # is made again when the set of skins changes
+    $skinArgs = @()
+    foreach ($k in @(@('wingman', '--skin'), @('chargerifle', '--cr-skin'), @('r99', '--r99-skin'))) {
+        $d = Join-Path $Skins $k[0]
+        if (Test-Path (Join-Path $Root $d)) { $skinArgs += $k[1], $d }
+    }
+    $built = 'er-data\s3\octane_pov_wingman\wingman-verification.json'
+    $mark = Join-Path $Root 'er-data\s3\octane_pov_wingman\skins.txt'
+    $had = if (Test-Path $mark) { (Get-Content $mark -Raw).Trim() } else { '' }
+    if ($had -ne ($skinArgs -join ' ') -and (Test-Path (Join-Path $Root $built))) {
+        Write-Host "skins changed ($(if ($skinArgs) { $skinArgs -join ' ' } else { 'none' })): model 998 again" -ForegroundColor DarkGray
+        [IO.File]::Delete((Join-Path $Root $built))
+    }
+    Run $built python tools/fusepov/build_wingman.py @skinArgs
+    Set-Content $mark ($skinArgs -join ' ')
     Run 'apex-data\audio\wingman\manifest.json' python tools/fuseaudio/export_audio.py --set wingman
     Run 'apex-data\audio\r99\manifest.json' python tools/fuseaudio/export_audio.py --set r99
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_wingman.png' python tools/apexhud/export_wingman.py --legend octane
