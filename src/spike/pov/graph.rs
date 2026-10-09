@@ -86,6 +86,7 @@ pub enum Weapon {
     /// the R-301's slot's other guns (the weapon wheel: weapons.rs `Gun`)
     Wingman,
     R99,
+    Flatline,
 }
 
 impl Weapon {
@@ -96,6 +97,7 @@ impl Weapon {
             Weapon::ChargeRifle => "cr_",
             Weapon::Wingman => "wm_",
             Weapon::R99 => "r9_",
+            Weapon::Flatline => "fl_",
         }
     }
 }
@@ -180,6 +182,26 @@ static R9_DEFS: [SeqDef; 15] = [
     def("r9_wind_effect_layer", &[(1, 30.0), (16, 30.0)], Axes::Velocity, FADE, FADE, false),
 ];
 
+/// The VK-47 Flatline's (retail `ptpov_vinson.qc` through
+/// apex-data/pov/octane_wingman/flatline_sequences.json; QC fades as given, else FADE).
+static FL_DEFS: [SeqDef; 15] = [
+    def("fl_ads_in", &[(12, 30.0), (12, 30.0)], Axes::Crouch, 0.1, FADE, false),
+    def("fl_ads_out", &[(16, 30.0), (16, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("fl_idle", &[(190, 30.0), (191, 30.0)], Axes::Ads, 0.3, 0.3, true),
+    def("fl_crouch", &[(190, 30.0), (191, 30.0)], Axes::Ads, 0.3, 0.3, true),
+    def("fl_idle_to_crouch", &[(29, 30.0), (191, 30.0)], Axes::Ads, FADE, FADE, false),
+    def("fl_crouch_to_idle", &[(29, 30.0), (191, 30.0)], Axes::Ads, FADE, FADE, false),
+    def("fl_fire", &[(27, 30.0), (11, 30.0), (27, 30.0), (11, 30.0)], Axes::AdsCrouch, 0.05, FADE, false),
+    def("fl_jump", &[(31, 30.0), (22, 30.0), (31, 30.0), (22, 30.0)], Axes::AdsCrouch, FADE, 0.35, false),
+    def("fl_land", &[(19, 30.0), (19, 30.0), (19, 30.0), (19, 30.0)], Axes::AdsCrouch, 0.05, 0.35, false),
+    def("fl_sprint", &[(21, 36.0)], Axes::One, FADE, FADE, true),
+    def("fl_sprintraise", &[(11, 30.0)], Axes::One, FADE, FADE, false),
+    def("fl_sprintslide", &[(14, 30.0)], Axes::One, FADE, FADE, false),
+    def("fl_reload", &[(70, 30.0), (73, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("fl_reload_empty", &[(94, 30.0), (94, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("fl_wind_effect_layer", &[(1, 30.0), (16, 30.0)], Axes::Velocity, FADE, FADE, false),
+];
+
 impl Seq {
     pub const ALL: [Seq; 15] = [
         Seq::AdsIn,
@@ -211,6 +233,7 @@ impl Seq {
             Weapon::ChargeRifle => &CR_DEFS[self as usize],
             Weapon::Wingman => &WM_DEFS[self as usize],
             Weapon::R99 => &R9_DEFS[self as usize],
+            Weapon::Flatline => &FL_DEFS[self as usize],
         }
     }
 

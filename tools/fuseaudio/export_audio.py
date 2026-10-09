@@ -36,6 +36,7 @@ FRAG_OUT = OUT / 'frag_grenade'
 WINGMAN_OUT = OUT / 'wingman'
 R99_OUT = OUT / 'r99'
 KUNAI_OUT = OUT / 'kunai'
+FLATLINE_OUT = OUT / 'flatline'
 R5_SCRIPTS = s3record.R5_ROOT / 'platform/scripts'  # S3's scripts, as tools/s3_evidence.json recorded them
 GAME = gamedirs.apex()
 RSX = REPO / 'tools/apexassets/rsx_source/bin/Release_NoGui/rsx.exe'
@@ -431,6 +432,30 @@ def r99_references():
     return _refs_from_specs(specs)
 
 
+def flatline_references():
+    """The VK-47 Flatline in slot 1 (the weapon wheel): its retail weapon settings' sounds and its view
+    model's QC sounds (tools/apexassets/flatline_assets.py)."""
+    retail = REPO / 'apex-data/export/weapon/mp_weapon_vinson.txt'
+    qc = REPO / 'apex-data/assets/flatline/ability_sequences.json'
+    specs = [
+        ('Weapon_Vinson_FirstShot_1P', 'a burst starts', [(retail, 'burst_or_looping_fire_sound_start_1p')]),
+        ('Weapon_Vinson_Loop_1P', 'a burst goes on', [(retail, 'burst_or_looping_fire_sound_middle_1p')]),
+        ('Weapon_Vinson_LoopEnd_1P', 'a burst ends', [(retail, 'burst_or_looping_fire_sound_end_1p')]),
+        ('Weapon_Vinson_SecondShot_1P', 'a shot', [(retail, 'fire_sound_2_player_1p')]),
+        ('Weapon_R101_ADS_In', 'aim in', [(retail, 'sound_zoom_in')]),
+        ('Weapon_R101_ADS_Out', 'aim out', [(retail, 'sound_zoom_out')]),
+        ('Weapon_Vinson_Trigger', 'an empty trigger', [(retail, 'sound_dryfire')]),
+        ('Weapon_R101_Equip', 'drawn (draw frame 0)', [(qc, 'draw')]),
+        ('Weapon_Vinson_FirstPullout', 'drawn the first time (drawfirst frame 6)', [(qc, 'drawfirst')]),
+        ('Weapon_R101_UnEquip', 'put away (holster frame 0)', [(qc, 'holster')]),
+        ('weapon_vinson_inspect_basicNew', 'inspect (frame 0)', [(qc, 'inspect_basic_new')]),
+    ]
+    for event in ['Weapon_Vinson_Reload_MagOut', 'Weapon_Vinson_Reload_MagIn']:
+        specs.append((event, 'reload (QC frame)', [(qc, 'reload'), (qc, 'reload_empty')]))
+    specs.append(('Weapon_Vinson_ReloadEmpty_Charge', 'empty reload (QC frame)', [(qc, 'reload_empty')]))
+    return _refs_from_specs(specs)
+
+
 def kunai_references():
     """Wraith's heirloom kunai (the holstered mode, key 3): its view model's QC sounds
     (tools/apexassets/kunai_assets.py)."""
@@ -535,7 +560,7 @@ def frag_references():
 
 def set_root(root):
     """Read apex-data/ and the RSX build of another checkout (a worktree has neither)."""
-    global REPO, OUT, OCTANE_OUT, DEFENDER_OUT, FRAG_OUT, WINGMAN_OUT, R99_OUT, KUNAI_OUT, RSX
+    global REPO, OUT, OCTANE_OUT, DEFENDER_OUT, FRAG_OUT, WINGMAN_OUT, R99_OUT, KUNAI_OUT, FLATLINE_OUT, RSX
     REPO = Path(root).resolve()
     OUT = REPO / 'apex-data/audio'
     OCTANE_OUT = OUT / 'octane'
@@ -544,11 +569,12 @@ def set_root(root):
     WINGMAN_OUT = OUT / 'wingman'
     R99_OUT = OUT / 'r99'
     KUNAI_OUT = OUT / 'kunai'
+    FLATLINE_OUT = OUT / 'flatline'
     RSX = REPO / 'tools/apexassets/rsx_source/bin/Release_NoGui/rsx.exe'
 
 
 def output_directory(set_name, requested=None):
-    own = {'octane': OCTANE_OUT, 'defender': DEFENDER_OUT, 'frag': FRAG_OUT, 'wingman': WINGMAN_OUT, 'r99': R99_OUT, 'kunai': KUNAI_OUT}.get(set_name)
+    own = {'octane': OCTANE_OUT, 'defender': DEFENDER_OUT, 'frag': FRAG_OUT, 'wingman': WINGMAN_OUT, 'r99': R99_OUT, 'kunai': KUNAI_OUT, 'flatline': FLATLINE_OUT}.get(set_name)
     output = (requested if requested is not None else own if own is not None else OUT).resolve()
     if own is not None and not output.is_relative_to(own.resolve()):
         raise ValueError(f'The {set_name} output directory must stay inside {own}')
@@ -557,7 +583,7 @@ def output_directory(set_name, requested=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--set', choices=('r301', 'octane', 'defender', 'frag', 'wingman', 'r99', 'kunai'), default='r301', help='Sound set (default: r301)')
+    parser.add_argument('--set', choices=('r301', 'octane', 'defender', 'frag', 'wingman', 'r99', 'kunai', 'flatline'), default='r301', help='Sound set (default: r301)')
     parser.add_argument('--output-dir', type=Path, help='Override output root; Octane stays inside audio/octane/, the Charge Rifle inside audio/defender/, frag inside audio/frag_grenade/')
     parser.add_argument('--root', type=Path, help="Checkout whose apex-data/ and RSX build are used (default: this script's)")
     parser.add_argument('--analyze-only', action='store_true', help='Verify/rebuild manifests from exported raw WAVs')
@@ -568,8 +594,8 @@ def main():
     out = output_directory(args.set, args.output_dir)
     # the ability-style sets (exact spellings, every play action kept, loop data): Octane's, the
     # Charge Rifle's, the frag's
-    octane = args.set in ('octane', 'defender', 'frag', 'wingman', 'r99', 'kunai')
-    defender = args.set in ('defender', 'wingman', 'r99', 'kunai')
+    octane = args.set in ('octane', 'defender', 'frag', 'wingman', 'r99', 'kunai', 'flatline')
+    defender = args.set in ('defender', 'wingman', 'r99', 'kunai', 'flatline')
     playback_folder = 'playback' if octane else 'r301'
     matrix = np.asarray(json.loads(args.matrix.read_text()) if args.matrix else DEFAULT_MATRIX, dtype=np.float64)
     if matrix.shape != (2, 6) or not np.isfinite(matrix).all():
@@ -578,7 +604,7 @@ def main():
     matrix /= np.maximum(1, np.abs(matrix).sum(axis=1))[:, None]
     for folder in (playback_folder, 'raw', 'logs', 'logs/rsx_runtime'):
         (out / folder).mkdir(parents=True, exist_ok=True)
-    refs = kunai_references() if args.set == 'kunai' else r99_references() if args.set == 'r99' else wingman_references() if args.set == 'wingman' else defender_references() if defender else frag_references() if args.set == 'frag' else octane_references() if octane else references()
+    refs = flatline_references() if args.set == 'flatline' else kunai_references() if args.set == 'kunai' else r99_references() if args.set == 'r99' else wingman_references() if args.set == 'wingman' else defender_references() if defender else frag_references() if args.set == 'frag' else octane_references() if octane else references()
     events = {r['asset_name'].lower(): r for r in csv.DictReader(
         (REPO / 'apex-data/assets/lists/audio_events.csv').open(encoding='utf8'))}
     available = {(r['asset_name'], r['file_name']): r for r in csv.DictReader(

@@ -195,12 +195,64 @@ pub const WINGMAN: Spec = Spec {
     fill: (62.0 / 88.0, 62.0 / 88.0),
 };
 
+/// The VK-47 Flatline (`apex-data/export/weapon/mp_weapon_vinson.txt`): 20 a round, fire_rate 10,
+/// ammo_clip_size 19, reload_time 2.4, reloadempty_time 3.1, head x1.3, legs x0.75; spread hip 4.5 /
+/// 9.9 / 12.6 / 3.6 / 12.6, aimed 0 (air 6), a shot's kick 0.2 up to 2 / 1.5 / 3, decaying at 100
+/// after 0.25 s; `looping_sounds` (`--set flatline`); the view model's `reload` (70 frames: fill 45)
+/// and `reload_empty` (94: fill 74), sounds at their QC frames.
+pub const FLATLINE: Spec = Spec {
+    gun: super::weapons::Gun::Flatline,
+    damage: 20.0,
+    fire_rate: 10.0,
+    clip: 19,
+    reload: 2.4,
+    reload_empty: 3.1,
+    head_scale: 1.3,
+    leg_scale: 0.75,
+    spread_hip: [4.5, 9.9, 12.6, 3.6, 12.6],
+    spread_ads: [0.0, 0.0, 0.0, 0.0, 6.0],
+    spread_up: 3.0,
+    spread_down: 44.0,
+    kick_hip: [0.2, 0.2, 0.2],
+    kick_max_hip: [2.0, 1.5, 3.0],
+    kick_delay: 0.25,
+    kick_decay: 100.0,
+    semi_auto: false,
+    view_kick: None,
+    fire_sounds: &[],
+    burst: Some((
+        &["weapon_vinson_firstshot_1p", "weapon_vinson_firstshot_1p_layer1", "weapon_vinson_firstshot_1p_layer2"],
+        &[
+            "weapon_vinson_loop_1p",
+            "weapon_vinson_loop_1p_layer1",
+            "weapon_vinson_loop_1p_layer2",
+            "weapon_vinson_loop_1p_layer3",
+            "weapon_vinson_loop_1p_layer4",
+            "weapon_vinson_loop_1p_layer5",
+            "weapon_vinson_loop_1p_layer6",
+        ],
+        3.07,
+        &["weapon_vinson_loopend_1p", "weapon_vinson_loopend_1p_layer1", "weapon_vinson_loopend_1p_layer2"],
+    )),
+    ads_in: "weapon_r101_ads_in",
+    ads_out: "weapon_r101_ads_out",
+    dry: "weapon_vinson_trigger",
+    reload_sounds: &[
+        ("weapon_vinson_reload_magout", 9.0, false),
+        ("weapon_vinson_reload_magin", 41.0, false),
+        ("weapon_vinson_reloadempty_charge", 66.0, true),
+    ],
+    reload_frames: 70.0,
+    fill: (45.0 / 69.0, 74.0 / 93.0),
+};
+
 /// A gun's numbers.
 pub fn spec_of(gun: super::weapons::Gun) -> &'static Spec {
     match gun {
         super::weapons::Gun::R301 => &R301,
         super::weapons::Gun::R99 => &R99,
         super::weapons::Gun::Wingman => &WINGMAN,
+        super::weapons::Gun::Flatline => &FLATLINE,
     }
 }
 
@@ -249,7 +301,7 @@ static WAS_FIRING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool
 struct Gun {
     /// slot 1's gun these numbers are of (the magazines of the others in `stash`)
     gun: super::weapons::Gun,
-    stash: [u32; 3],
+    stash: [u32; 4],
     /// Movement spread now (degrees) and the kick on top, seconds since the last shot.
     spread: f32,
     kick: f32,
@@ -269,7 +321,7 @@ struct Gun {
 
 static GUN: Mutex<Gun> = Mutex::new(Gun {
     gun: super::weapons::Gun::Wingman,
-    stash: [R301.clip, R99.clip, WINGMAN.clip],
+    stash: [R301.clip, R99.clip, WINGMAN.clip, FLATLINE.clip],
     spread: 3.0,
     kick: 0.0,
     since_shot: 1.0,
@@ -482,7 +534,7 @@ pub fn interrupt_reload() {
     if g.reloading.take().is_some() {
         g.reload_wanted = false;
         drop(g);
-        for s in [&R301, &R99, &WINGMAN] {
+        for s in [&R301, &R99, &WINGMAN, &FLATLINE] {
             for (name, _, _) in s.reload_sounds {
                 crate::audio::stop(name);
             }

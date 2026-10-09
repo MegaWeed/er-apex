@@ -82,6 +82,9 @@ const WINGMAN_ICON: &str = "rui/weapon_icons/r5/weapon_wingman";
 /// ammo, automatic, its empty slots the barrel, the magazine, the sight and the stock.
 const R99_ICON: &str = "rui/weapon_icons/r5/weapon_r97";
 const R99_SLOTS: [&str; 4] = EMPTY_SLOTS;
+/// The VK-47 Flatline (the weapon wheel; tools/apexhud/export_wingman.py `--weapon flatline`): its
+/// `hud_icon`, heavy ammo (its colour; the R-301's badge stands in: 推断), automatic, the R-301's slots.
+const FLATLINE_ICON: &str = "rui/weapon_icons/r5/weapon_flatline";
 pub const IMAGES: &[(&str, tex::Kind)] = &[
     (BATTERY_ICON, tex::Kind::Color),
     (AMMO_BADGE, tex::Kind::Color),
@@ -99,6 +102,7 @@ pub const IMAGES: &[(&str, tex::Kind)] = &[
     (EMPTY_STOCK_SNIPER, tex::Kind::Faint),
     (WINGMAN_ICON, tex::Kind::Color),
     (R99_ICON, tex::Kind::Color),
+    (FLATLINE_ICON, tex::Kind::Color),
     // the frag grenade's `hud_icon` (U9; tools/apexhud/export_extra.py)
     (super::grenade::ICON, tex::Kind::Color),
 ];
@@ -154,6 +158,17 @@ fn look(slot: u8) -> Look {
             badge: AMMO_BADGE,
             mode: FIRE_MODE,
             slots: &R99_SLOTS,
+        }
+    } else if slot == 0 && crate::spike::weapons::primary_gun() == crate::spike::weapons::Gun::Flatline {
+        Look {
+            name_key: "#WPN_VINSON_SHORT",
+            fallback: "Flatline",
+            icon: FLATLINE_ICON,
+            ammo_key: "AMMO_HEAVY_COLOR",
+            ammo_fallback: [86, 160, 128],
+            badge: AMMO_BADGE,
+            mode: FIRE_MODE,
+            slots: &EMPTY_SLOTS,
         }
     } else {
         Look {
@@ -527,29 +542,32 @@ pub fn draw(dl: &DrawListMut, pack: &Pack, size: [f32; 2], fov: f32) {
     aim(dl, pack, size, fov, &g, &c);
 }
 
-/// The weapon wheel (Tab held: spike/weapons.rs): four sectors round the screen's centre, clockwise
-/// from the top the R-301, the R-99, the Wingman and the Charge Rifle, each with its icon and name;
-/// the one pointed at bright, the one in hand marked.
+/// The weapon wheel (Tab held: spike/weapons.rs): a sector each round the screen's centre, clockwise
+/// from the top the R-301, the R-99, the Wingman, the Flatline and the Charge Rifle, each with its
+/// icon and name; the one pointed at bright, the one in hand marked.
 fn weapon_wheel(p: &Pen, pack: &Pack, hovered: Option<usize>, c: &Colors) {
     use spike::weapons::{Gun, Slot};
     let (cx, cy) = (960.0, 540.0);
     let (r0, r1) = (110.0, 260.0);
     let held = match spike::weapons::active() {
-        Slot::ChargeRifle => 3,
+        Slot::ChargeRifle => 4,
         // the kunai is not on the wheel: slot 1's gun marked
         Slot::R301 | Slot::Melee => match spike::weapons::primary_gun() {
             Gun::R301 => 0,
             Gun::R99 => 1,
             Gun::Wingman => 2,
+            Gun::Flatline => 3,
         },
     };
-    let icons = ["weapon_slot", R99_ICON, WINGMAN_ICON, CHARGE_RIFLE_ICON];
+    let icons = ["weapon_slot", R99_ICON, WINGMAN_ICON, FLATLINE_ICON, CHARGE_RIFLE_ICON];
+    let n = spike::weapons::WHEEL.len();
+    let sector = std::f32::consts::TAU / n as f32;
     for (k, (_, name)) in spike::weapons::WHEEL.iter().enumerate() {
-        // the sector's middle: up, right, down, left
-        let mid = (k as f32) * std::f32::consts::FRAC_PI_2;
+        // the sector's middle, clockwise from the top
+        let mid = k as f32 * sector;
         let at = |a: f32, r: f32| [cx + r * a.sin(), cy - r * a.cos()];
         let steps = 12;
-        let span = std::f32::consts::FRAC_PI_2 - 0.06;
+        let span = sector - 0.06;
         let a0 = mid - span * 0.5;
         let on = hovered == Some(k);
         let fill = if on { alpha(c.white, 0.35) } else { alpha(c.panel, 0.75) };

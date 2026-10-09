@@ -20,7 +20,8 @@ from export_extra import string_to_guid, ensure_tool, run_rsx, read_json, write_
 REPO = Path(__file__).resolve().parents[2]
 # the weapons of slot 1 beyond the R-301 (whose icon and name the HUD pack has): settings, icon, name
 WEAPONS = {'wingman': ('mp_weapon_wingman.txt', 'rui/weapon_icons/r5/weapon_wingman', '#WPN_WINGMAN_SHORT'),
-           'r99': ('mp_weapon_r97.txt', 'rui/weapon_icons/r5/weapon_r97', '#WPN_R97_SHORT')}
+           'r99': ('mp_weapon_r97.txt', 'rui/weapon_icons/r5/weapon_r97', '#WPN_R97_SHORT'),
+           'flatline': ('mp_weapon_vinson.txt', 'rui/weapon_icons/r5/weapon_flatline', '#WPN_VINSON_SHORT')}
 SETTINGS = REPO / 'apex-data/export/weapon/mp_weapon_wingman.txt'
 ICON = 'rui/weapon_icons/r5/weapon_wingman'
 NAME_KEY = '#WPN_WINGMAN_SHORT'

@@ -12,7 +12,7 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 
 **Weapons**
 
-- **Four guns**: the Wingman (in hand at the start), the R-99, the R-301 and the Charge Rifle. Their first-person models, animations, sounds and HUD icons are all exported from your Apex install by `export-assets.ps1` step 8.
+- **Five guns**: the Wingman (in hand at the start), the R-99, the R-301, the VK-47 Flatline (its Teal Zeal skin model) and the Charge Rifle. Their first-person models, animations, sounds and HUD icons are all exported from your Apex install by `export-assets.ps1` step 8.
 - **Weapon wheel**: hold Tab, turn the view (or press 1-3) to pick a gun, let go to switch. Key 2 is still the Charge Rifle.
 - **The R-99 is the Cutting Edge model** (reactive skin model `r99_react_v20_ascension_v`), animated on the base R-99's rig.
 - **Inspect**: key 5 plays the inspect of the gun in hand, with its sounds; a shot, aiming, a reload, a switch, sprint or an ability cuts it.
@@ -256,7 +256,7 @@ python tools/fusemesh/convert_fuse.py --geometry-only   # skeleton alignment onl
 python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS   # -> er-data\s4\fuse_er.anim
 ```
 
-**8. The Wingman, the R-99 and the kunai (about 12 min; this fork)**
+**8. The Wingman, the R-99, the Flatline and the kunai (about 16 min; this fork)**
 
 The Wingman, the R-99, the R-99's Cutting Edge model and Wraith's heirloom kunai, from your Apex install like the steps before. `build_wingman.py` adds them to model 998 and its animation pack, on top of step 6's `octane_pov_weapons` stage, and takes the optional skins.
 
@@ -265,13 +265,16 @@ python tools/apexassets/wingman_assets.py
 python tools/apexassets/r99_assets.py
 python tools/apexassets/r99_ascension_assets.py       # Cutting Edge (r99_react_v20_ascension_v)
 python tools/apexassets/kunai_assets.py               # Wraith's heirloom kunai (heirloom_wraith_v18_kunai_v)
+python tools/apexassets/flatline_assets.py            # VK-47 Flatline, Teal Zeal (flatline_v20_trshunter_v)
 python tools/apexpov/bake_wingman.py                  # -> apex-data\pov\octane_wingman\fuse_pov.anim
 python tools/fusepov/build_wingman.py                 # -> er-data\s3\octane_pov_wingman (model 998); skins: see below
 python tools/fuseaudio/export_audio.py --set wingman
 python tools/fuseaudio/export_audio.py --set r99
 python tools/fuseaudio/export_audio.py --set kunai
+python tools/fuseaudio/export_audio.py --set flatline
 python tools/apexhud/export_wingman.py --legend octane
 python tools/apexhud/export_wingman.py --legend octane --weapon r99
+python tools/apexhud/export_wingman.py --legend octane --weapon flatline
 python tools/apexhud/custom_font.py                   # only with fonts in apex-data\fonts: -> apex-data\hud\custom_font
 ```
 
