@@ -31,6 +31,7 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 - **Keyboard and mouse prompts**: by default the game sees no controller, so its button prompts are keyboard and mouse. To play with a controller: `pwsh play.ps1 -Pad`.
 - **Targets**: every character but the player's side (teams 1, 2, 8, 12; ini `friendly_teams`) can be hit, as in ELDEN RING: dogs, birds, invaders, dragons and bosses too.
 - **Movement**: the ground's collision is read again every second and a fall into the ground is caught (late-loaded map tiles); on a lift, up or down, the game carries the player until it stops.
+- **Kill feed names**: a monster shows its kind's name from the game (its spirit ashes' name, in the game's language) where the game has one, else its community name (English, Paramdex); only then "enemy".
 - **Hit sound**: the first hit that hurts an enemy plays Apex's armour-break shatter, once per enemy (`--set hits`).
 - **Charge Rifle sounds** stop with the shot: no firing sound after a cancel, no loop when a beam hits flesh.
 - **Settings**: `pwsh play.ps1 -Fov 90 -FpsLimit 120 -PlayerName "name" -Pad`. Field of view 90 by default; the game's 60 FPS by default; the HUD name from `-PlayerName` or `ER_APEX_PLAYER_NAME`, else the save's character.
