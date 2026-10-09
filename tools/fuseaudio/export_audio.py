@@ -444,6 +444,7 @@ def kunai_references():
         specs.append((event, 'inspect (QC frame)', [(qc, 'inspect')]))
     for event in ['Wraith_Mvmt_Kunai_Inspect_Fly_P1', 'Wraith_Mvmt_Kunai_Inspect_Fly_P2', 'Wraith_Mvmt_Kunai_Inspect_Fly_P3', 'Wraith_Mvmt_Kunai_Inspect_Fly_P4']:
         specs.append((event, 'inspect_fly (QC frame)', [(qc, 'inspect_fly')]))
+    specs.append(('Wraith_Mvmt_Kunai_FirstDraw', 'the sprint twirl (drawsprint_twirl frame 0)', [(qc, 'drawsprint_twirl')]))
     for event in ['Wraith_Mvmt_Kunai_Inspect_Insignia_P1', 'Wraith_Mvmt_Kunai_Inspect_Insignia_P2', 'Wraith_Mvmt_Kunai_Inspect_Insignia_Charged', 'Wraith_Mvmt_Kunai_Inspect_Insignia_W_Appears']:
         specs.append((event, 'inspect_insignia (QC frame)', [(qc, 'inspect_insignia')]))
     refs = [r for r in _refs_from_specs(specs) if r['event']]
