@@ -240,6 +240,7 @@ Step 7 'first-person base pose (about 1 min)' {
 Step 8 'the Wingman and the R-99 (about 8 min)' {
     Run 'apex-data\assets\wingman\verification.json' python tools/apexassets/wingman_assets.py
     Run 'apex-data\assets\r99\verification.json' python tools/apexassets/r99_assets.py
+    Run 'apex-data\assets\r99_ascension\verification.json' python tools/apexassets/r99_ascension_assets.py
     Run 'apex-data\pov\octane_wingman\fuse_pov.anim' python tools/apexpov/bake_wingman.py
     Run 'er-data\s3\octane_pov_wingman\wingman-verification.json' python tools/fusepov/build_wingman.py
     Run 'apex-data\audio\wingman\manifest.json' python tools/fuseaudio/export_audio.py --set wingman
