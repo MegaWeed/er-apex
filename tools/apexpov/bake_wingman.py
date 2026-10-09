@@ -1,4 +1,5 @@
-"""The Wingman and the R-99: losslessly extend T022's pack (`wm:` / `r9:` branches, carrier groups 9 / 10,`nclips `wm_*` / `r9_*`)."""
+"""The Wingman, the R-99 and the kunai: losslessly extend T022's pack (`wm:` / `r9:` / `kn:` branches,
+carrier groups 9 / 10 / 11, clips `wm_*` / `r9_*` / `kn_*`)."""
 import argparse
 from pathlib import Path
 import sys
@@ -72,7 +73,7 @@ def bake(out=None):
  wm.require(all(a['raw']==b['raw'] for a,b in zip(back['bones'],base['bones'])) and all(a['raw']==b['raw'] and a['group']==b['group'] for a,b in zip(back['carrier_records'],base['carrier_records'])),'T022 records changed')
  old=len(base['bones'])
  for n,c in base['clips'].items():wm.require(np.array_equal(back['clips'][n]['poses'][:,:old],c['poses']) and np.array_equal(back['clips'][n]['weights'][:old],c['weights']),f'T022 clip changed: {n}')
- audit['output']=wm.info(path);wm.save(out/'wingman-pack-audit.json',audit);wm.save(out/'wingman_carriers.json',carriers);wm.save(out/'wingman_sequences.json',table['wm']);wm.save(out/'r99_sequences.json',table['r9'])
+ audit['output']=wm.info(path);wm.save(out/'wingman-pack-audit.json',audit);wm.save(out/'wingman_carriers.json',carriers);wm.save(out/'wingman_sequences.json',table['wm']);wm.save(out/'r99_sequences.json',table['r9']);wm.save(out/'kunai_sequences.json',table['kn'])
  print(f'PASS wingman bake: {len(pack["bones"])} bones / {len(pack["carrier_records"])} carriers / {len(pack["clips"])} clips; {path.stat().st_size} bytes',flush=True);return path
 
 
