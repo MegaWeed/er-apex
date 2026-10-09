@@ -16,7 +16,7 @@
 - **武器轮盘**：按住 Tab，转视角（或按 1～3）选枪，松开就换。按 2 仍是 Charge Rifle。
 - **R-99 用刀锋（Cutting Edge）模型**（进化皮肤模型 `r99_react_v20_ascension_v`），套在原版 R-99 的骨架上播放动画。
 - **检视动作**：按 5 播放手中武器的检视和音效，开火、开镜、换弹、切枪、冲刺或用技能会打断。
-- **收枪模式**：按 3 收起枪，换上恶灵的传家宝苦无（第一人称模型和动作都从本机 Apex 导出）；移速稍快（×1.1，ini `holster_speed`），鼠标左键挥刀（2 米内 30 伤害），5 播放检视，再按 3（或 1 / 2）切回枪。HUD 保持不变。
+- **收枪模式**：按 3 收起枪，换上恶灵的传家宝苦无（第一人称模型和动作都从本机 Apex 导出）；移速稍快（×1.1，ini `holster_speed`），鼠标左键挥刀（2 米内 30 伤害），5 播放检视（都带苦无音效），再按 3（或 1 / 2）切回枪。HUD 保持不变。
 - **Wingman**：半自动、8 发、单发 50、爆头 ×1.5、换弹 2.1 秒、开镜 60°，后坐力用 Apex 的数值。**Charge Rifle**：8 发。
 - **自定义皮肤（可选）**：把自己的贴图放进 `apex-data\skins\`，第 8 步会自动用上（见[武器皮肤](#武器皮肤可选)）。仓库里不含任何皮肤贴图。
 
@@ -269,6 +269,7 @@ python tools/apexpov/bake_wingman.py                  # → apex-data\pov\octane
 python tools/fusepov/build_wingman.py                 # → er-data\s3\octane_pov_wingman（模型 998）；皮肤见下
 python tools/fuseaudio/export_audio.py --set wingman
 python tools/fuseaudio/export_audio.py --set r99
+python tools/fuseaudio/export_audio.py --set kunai
 python tools/apexhud/export_wingman.py --legend octane
 python tools/apexhud/export_wingman.py --legend octane --weapon r99
 python tools/apexhud/custom_font.py                   # 仅当 apex-data\fonts 里有字体：→ apex-data\hud\custom_font
