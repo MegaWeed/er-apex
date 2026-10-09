@@ -11,8 +11,12 @@
 //!
 //! Enemy names: NpcParam `nameId` into the game's NpcName text, read from an export of it
 //! (er-data, `ertool fmg NpcName.fmg --json`; ini `npc_names`, else <mod>\npc_names.json). Elden
-//! Ring names only bosses and NPCs (a soldier's `nameId` is 0): without the export, or for a
-//! nameless enemy, the kill feed shows NAMELESS (the user's choice, 2026-10-05).
+//! Ring names only bosses and NPCs (a soldier's `nameId` is 0). For the rest (the user, 2026-10-09:
+//! "the kill feed says enemy for every monster"): the game's own name of its kind where NpcName has
+//! one, the spirit ashes' entries (ids 9MMMMMVVV for character model cMMMM, an NpcParam row
+//! MMMMxxxx being of model MMMM: 34000000 a Grave Warden Duelist, 903400300 守墓斗士), the model's
+//! or its family's (MMMx); else the community name of its NpcParam row (Paramdex, English: ini
+//! `npc_param_names`, play.ps1 sets it); only then NAMELESS.
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Mutex, OnceLock};
@@ -258,5 +262,68 @@ fn npc_name(npc_param_id: i32) -> Option<String> {
     });
     let repo = unsafe { SoloParamRepository::instance() }.ok()?;
     let id = repo.get::<NpcParam>(npc_param_id as u32)?.name_id();
-    names.get(&id).cloned()
+    if let Some(n) = names.get(&id) {
+        return Some(n.clone());
+    }
+    model_name(names, npc_param_id).or_else(|| paramdex_name(npc_param_id))
+}
+
+/// The game's name of an enemy's kind: the spirit ashes' NpcName entries by character model (see
+/// the module comment), a plain one before a titled one ("“铁棘”艾隆梅尔" is one Bell Bearing
+/// Hunter, "铃珠猎人" the kind). Only the model's own: its family's (the model / 10) named other
+/// kinds (a Radahn soldier as Godrick's: checked against Paramdex's names).
+fn model_name(names: &HashMap<i32, String>, npc_param_id: i32) -> Option<String> {
+    static BY_MODEL: OnceLock<HashMap<i32, String>> = OnceLock::new();
+    let by_model = BY_MODEL.get_or_init(|| {
+        let mut ids: Vec<i32> = names.keys().copied().filter(|id| (900_000_000..910_000_000).contains(id)).collect();
+        ids.sort_unstable();
+        let mut m: HashMap<i32, String> = HashMap::new();
+        for id in ids {
+            let name = &names[&id];
+            let titled = |n: &str| n.contains('“');
+            match m.get(&((id - 900_000_000) / 1000)) {
+                Some(have) if !titled(have) || titled(name) => {}
+                _ => {
+                    m.insert((id - 900_000_000) / 1000, name.clone());
+                }
+            }
+        }
+        m
+    });
+    if npc_param_id < 10_000_000 {
+        return None;
+    }
+    by_model.get(&(npc_param_id / 10_000)).cloned()
+}
+
+/// The community name of an NpcParam row (Paramdex `Names/NpcParam.txt`: "<id> <name>"), its
+/// trailing "(place)" dropped.
+fn paramdex_name(npc_param_id: i32) -> Option<String> {
+    static NAMES: OnceLock<HashMap<i32, String>> = OnceLock::new();
+    let names = NAMES.get_or_init(|| {
+        let Some(path) = paths::config("npc_param_names").filter(|p| !p.is_empty()) else { return HashMap::new() };
+        match std::fs::read_to_string(&path) {
+            Ok(text) => {
+                let m: HashMap<i32, String> = text
+                    .lines()
+                    .filter_map(|l| {
+                        let (id, name) = l.trim().split_once(' ')?;
+                        let name = match name.rfind(" (") {
+                            Some(i) if name.ends_with(')') => &name[..i],
+                            _ => name,
+                        };
+                        Some((id.parse().ok()?, name.trim().to_string()))
+                    })
+                    .filter(|(_, n): &(i32, String)| !n.is_empty())
+                    .collect();
+                log(format!("stats: {} NpcParam row names from {path}", m.len()));
+                m
+            }
+            Err(e) => {
+                log(format!("stats: no NpcParam row names ({path}: {e})"));
+                HashMap::new()
+            }
+        }
+    });
+    names.get(&npc_param_id).cloned()
 }
