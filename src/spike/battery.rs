@@ -128,7 +128,7 @@ fn alive_in_play() -> bool {
 
 /// Once a frame (after octane.rs, before the movement controller): the keys, the charge, the fire.
 pub fn update() {
-    if !crate::state::in_world() || lethal::fuse_hp().is_some_and(|hp| hp <= 0.0) {
+    if !crate::state::in_world() || !crate::mode::apex() || lethal::fuse_hp().is_some_and(|hp| hp <= 0.0) {
         // left the world or died: the use ends without its sound (S3: the weapon is gone)
         let mut b = battery();
         if b.started.take().is_some() {

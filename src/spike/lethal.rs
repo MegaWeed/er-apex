@@ -71,14 +71,23 @@ fn split(shield: f32, dmg: f32) -> (f32, f32) {
 }
 
 pub fn enabled() -> bool {
-    paths::flag("lethal_guard")
+    paths::flag("lethal_guard") && crate::mode::apex()
 }
 
 fn scale() -> f32 {
     paths::number::<f32>("fuse_damage_scale").unwrap_or(1.0)
 }
 
+/// F5 to the Tarnished (mode.rs): the game's own death again.
+pub fn release() {
+    if let Some(p) = (unsafe { WorldChrMan::instance_mut() }).ok().and_then(|w| w.main_player.as_mut()) {
+        let flags = flags_ptr(&mut p.chr_ins.modules.data);
+        unsafe { *flags &= !NO_DEAD };
+    }
+}
+
 /// The data module's debug flag byte.
+
 fn flags_ptr(data: &mut eldenring::cs::CSChrDataModule) -> *mut u8 {
     (data as *mut _ as usize + DEBUG_FLAGS) as *mut u8
 }

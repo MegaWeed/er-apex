@@ -16,6 +16,7 @@ mod input;
 mod cursor;
 mod kbd;
 mod log;
+mod mode;
 mod paths;
 mod scan;
 mod spike;
@@ -39,6 +40,8 @@ static MODULE: AtomicUsize = AtomicUsize::new(0);
 fn frame(data: &FD4TaskData) {
     let dt = data.delta_time.time;
     state::update(dt);
+    // F5: the Tarnished or Octane (mode.rs)
+    mode::update();
     spike::quickboot::update();
     spike::lethal::update();
     spike::gun::update(dt);

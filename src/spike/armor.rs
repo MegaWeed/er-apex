@@ -130,10 +130,41 @@ pub fn disarm() -> String {
     *d = Some((saved, Instant::now(), true));
     format!("disarming, weapons were {saved:?}")
 }
+/// Weapons to put back (F5 to the Tarnished: mode.rs), and since when.
+static REARM: Mutex<Option<([u32; WEAPON_SLOTS], Instant)>> = Mutex::new(None);
+/// Gives the Tarnished back the weapons the disarm took; the next disarm remembers them afresh.
+fn rearm() -> String {
+    let Some((saved, _, _)) = DISARM.lock().unwrap_or_else(|e| e.into_inner()).take() else { return "nothing to rearm".into() };
+    *REARM.lock().unwrap_or_else(|e| e.into_inner()) = Some((saved, Instant::now()));
+    format!("rearming {saved:?}")
+}
+/// F5 (mode.rs): the Tarnished's own armour and weapons.
+pub fn to_tarnished() -> String {
+    format!("{}; {}", request(None, false), rearm())
+}
+/// F5 again: Fuse's set and fists.
+pub fn to_octane() -> String {
+    *REARM.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    format!("{}; {}", request(Some(fuse_model()), true), disarm())
+}
 fn weapons(p: &PlayerIns) -> [u32; WEAPON_SLOTS] {
     std::array::from_fn(|k| p.chr_asm.equipment_param_ids[k] as u32)
 }
 fn update_weapons(p: &PlayerIns) {
+    let mut r = REARM.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((saved, since)) = *r {
+        let now = weapons(p);
+        if now == saved || since.elapsed() > Duration::from_secs(10) {
+            log(format!("armor: rearm {} (weapons now {now:?})", if now == saved { "done" } else { "timed out" }));
+            *r = None;
+        } else {
+            for (k, w) in saved.into_iter().enumerate() {
+                if now[k] != w { equip(k, w); }
+            }
+        }
+        return;
+    }
+    drop(r);
     let mut d = DISARM.lock().unwrap_or_else(|e| e.into_inner());
     let Some((saved, since, pending)) = d.as_mut() else { return };
     if !*pending { return; }
