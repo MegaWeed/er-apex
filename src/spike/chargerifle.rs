@@ -152,8 +152,14 @@ pub const SPRING_C_ADS: Vec3 = Vec3::new(20.0, 13.5, 7.0);
 // ---- sounds: play names of tools/fuseaudio/export_audio.py `--set defender` (the events' lower case)
 
 const VOLUME: f32 = 0.5;
-/// `fire_sound_1_player_1p`: the event's six play actions together.
-const SOUND_FIRE: [&str; 6] = [
+/// `fire_sound_1_player_1p`: of the event's six play actions, the punch, the close laser and the 1p
+/// beam. Layers 2, 4 and 5 are third-person sounds (`3p_Shot_CloseSizzle`, `3p_Fire_Beam_Mid`,
+/// `3p_Fire_Beam_Dist`: their sources' names) that Miles picks by distance; played together they
+/// went on loudly for a second after the shot (the user, 2026-10-08: "after firing normally there
+/// is still a firing sound").
+const SOUND_FIRE: [&str; 3] = ["weapon_chargerifle_fire_1p", "weapon_chargerifle_fire_1p_layer1", "weapon_chargerifle_fire_1p_layer3"];
+/// All six, to stop them all whatever an older build played.
+const SOUND_FIRE_ALL: [&str; 6] = [
     "weapon_chargerifle_fire_1p",
     "weapon_chargerifle_fire_1p_layer1",
     "weapon_chargerifle_fire_1p_layer2",
@@ -176,7 +182,11 @@ const MECH_FRAMES: [f32; 4] = [0.0, 24.0, 52.0, 78.0];
 /// exp_defender), on a surface ("C": Elden Ring's surfaces have no Apex material, 推断) or flesh ("F").
 /// Each event's two play actions together.
 const SOUND_PULSE_SURFACE: [&str; 2] = ["chargerifle_smallbeam_bulletimpact_1p_vs_3p", "chargerifle_smallbeam_bulletimpact_1p_vs_3p_layer1"];
-const SOUND_PULSE_FLESH: [&str; 2] = ["flesh_bulletimpact_chargerifle_beam_1p_vs_3p", "flesh_bulletimpact_chargerifle_beam_1p_vs_3p_layer1"];
+/// (Not its second play action: `TitanCoreAbility_LaserCannon_ThickBeam_FD_1P_..._LP`, a 4.3 s loop
+/// Miles holds while the beam is on the target; played whole on each of the 14 pulses it went on for
+/// seconds after the shot: the user, 2026-10-08, "on a monster the sound is still wrong".)
+const SOUND_PULSE_FLESH: [&str; 1] = ["flesh_bulletimpact_chargerifle_beam_1p_vs_3p"];
+const SOUND_PULSE_FLESH_LOOP: &str = "flesh_bulletimpact_chargerifle_beam_1p_vs_3p_layer1";
 const SOUND_SHOT_SURFACE: [&str; 2] = ["chargerifle_fullshot_bulletimpact_1p_vs_3p", "chargerifle_fullshot_bulletimpact_1p_vs_3p_layer1"];
 const SOUND_SHOT_FLESH: [&str; 2] = ["flesh_bulletimpact_chargerifle_shot_1p_vs_3p", "flesh_bulletimpact_chargerifle_shot_1p_vs_3p_layer1"];
 const SOUND_ADS_IN: &str = "weapon_chargerifle_ads_in";
@@ -773,15 +783,13 @@ pub fn update(dt: f32, t: Trigger, in_hand: bool, ready: bool) {
                 log(format!("cr: shot {} ({}), ammo {}, {}", shot.shots, if aim { "aimed" } else { "hip" }, shot.ammo, line.unwrap_or_else(|| "miss".into())));
             }
             Event::Cut => {
-                stop_sound(SOUND_WIND_UP);
-                stop_sound(SOUND_MECH);
+                stop_firing_sounds();
                 log("cr: discharge cut by the switch: no shot");
             }
             Event::Cancel => {
-                // the charge drains (`charge_drain_sound_1p`, stopped when it is empty)
-                stop_sound(SOUND_WIND_UP);
-                stop_sound(SOUND_MECH);
-                sound(SOUND_WIND_DOWN);
+                // everything stops at once (the user, 2026-10-08: the drain sound after a cancel
+                // read as the shot going on)
+                stop_firing_sounds();
                 log(format!("cr: discharge stopped with S: no shot, {ammo} left in the magazine"));
             }
             Event::Release => sound(SOUND_TRIGGER_OFF),
@@ -816,7 +824,19 @@ pub fn update(dt: f32, t: Trigger, in_hand: bool, ready: bool) {
     }
 }
 
+/// The rifle's own firing sounds, cut (the user, 2026-10-08: "after the shooting is interrupted
+/// the sound plays on"): the charge, the mechanism, the shot's six layers (tails up to 3 s) and the
+/// drain.
+fn stop_firing_sounds() {
+    for name in [SOUND_WIND_UP, SOUND_WIND_DOWN, SOUND_MECH, SOUND_TRIGGER_ON, SOUND_PULSE_FLESH_LOOP].into_iter().chain(SOUND_FIRE_ALL) {
+        stop_sound(name);
+    }
+}
+
 pub fn sound_holster() {
+    // put away: what it was playing stops with it
+    stop_firing_sounds();
+    state().winding_down = false;
     sound(SOUND_UNEQUIP);
 }
 
@@ -1000,20 +1020,20 @@ mod tests {
         }
     }
 
-    /// Four discharges, the fifth pull clicks and reloads (2 s, full at 143/173 of it); a reload
+    /// A magazine's discharges, the next pull clicks and reloads (2 s, full at 143/173 of it); a reload
     /// asked for with rounds left also takes 2 s (full at 106/136); none mid-discharge.
     #[test]
     fn magazine_and_reloads() {
         let mut r = Rifle::new();
         let mut ev = Vec::new();
         let mut t = 0.0;
-        for _ in 0..5 {
+        for _ in 0..=CLIP {
             t += 0.1;
             run(&mut r, t, held(true), &mut ev);
             t += 3.0;
             run(&mut r, t, held(false), &mut ev);
         }
-        assert_eq!(times(&ev, |e| matches!(e, Event::Fire { .. })).len(), 4, "{ev:?}");
+        assert_eq!(times(&ev, |e| matches!(e, Event::Fire { .. })).len(), CLIP as usize, "{ev:?}");
         assert!(ev.iter().any(|e| e.1 == Event::DryFire));
         let start = ev.iter().find(|e| e.1 == Event::ReloadStart { empty: true }).expect("empty reload").0;
         assert_eq!(r.ammo, CLIP, "the reload ran in the last 3 s");

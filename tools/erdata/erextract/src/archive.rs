@@ -157,6 +157,10 @@ impl Archives {
         let mut entries = std::collections::HashMap::new();
         for name in ARCHIVES {
             let bhd = dir.join(format!("{name}.bhd"));
+            // the DLC archive is only there when Shadow of the Erdtree is installed
+            if name == "DLC" && !bhd.exists() {
+                continue;
+            }
             let data = std::fs::read(&bhd).map_err(|e| format!("{}: {e}", bhd.display()))?;
             let Some(key) = keys
                 .iter()

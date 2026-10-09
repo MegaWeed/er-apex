@@ -65,8 +65,8 @@ def main():
     listing=run([EXTRACT,'--game-dir',game,'list'],'archive_list');entries={}
     for line in listing.splitlines()[1:]:
         path,archive,size=line.split('\t');entries[path]={'archive':archive,'size':int(size)}
-    original_files=[game/'eldenring.exe',game/'regulation.bin',*[game/(name+'.bhd') for name in ['Data0','Data1','Data2','Data3','DLC']]]
-    source={'GameDir':str(game),'ExeVersion':file_version(game/'eldenring.exe'),'InputFiles':[{'Path':str(p),'Size':p.stat().st_size,'Sha256':sha256(p)} for p in original_files],'Archives':[{ 'Path':str(game/(name+'.bdt')),'Size':(game/(name+'.bdt')).stat().st_size} for name in ['Data0','Data1','Data2','Data3','DLC']],'ExtractedPaths':{p:entries[p] for p in binders+mapinputs+messages+['/material/allmaterial.matbinbnd.dcx']},'Commands':history,'Dependencies':json.loads((BASE/'dependencies.lock.json').read_text(encoding='utf-8'))}
+    original_files=[game/'eldenring.exe',game/'regulation.bin',*[game/(name+'.bhd') for name in ['Data0','Data1','Data2','Data3','DLC'] if (game/(name+'.bhd')).exists()]]
+    source={'GameDir':str(game),'ExeVersion':file_version(game/'eldenring.exe'),'InputFiles':[{'Path':str(p),'Size':p.stat().st_size,'Sha256':sha256(p)} for p in original_files],'Archives':[{ 'Path':str(game/(name+'.bdt')),'Size':(game/(name+'.bdt')).stat().st_size} for name in ['Data0','Data1','Data2','Data3','DLC'] if (game/(name+'.bhd')).exists()],'ExtractedPaths':{p:entries[p] for p in binders+mapinputs+messages+['/material/allmaterial.matbinbnd.dcx']},'Commands':history,'Dependencies':json.loads((BASE/'dependencies.lock.json').read_text(encoding='utf-8'))}
     (data/'provenance.json').write_text(json.dumps(source,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     run([sys.executable,BASE/'scripts/analyze_s2a.py',output],'analysis')
     run([sys.executable,BASE/'scripts/verify_s2a.py',data,game],'verification')
