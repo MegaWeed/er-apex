@@ -1120,7 +1120,7 @@ fn aim(dl: &DrawListMut, pack: &Pack, size: [f32; 2], fov: f32, g: &spike::gun::
                 charge_arcs(dl, [cx, cy], k, charge, c);
             } else {
                 let gap = (g.spread_deg.to_radians().tan() / (fov * 0.5).tan() * size[1] * 0.5).max(x.min_gap_px * k);
-                for a in &x.angles_deg {
+                for a in hip_ticks(&x.angles_deg) {
                     // the pack's angles have y up (90° the top tick); the screen's y is down
                     let (s, co) = a.to_radians().sin_cos();
                     let (r0, r1) = (gap, gap + x.tick_px * k);
@@ -1152,6 +1152,19 @@ fn aim(dl: &DrawListMut, pack: &Pack, size: [f32; 2], fov: f32, g: &spike::gun::
     }
 
     damage_numbers(dl, pack, size, c);
+}
+
+/// The hip crosshair's ticks of slot 1's gun, as its retail `RUI_CrosshairData` names its RUI:
+/// R-301 `ui/crosshair_tri` (the pack's three, measured on the user's R5R video), R-99 and Wingman
+/// `ui/crosshair_plus`, Sentinel `ui/crosshair_plus_dot` (four: up, left, down, right; the dot as
+/// always), Flatline `ui/crosshair_alternator` (its RUI is not decoded: the plus stands in, 推断).
+/// The ticks' lengths, widths and gap rule are the R-301's for all of them (推断).
+fn hip_ticks(tri: &[f32]) -> Vec<f32> {
+    use spike::weapons::Gun;
+    match spike::weapons::primary_gun() {
+        Gun::R301 => tri.to_vec(),
+        Gun::R99 | Gun::Wingman | Gun::Flatline | Gun::Sentinel => vec![0.0, 90.0, 180.0, 270.0],
+    }
 }
 
 /// U3: the Charge Rifle's crosshair round its dot (the user, 2026-10-06: "the left and right are its
