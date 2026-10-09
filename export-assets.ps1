@@ -272,6 +272,7 @@ Step 8 'the Wingman, the R-99, the Flatline, the Sentinel and the kunai (about 2
     Run 'apex-data\audio\kunai\manifest.json' python tools/fuseaudio/export_audio.py --set kunai
     Run 'apex-data\audio\flatline\manifest.json' python tools/fuseaudio/export_audio.py --set flatline
     Run 'apex-data\audio\sentinel\manifest.json' python tools/fuseaudio/export_audio.py --set sentinel
+    Run 'apex-data\audio\hits\manifest.json' python tools/fuseaudio/export_audio.py --set hits
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_wingman.png' python tools/apexhud/export_wingman.py --legend octane
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_r97.png' python tools/apexhud/export_wingman.py --legend octane --weapon r99
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_flatline.png' python tools/apexhud/export_wingman.py --legend octane --weapon flatline

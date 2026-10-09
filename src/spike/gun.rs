@@ -850,6 +850,10 @@ fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
     out
 }
 
+/// The hit sound: when it last played, how often at most (seconds), how loud.
+static HIT_SOUND: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+const HIT_SOUND_EVERY: f32 = 0.08;
+const HIT_SOUND_VOLUME: f32 = 0.6;
 /// Seconds towards the next round back (a `regen` gun).
 static REGEN: Mutex<f32> = Mutex::new(0.0);
 
@@ -989,6 +993,15 @@ pub(super) fn zone_at(y: f32) -> Zone {
 /// round's (homing.rs). What the damage bridge said.
 pub(super) fn apply_hit(handle: FieldInsHandle, amount: f32, zone: Zone, end: Vec3, weapon: u8) -> String {
     let res = super::combat::shoot(handle.clone(), amount);
+    // the hit's sound: Apex's armour break as the attacker hears it (the user's 2026-10-09 ask;
+    // `--set hits`), at most every HIT_SOUND_EVERY (an R-99's stream of hits would pile them up)
+    if amount > 0.0 {
+        let mut last = HIT_SOUND.lock().unwrap_or_else(|e| e.into_inner());
+        if last.is_none_or(|t| t.elapsed().as_secs_f32() >= HIT_SOUND_EVERY) {
+            *last = Some(std::time::Instant::now());
+            crate::audio::play("humanshield_break_1p_vs_3p", HIT_SOUND_VOLUME);
+        }
+    }
     super::stats::dealt(amount);
     let now = std::time::Instant::now();
     *LAST_HIT.lock().unwrap_or_else(|e| e.into_inner()) = Some((now, zone == Zone::Head));
