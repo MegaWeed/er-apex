@@ -601,7 +601,8 @@ pub fn step(dt: f32, i: &Inputs) {
         let away = matches!(super::weapons::phase(), super::weapons::Phase::Holstering { cycle, .. } if cycle >= 1.0);
         show[KUNAI] = d.force[KUNAI].unwrap_or(gun_shown && !away);
         drop(d);
-        let o = posing.get_or_insert_with(|| ability::Out { show_gun: true, ..Default::default() });
+        // (with the ability's layers: the battery's hands and clips stay over the kunai)
+        let o = posing.get_or_insert_with(|| a.ability_out.clone().unwrap_or(ability::Out { show_gun: true, ..Default::default() }));
         let mut layers = a.kunai.layers(m.duck_frac);
         // its inspect (key 5) over the loops, cut as the guns' is
         // (not sprint: the kunai is inspected on the run too, the user's 2026-10-09 ask)
@@ -643,6 +644,7 @@ pub fn step(dt: f32, i: &Inputs) {
     if a.view == Weapon::ChargeRifle
         && let Some(t) = i.cr_discharge
     {
+        // (with the ability's layers: the battery's hands and clips stay over the kunai)
         let o = posing.get_or_insert_with(|| a.ability_out.clone().unwrap_or(ability::Out { show_gun: true, ..Default::default() }));
         o.layers.extend(discharge_layers(t, i.cr_charge, i.ads, m.duck_frac));
     }
