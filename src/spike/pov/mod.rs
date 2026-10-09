@@ -324,7 +324,8 @@ impl Kunai {
         self.since_sprint = if m.sprinting && !m.sliding { 0.0 } else { self.since_sprint + dt };
         let want = if self.since_sprint < SPRINT_HOLD { 1.0 } else { 0.0 };
         let d = dt / KUNAI_FADE;
-        self.sprint_w = if want > self.sprint_w { (self.sprint_w + d).min(1.0) } else { (self.sprint_w - d).max(0.0) };
+        // toward the wanted weight (at it: stays; `>` alone took 0.08 off every other frame, the knife shook)
+        self.sprint_w = if want >= self.sprint_w { (self.sprint_w + d).min(want) } else { (self.sprint_w - d).max(want) };
         // a one-shot playing is not started again (a run over bumps lands every few frames: each
         // restart snapped the knife back to the clip's first frame)
         if m.jumped && self.jump.is_none() {
@@ -439,7 +440,11 @@ pub fn step(dt: f32, i: &Inputs) {
         kunai: Kunai::default(),
         kunai_inspect: None,
     });
-    let s = sway_input(dt, i, a.last_eye);
+    let mut s = sway_input(dt, i, a.last_eye);
+    // the kunai's inspect on the run: the hands as when standing (no run bob or sway under it)
+    if a.kunai_inspect.is_some() {
+        (s.velocity, s.sliding) = (Vec3::ZERO, false);
+    }
     a.last_eye = i.eye;
     a.sway.step(&s, &R301_HIP, &R301_ZOOMED);
     a.drawn_turn = a.posed.as_ref().map(|p| p.camera_turn);
@@ -583,7 +588,8 @@ pub fn step(dt: f32, i: &Inputs) {
     a.posed = with_pack(|p| pose_pack(p, &out, &a.sway, posing.as_ref().or(a.ability_out.as_ref()), vis)).flatten();
     let us = t0.elapsed().as_secs_f32() * 1e6;
     if a.trace_until.is_some_and(|t| Instant::now() < t) {
-        log(trace_line(a, &out, us));
+        let layers = posing.as_ref().map_or(String::new(), |o| o.layers.iter().map(|l| format!("{}{:?} {:.2}@{:.2}", l.samples.first().map_or("", |s| s.0.as_str()), l.mode, l.weight, l.cycle)).collect::<Vec<_>>().join(", "));
+        log(format!("{} | kunai {} sprint_w {:.2} since {:.2} | layers [{layers}]", trace_line(a, &out, us), melee, a.kunai.sprint_w, a.kunai.since_sprint));
     }
 }
 
@@ -636,6 +642,10 @@ pub fn start_inspect() -> String {
     if melee_slot() {
         if with_pack(|p| p.clip("kn_inspect_0").is_none()).unwrap_or(true) {
             return "inspect: kn_inspect_0 not in the pack".into();
+        }
+        // pressed again while it plays: it goes on (a restart snapped the hands back to its first frame)
+        if a.kunai_inspect.is_some() {
+            return "inspect: kn_inspect_0 already playing".into();
         }
         a.kunai_inspect = Some(0.0);
         KUNAI_INSPECT_SOUNDS.iter().for_each(|(_, n)| crate::audio::stop(n));
