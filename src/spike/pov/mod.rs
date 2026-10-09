@@ -288,8 +288,10 @@ struct Anim {
     inspect: Option<(Weapon, f32)>,
     /// the holstered mode's kunai (its own clips over the graph's pose)
     kunai: Kunai,
-    /// the kunai's inspect playing: seconds into it
-    kunai_inspect: Option<f32>,
+    /// the kunai's inspect playing: which (`KUNAI_INSPECTS`), seconds into it
+    kunai_inspect: Option<(usize, f32)>,
+    /// the one a new press cut: which, seconds into it, its weight then and the seconds since
+    kunai_inspect_out: Option<(usize, f32, f32, f32)>,
 }
 
 /// The kunai's clips (retail `heirloom_wraith_v18_kunai_v_animRig.qc` through
@@ -313,9 +315,53 @@ struct Kunai {
 const KUNAI_FADE: f32 = 0.2;
 /// How long the sprint pose stays after the controller stops saying sprinting.
 const SPRINT_HOLD: f32 = 0.15;
-const KUNAI_INSPECT_FRAMES: u32 = 145;
-/// Its inspect's sounds at their QC frames (`inspect`: AE_CL_PLAYSOUND 1, 43, 124).
-const KUNAI_INSPECT_SOUNDS: &[(u32, &str)] = &[(1, "wraith_mvmt_kunai_inspect_basic_p1"), (43, "wraith_mvmt_kunai_inspect_basic_p2"), (124, "wraith_mvmt_kunai_inspect_basic_p3")];
+/// The kunai's inspects (retail QC: every `ACT_VM_WEAPON_INSPECT` sequence, picked at random by its
+/// activity weight as Apex does): its clip, frames (30 fps), weight, whether only crouched (the
+/// `crouch` activity modifier), its sounds at their QC frames. `inspect_file` (3) and
+/// `inspect_sweaty` (2) hold props the pack does not have (a folder, a towel): left out.
+struct KunaiInspect {
+    clip: &'static str,
+    frames: u32,
+    weight: u32,
+    crouched: bool,
+    sounds: &'static [(u32, &'static str)],
+}
+const KUNAI_BASIC_SOUNDS: &[(u32, &str)] = &[(1, "wraith_mvmt_kunai_inspect_basic_p1"), (43, "wraith_mvmt_kunai_inspect_basic_p2"), (124, "wraith_mvmt_kunai_inspect_basic_p3")];
+const KUNAI_INSPECTS: [KunaiInspect; 4] = [
+    KunaiInspect { clip: "kn_inspect_0", frames: 145, weight: 5, crouched: false, sounds: KUNAI_BASIC_SOUNDS },
+    KunaiInspect {
+        clip: "kn_inspect_fly_0",
+        frames: 331,
+        weight: 4,
+        crouched: false,
+        sounds: &[(0, "wraith_mvmt_kunai_inspect_fly_p1"), (107, "wraith_mvmt_kunai_inspect_fly_p2"), (208, "wraith_mvmt_kunai_inspect_fly_p3"), (263, "wraith_mvmt_kunai_inspect_fly_p4")],
+    },
+    KunaiInspect { clip: "kn_inspect_generic_0", frames: 145, weight: 1, crouched: false, sounds: KUNAI_BASIC_SOUNDS },
+    KunaiInspect {
+        clip: "kn_inspect_insignia_0",
+        frames: 113,
+        weight: 1,
+        crouched: true,
+        sounds: &[(0, "wraith_mvmt_kunai_inspect_insignia_p1"), (42, "wraith_mvmt_kunai_inspect_insignia_charged"), (58, "wraith_mvmt_kunai_inspect_insignia_p2"), (68, "wraith_mvmt_kunai_inspect_insignia_w_appears")],
+    },
+];
+/// A new press's crossfade from the inspect it cuts (seconds).
+const KUNAI_INSPECT_BLEND: f32 = 0.15;
+
+fn kunai_inspect_seconds(k: usize) -> f32 {
+    (KUNAI_INSPECTS[k].frames - 1) as f32 / 30.0
+}
+
+fn stop_kunai_sounds(k: usize) {
+    KUNAI_INSPECTS[k].sounds.iter().for_each(|(_, n)| crate::audio::stop(n));
+}
+
+/// The inspect's layer `t` seconds in (faded in and out over 0.2 s), times `scale`.
+fn kunai_inspect_layer(k: usize, t: f32, scale: f32) -> ability::Layer {
+    let total = kunai_inspect_seconds(k);
+    let weight = (t / 0.2).min((total - t) / 0.2).clamp(0.0, 1.0) * scale;
+    ability::Layer { samples: vec![(KUNAI_INSPECTS[k].clip.into(), 1.0)], cycle: (t / total).clamp(0.0, 1.0), weight, mode: ability::Mode::Over }
+}
 
 impl Kunai {
     fn step(&mut self, dt: f32, m: &Moving) {
@@ -439,6 +485,7 @@ pub fn step(dt: f32, i: &Inputs) {
         inspect: None,
         kunai: Kunai::default(),
         kunai_inspect: None,
+        kunai_inspect_out: None,
     });
     let mut s = sway_input(dt, i, a.last_eye);
     // the kunai's inspect on the run: the hands as when standing (no run bob or sway under it)
@@ -554,17 +601,25 @@ pub fn step(dt: f32, i: &Inputs) {
         // its inspect (key 5) over the loops, cut as the guns' is
         // (not sprint: the kunai is inspected on the run too, the user's 2026-10-09 ask)
         let kunai_busy = swapping || a.ability_out.is_some() || super::weapons::swing_age().is_some_and(|t| t < 1.0);
-        a.kunai_inspect = match a.kunai_inspect {
-            Some(t) if !kunai_busy && t < (KUNAI_INSPECT_FRAMES - 1) as f32 / 30.0 => {
-                let total = (KUNAI_INSPECT_FRAMES - 1) as f32 / 30.0;
-                let weight = (t / 0.2).min((total - t) / 0.2).clamp(0.0, 1.0);
-                layers.push(ability::Layer { samples: vec![("kn_inspect_0".into(), 1.0)], cycle: t / total, weight, mode: ability::Mode::Over });
-                Some(t + dt)
+        // the one a new press cut, fading out under the new one
+        a.kunai_inspect_out = match a.kunai_inspect_out {
+            Some((k, t, w, s)) if !kunai_busy && s < KUNAI_INSPECT_BLEND && t < kunai_inspect_seconds(k) => {
+                let mut l = kunai_inspect_layer(k, t, 1.0);
+                l.weight = w * (1.0 - s / KUNAI_INSPECT_BLEND);
+                layers.push(l);
+                Some((k, t + dt, w, s + dt))
             }
-            Some(t) => {
+            _ => None,
+        };
+        a.kunai_inspect = match a.kunai_inspect {
+            Some((k, t)) if !kunai_busy && t < kunai_inspect_seconds(k) => {
+                layers.push(kunai_inspect_layer(k, t, 1.0));
+                Some((k, t + dt))
+            }
+            Some((k, t)) => {
                 // cut short: its sounds end with it (played out: they ring on)
-                if t < (KUNAI_INSPECT_FRAMES - 1) as f32 / 30.0 {
-                    KUNAI_INSPECT_SOUNDS.iter().for_each(|(_, n)| crate::audio::stop(n));
+                if t < kunai_inspect_seconds(k) {
+                    stop_kunai_sounds(k);
                 }
                 None
             }
@@ -573,8 +628,11 @@ pub fn step(dt: f32, i: &Inputs) {
         for (k, l) in layers.into_iter().enumerate() {
             o.layers.insert(k, l);
         }
-    } else if a.kunai_inspect.take().is_some() {
-        KUNAI_INSPECT_SOUNDS.iter().for_each(|(_, n)| crate::audio::stop(n));
+    } else {
+        a.kunai_inspect_out = None;
+        if let Some((k, _)) = a.kunai_inspect.take() {
+            stop_kunai_sounds(k);
+        }
     }
     // the Charge Rifle's discharge: `sustained_discharge` and its `charge_loop_layer` added on
     if a.view == Weapon::ChargeRifle
@@ -640,19 +698,40 @@ pub fn start_inspect() -> String {
     let mut g = ANIM.lock().unwrap_or_else(|e| e.into_inner());
     let Some(a) = g.as_mut() else { return "inspect: no view model".into() };
     if melee_slot() {
-        if with_pack(|p| p.clip("kn_inspect_0").is_none()).unwrap_or(true) {
-            return "inspect: kn_inspect_0 not in the pack".into();
+        // Apex: a random one of them by weight, every press (again while one plays: the new one
+        // crossfades over it)
+        let crouched = a.signals.moving.is_some_and(|m| m.crouched);
+        let ok: Vec<usize> = (0..KUNAI_INSPECTS.len())
+            .filter(|&k| KUNAI_INSPECTS[k].crouched <= crouched && with_pack(|p| p.clip(KUNAI_INSPECTS[k].clip).is_some()).unwrap_or(false))
+            .collect();
+        let total: u32 = ok.iter().map(|&k| KUNAI_INSPECTS[k].weight).sum();
+        if total == 0 {
+            return "inspect: no kunai inspect in the pack".into();
         }
-        // pressed again while it plays: it goes on (a restart snapped the hands back to its first frame)
-        if a.kunai_inspect.is_some() {
-            return "inspect: kn_inspect_0 already playing".into();
+        let mut roll = ((a.started.elapsed().as_nanos() as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 33) % total as u64;
+        let k = ok
+            .iter()
+            .copied()
+            .find(|&k| {
+                let w = KUNAI_INSPECTS[k].weight as u64;
+                if roll < w {
+                    true
+                } else {
+                    roll -= w;
+                    false
+                }
+            })
+            .unwrap_or(ok[0]);
+        if let Some((old, t)) = a.kunai_inspect.take() {
+            stop_kunai_sounds(old);
+            let w = kunai_inspect_layer(old, t, 1.0).weight;
+            a.kunai_inspect_out = Some((old, t, w, 0.0));
         }
-        a.kunai_inspect = Some(0.0);
-        KUNAI_INSPECT_SOUNDS.iter().for_each(|(_, n)| crate::audio::stop(n));
-        for &(frame, n) in KUNAI_INSPECT_SOUNDS {
+        a.kunai_inspect = Some((k, 0.0));
+        for &(frame, n) in KUNAI_INSPECTS[k].sounds {
             crate::audio::play_in(n, 0.5, frame as f32 / 30.0);
         }
-        return format!("inspect: kn_inspect_0 ({:.1} s)", (KUNAI_INSPECT_FRAMES - 1) as f32 / 30.0);
+        return format!("inspect: {} ({:.1} s)", KUNAI_INSPECTS[k].clip, kunai_inspect_seconds(k));
     }
     let w = a.view;
     let Some((name, _)) = inspect_clip(w) else { return "inspect: none for this weapon".into() };
