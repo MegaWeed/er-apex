@@ -273,7 +273,7 @@ impl ImguiRenderLoop for Overlay {
     fn render(&mut self, ui: &mut imgui::Ui) {
         if let Some(Some(pack)) = APEX.get() {
             // not over a loading screen, the map or a menu
-            if crate::state::playable() && crate::fe::in_play_view() {
+            if crate::state::playable() && crate::fe::in_play_view() && crate::mode::apex() {
                 let size = ui.io().display_size;
                 let dl = ui.get_foreground_draw_list();
                 let fov = drawn().map_or(0.838, |d| d.1);

@@ -69,6 +69,7 @@ pwsh play.ps1
 - It backs up the test save to `scratch\saves`, installs the mod into `scratch\mod` and starts the game offline through me3, in a 1920×1080 window. The game skips the title screen and continues the test save's last character at the grace "The First Step" in Limgrave: Octane in first person, R-301 in hand, three soldiers next to the grace as targets.
 - The test save `ER0000_fuse.sl2` needs at least one character. me3 copies it from your normal save the first time it starts the game.
 - **Click the game window** to play with keyboard and mouse.
+- **F5** switches back to the Elden Ring character (the game's own movement and collision, camera, HUD, armour and weapons; the mod's guns and abilities are off). F5 again: Octane.
 - By default gun damage is ×3 and the Jump Pad has no cooldown; `-Season3` uses the Season 3 values. `-NoSpawn`: no soldiers.
 - More soldiers: `pwsh tools/dev/game.ps1 spawn`. A friendly NPC stands about 10.5 m from the grace; do not shoot it. Back to the grace: `pwsh tools/dev/game.ps1 cmd "warp 1042361951"`. Quit: `pwsh tools/dev/game.ps1 stop`.
 

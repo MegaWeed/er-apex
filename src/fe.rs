@@ -29,6 +29,10 @@ use crate::{log, paths, state};
 static HIDE: AtomicU8 = AtomicU8::new(0);
 
 fn hidden() -> bool {
+    // F5 (mode.rs): the Tarnished has the game's own HUD
+    if !crate::mode::apex() {
+        return false;
+    }
     match HIDE.load(Ordering::Relaxed) {
         0 => {
             let h = paths::flag("hud_hide");
