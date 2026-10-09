@@ -252,7 +252,7 @@ Step 8 'the Wingman, the R-99, the Flatline, the Sentinel and the kunai (about 2
     # optional skins (not in git): each folder that is there replaces that weapon's textures; model 998
     # is made again when the set of skins changes
     $skinArgs = @()
-    foreach ($k in @(@('wingman', '--skin'), @('chargerifle', '--cr-skin'), @('r99', '--r99-skin'), @('kunai', '--kunai-skin'))) {
+    foreach ($k in @(@('wingman', '--skin'), @('chargerifle', '--cr-skin'), @('r99', '--r99-skin'), @('kunai', '--kunai-skin'), @('flatline', '--flatline-skin'))) {
         $d = Join-Path $Skins $k[0]
         if (Test-Path (Join-Path $Root $d)) { $skinArgs += $k[1], $d }
     }
