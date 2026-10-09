@@ -15,6 +15,10 @@
 - **自定义皮肤**：`python tools/fusepov/build_wingman.py --skin <文件夹> --cr-skin <文件夹>`。`--skin` 放 `Wingman_Default_col.dds`（可选 `_spc`、`_nml`、`_gls`）；`--cr-skin` 放 `col/`、`nml/`、`gls/` 子文件夹，各含若干尺寸的 `.dds`，取最大的一张。皮肤贴图不在仓库里。
 - **没装 DLC 也能导出**：没有《黄金树幽影》时 `erextract` 跳过 `DLC.bhd`。
 - `export-assets.ps1` 新增第 8 步生成 Wingman 资源。
+- **弹匣**：Wingman 8 发，Charge Rifle 8 发。
+- **敌人判定**：除玩家一方（阵营 1、2、8、12，可用 ini `friendly_teams` 改）外所有角色都能被击中，和原版一样。
+- **移动**：每秒重读地面碰撞、下落中陷进地面时拉回，避免穿地；电梯由游戏接管直到停稳。
+- **设置**：`pwsh play.ps1 -Fov 90 -FpsLimit 120 -PlayerName "名字"`（FOV 默认 90，帧数默认原版 60，HUD 名字默认读环境变量 `ER_APEX_PLAYER_NAME`）。
 
 已知限制：第三人称身体手里仍是 R-301；Wingman 击锤不单独动作；自发光贴图未使用。
 
