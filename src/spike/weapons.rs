@@ -57,10 +57,12 @@ pub enum Gun {
     R301 = 0,
     R99 = 1,
     Wingman = 2,
+    /// the VK-47 Flatline (its Teal Zeal model)
+    Flatline = 3,
 }
 
 impl Gun {
-    pub const ALL: [Gun; 3] = [Gun::R301, Gun::R99, Gun::Wingman];
+    pub const ALL: [Gun; 4] = [Gun::R301, Gun::R99, Gun::Wingman, Gun::Flatline];
 
     pub fn index(self) -> usize {
         self as usize
@@ -71,6 +73,7 @@ impl Gun {
             Gun::R301 => "R-301",
             Gun::R99 => "R-99",
             Gun::Wingman => "Wingman",
+            Gun::Flatline => "Flatline",
         }
     }
 
@@ -84,6 +87,8 @@ impl Gun {
             Gun::R301 => Timing { holster: 0.55, deploy: 0.6, deploy_first: 1.1, ready: 12.0 / 25.0, ready_first: 38.0 / 44.0 },
             Gun::R99 => Timing { holster: 0.3, deploy: 0.35, deploy_first: 0.35, ready: 6.0 / 12.0, ready_first: 6.0 / 12.0 },
             Gun::Wingman => R301_TIMING,
+            // `mp_weapon_vinson.txt`: 0.55, 0.6, 1.25; its view model's draw ready 10 of 21, drawfirst 25 of 30
+            Gun::Flatline => Timing { holster: 0.55, deploy: 0.6, deploy_first: 1.25, ready: 10.0 / 21.0, ready_first: 25.0 / 30.0 },
         }
     }
 }
@@ -158,8 +163,8 @@ pub struct Loadout {
     primary: Gun,
     switch: Option<Switch>,
     /// whether each weapon has been drawn before (`deployfirst_time` only the first time): the
-    /// three guns, the Charge Rifle, the kunai
-    drawn: [bool; 5],
+    /// four guns, the Charge Rifle, the kunai
+    drawn: [bool; 6],
 }
 
 impl Default for Loadout {
@@ -170,7 +175,7 @@ impl Default for Loadout {
 
 impl Loadout {
     pub const fn new(primary: Gun) -> Loadout {
-        let mut drawn = [false; 5];
+        let mut drawn = [false; 6];
         drawn[primary as usize] = true;
         Loadout { active: Slot::R301, primary, switch: None, drawn }
     }
@@ -191,8 +196,8 @@ impl Loadout {
     fn drawn_index(slot: Slot, gun: Gun) -> usize {
         match slot {
             Slot::R301 => gun.index(),
-            Slot::ChargeRifle => 3,
-            Slot::Melee => 4,
+            Slot::ChargeRifle => 4,
+            Slot::Melee => 5,
         }
     }
 
@@ -407,7 +412,7 @@ fn number_keys() -> Option<[bool; 6]> {
 }
 
 /// The weapon wheel's choices, clockwise from the top.
-pub const WHEEL: [(Option<Gun>, &str); 4] = [(Some(Gun::R301), "R-301"), (Some(Gun::R99), "R-99"), (Some(Gun::Wingman), "Wingman"), (None, "Charge Rifle")];
+pub const WHEEL: [(Option<Gun>, &str); 5] = [(Some(Gun::R301), "R-301"), (Some(Gun::R99), "R-99"), (Some(Gun::Wingman), "Wingman"), (Some(Gun::Flatline), "Flatline"), (None, "Charge Rifle")];
 /// How far the view must turn (degrees) to point at a choice of the wheel.
 const WHEEL_DEADZONE: f32 = 2.0;
 
@@ -449,9 +454,11 @@ fn wheel_step(tab: bool, pick: Option<usize>) {
                 let d = f - f0;
                 let (x, y) = (d.dot(r0).to_degrees(), d.dot(u0).to_degrees());
                 if x.hypot(y) > WHEEL_DEADZONE {
-                    // clockwise from the top: up 0, right 1, down 2, left 3
+                    // clockwise from the top, a sector each
+                    let n = WHEEL.len();
+                    let sector = 360.0 / n as f32;
                     let a = x.atan2(y).to_degrees().rem_euclid(360.0);
-                    o.hovered = Some((((a + 45.0) / 90.0) as usize) % 4);
+                    o.hovered = Some((((a + sector / 2.0) / sector) as usize) % n);
                 }
             }
         }
@@ -479,7 +486,7 @@ pub struct Trigger {
 /// Rifle. Whether the R-301 sits this frame out (put away, coming out, or the Charge Rifle out).
 pub fn update(dt: f32, t: Trigger) -> bool {
     if !ANNOUNCED.swap(true, Ordering::Relaxed) {
-        log("weapons: slot 1 R-301 / R-99 / Wingman (the wheel: Tab), slot 2 Charge Rifle (keys 1 / 2, dev `weapon 1|2|r301|r99|wingman`)");
+        log("weapons: slot 1 R-301 / R-99 / Wingman / Flatline (the wheel: Tab), slot 2 Charge Rifle (keys 1 / 2, dev `weapon 1|2|r301|r99|wingman|flatline`)");
     }
     if crate::fe::in_play_view() {
         let keys = number_keys().unwrap_or([false; 6]);
@@ -587,6 +594,8 @@ fn gun_sounds(gun: Gun) -> (&'static [&'static str], &'static [&'static str]) {
     match gun {
         Gun::R301 => (&["weapon_r101_unequip", "weapon_r101_unequip_layer1"], &["weapon_r101_equip", "weapon_r101_equip_layer1", "weapon_r101_equip_layer2"]),
         Gun::R99 => (&["weapon_r97_unequip"], &["weapon_r97_equip"]),
+        // the Flatline's QC: the R-301's (`Weapon_R101_UnEquip` / `_Equip`, `--set flatline`)
+        Gun::Flatline => (&["weapon_r101_unequip", "weapon_r101_unequip_layer1"], &["weapon_r101_equip", "weapon_r101_equip_layer1", "weapon_r101_equip_layer2"]),
         Gun::Wingman => (
             &["weapon_wingman_unequip", "weapon_wingman_unequip_layer1", "weapon_wingman_unequip_layer2"],
             &["weapon_wingman_equip", "weapon_wingman_equip_layer1", "weapon_wingman_equip_layer2"],
@@ -655,6 +664,7 @@ pub fn zoom() -> (f32, f32, f32, f32) {
             Gun::R301 => (0.27, 0.23, 0.0, 1.0),
             Gun::R99 => (0.22, 0.2, 0.0, 1.0),
             Gun::Wingman => (0.18, 0.16, 0.0, 1.0),
+            Gun::Flatline => (0.27, 0.23, 0.0, 1.0),
         },
         Slot::ChargeRifle => (super::chargerifle::ZOOM_IN, super::chargerifle::ZOOM_OUT, super::chargerifle::ADS_FOV_FROM, super::chargerifle::ADS_FOV_TO),
         // the kunai does not aim (`aiming`): the zoom only goes out
@@ -666,7 +676,7 @@ pub fn zoom() -> (f32, f32, f32, f32) {
 /// 60, Charge Rifle 55.
 pub fn zoom_fov() -> f32 {
     match active() {
-        Slot::R301 if primary_gun() == Gun::R301 => 55.0,
+        Slot::R301 if matches!(primary_gun(), Gun::R301 | Gun::Flatline) => 55.0,
         Slot::R301 => 60.0,
         Slot::ChargeRifle => 55.0,
         Slot::Melee => 70.0,
@@ -711,8 +721,9 @@ pub fn dev(args: &[&str]) -> String {
         Some("r301") => select_gun(Some(Gun::R301), "dev"),
         Some("r99") => select_gun(Some(Gun::R99), "dev"),
         Some("wingman") => select_gun(Some(Gun::Wingman), "dev"),
+        Some("flatline") => select_gun(Some(Gun::Flatline), "dev"),
         None => format!("weapon: {} | {}", describe(), super::chargerifle::status()),
-        _ => "usage: weapon [1|2|r301|r99|wingman]".into(),
+        _ => "usage: weapon [1|2|3|r301|r99|wingman|flatline]".into(),
     }
 }
 

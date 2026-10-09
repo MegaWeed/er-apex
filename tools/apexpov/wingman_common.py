@@ -34,6 +34,10 @@ CONFIGS={
  'r9':_config('r9','apex-data/assets/r99_ascension','lg',10,'mdl/techart/mshop/weapons/class/smg/r99/r99_react_v20_ascension_v','animrig/techart/mshop/weapons/class/smg/r99/r99_base_v_animRig','r99_react_v20_ascension_v',('body_0_','clip_0_','sight_front_1_','sight_rear_1_'),('def_c_base','def_c_magazine','def_c_detailD'),('L_ThighTwist1','L_CalfTwist1','R_ThighTwist1'),'R-99'),
  # Wraith's heirloom kunai (the holstered mode, 2026-10-09) on part LG's next free twist leaf: one
  # mesh, all of it on def_magazine (the knife; knife_base, its child, is not weighted)
+ # the VK-47 Flatline (2026-10-09) on part LG's next free leaves: its Teal Zeal model (the legendary
+ # latline_v20_trshunter_v) on the Flatline's rig ptpov_vinson: the frame, the magazine, the
+ # top cover (def_front_top: the charging handle side); the release and the barrel ride on them
+ 'fl':_config('fl','apex-data/assets/flatline','lg',12,'mdl/techart/mshop/weapons/class/assault/flatline/flatline_v20_trshunter_v','animrig/weapons/vinson/ptpov_vinson','flatline_v20_trshunter_v',('body_0_','sight_rear_on_1_','_0_'),('def_c_base','def_magazine','def_front_top'),('L_ThighTwist','L_CalfTwist','R_CalfTwist'),'Flatline'),
  'kn':_config('kn','apex-data/assets/kunai','lg',11,'mdl/techart/mshop/weapons/class/heirloom/wraith/v18_kunai/heirloom_wraith_v18_kunai_v','animrig/techart/mshop/weapons/class/heirloom/wraith/v18_kunai/heirloom_wraith_v18_kunai_v_animRig','heirloom_wraith_v18_kunai_v',('projectile_0_',),('def_magazine',),('R_CalfTwist1',),'kunai'),
 }
 def _braced_qc(c):
