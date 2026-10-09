@@ -42,7 +42,7 @@ if ($save) {
 }
 
 $set = "quickboot = 1;qb_place = first_step;kcc = 1;fuse_model = 1;lethal_guard = 1;gun = 1;first_person = 1;camera_shoulder = 1;hud_hide = 1;virtual_pad = 0" +
-    ";audio_dir = $Root\apex-data\audio;hud_dir = $Root\apex-data\hud\octane;npc_names = $Root\er-data\json\NpcName_zhocn.json;npc_param_names = $Root\tools\third_party\Paramdex\ER\Names\NpcParam.txt"
+    ";audio_dir = $Root\apex-data\audio;hud_dir = $Root\apex-data\hud\octane;npc_names = $Root\er-data\json\NpcName_zhocn.json;npc_param_names = $Root\tools\third_party\Paramdex\ER\Names\NpcParam.txt;monster_names = $Root\tools\apexhud\monster_names_zhocn.json"
 if (-not $Season3) { $set += ';gun_damage_mult = 3;pad_cooldown = 0' }
 if (-not $Pad) { $set += ';keyboard_only = 1' }
 if ($PlayerName) { $set += ";player_name = $PlayerName" }
