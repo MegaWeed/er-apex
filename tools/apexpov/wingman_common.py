@@ -27,9 +27,11 @@ CONFIGS={
  # its child taclight1 spins 180 deg), the magazine (the cylinder's speed loader: 36 cm); detailB
  # (the hammer, 45 deg in the fire), toprail (1.7 cm), detailC (2.2 cm) and trigger ride on them
  'wm':_config('wm','apex-data/assets/wingman','bd',9,'mdl/techart/mshop/weapons/class/pistol/wingman/wingman_base_v','animrig/techart/mshop/weapons/class/pistol/wingman/wingman_base_v_animRig','wingman_base_v',('body_0_','b3wing_magazine_0_'),('def_c_base','def_c_taclight','def_c_magazine'),('R_ThighTwist','R_Hip','L_Hip'),'Wingman'),
- # the R-99 on part LG (its twist leaves): the frame, the magazine (the `clip` bodygroup), detailC;
- # the bolt, detailA/D and the iron sights ride on them
- 'r9':_config('r9','apex-data/assets/r99','lg',10,'mdl/techart/mshop/weapons/class/smg/r99/r99_base_v','animrig/techart/mshop/weapons/class/smg/r99/r99_base_v_animRig','r99_base_v',('body_0_','clip_0_','sight_front_1_','sight_rear_1_'),('def_c_base','def_c_magazine','def_c_detailC'),('L_ThighTwist1','L_CalfTwist1','R_ThighTwist1'),'R-99'),
+ # the R-99 on part LG (its twist leaves): its Cutting Edge model (the reactive `r99_react_v20_ascension_v`,
+ # the user's skin's, 2026-10-09) on the base rig's sequences: the frame, the magazine (the `clip`
+ # bodygroup), detailD; detailC, the iron sights and the reactive fins (`def_lb_fin_*`, bones of the
+ # reactive rig only) ride on them
+ 'r9':_config('r9','apex-data/assets/r99_ascension','lg',10,'mdl/techart/mshop/weapons/class/smg/r99/r99_react_v20_ascension_v','animrig/techart/mshop/weapons/class/smg/r99/r99_base_v_animRig','r99_react_v20_ascension_v',('body_0_','clip_0_','sight_front_1_','sight_rear_1_'),('def_c_base','def_c_magazine','def_c_detailD'),('L_ThighTwist1','L_CalfTwist1','R_ThighTwist1'),'R-99'),
 }
 def _braced_qc(c):
  """The rig QC with a block on every `$sequence` (the R-99's has some on one line, which the shared
@@ -103,9 +105,18 @@ def layout(base=None):
   pack_index={b['name']:i for i,b in enumerate(bones)}
   rig=bp.skeleton(c['rig']);idx={b['name']:i for i,b in enumerate(rig)};sources[key]=rig
   mdl,meshes,skip=selected(key);omitted+=skip;groups[key]=bodygroups(key);weights={}
+  # a model bone the rig lacks (the reactive fins) counts as its nearest ancestor the rig has
+  mbones=mdl.Skeleton().Bones();alias={}
+  def in_rig(i):
+   j=i
+   while j>=0 and mbones[j].Name() not in idx:j=mbones[j].ParentIndex()
+   require(j>=0,f'No rig ancestor: {mbones[i].Name()}');return mbones[j].Name()
   for mesh in meshes:
    for b,w in zip(mesh.VertexWeightBoneBuffer(),mesh.VertexWeightValueBuffer()):
-    if w>0:name=mdl.Skeleton().Bones()[b].Name();weights[name]=weights.get(name,0.)+w
+    if w>0:
+     name=mbones[b].Name()
+     if name not in idx:alias[name]=in_rig(b);name=alias[name]
+     weights[name]=weights.get(name,0.)+w
   totals[key]=weights
   prop=set(weights)|{b['name'] for b in rig if b['name'] not in pack_index}
   for n in list(prop):
@@ -140,8 +151,10 @@ def layout(base=None):
    while p>=0 and rig[p]['name'] not in by_source:p=rig[p]['parent']
    require(p>=0,'No ancestor carrier');ancestor=rig[p]['name'];by_source[n]=by_source[ancestor]
    fallback.append(dict(rig=key,source_bone=n,ancestor=ancestor,carrier=by_source[n],total_vertex_weight=weights[n]))
+  for n,a in alias.items():
+   by_source[n]=by_source[a];fallback.append(dict(rig=key,source_bone=n,ancestor=a,carrier=by_source[a],total_vertex_weight=None,note='model bone absent from the rig'))
   for carrier in new:
-   if carrier['rig']==key:carrier['mapped_total_vertex_weight']=sum(weights[n] for n,cname in by_source.items() if cname==carrier['name'])
+   if carrier['rig']==key:carrier['mapped_total_vertex_weight']=sum(weights.get(n,0.) for n,cname in by_source.items() if cname==carrier['name'])
   maps[key]=mapping;maps[key+'-carriers']=by_source
  require(len({c['name'] for c in base['carrier_records']+new})==BASE_COUNTS[1]+len(new),'Carrier collision')
  live={b['name'] for b in live_skeleton()['bones']};require(all(c['name'] in live for c in new),'Carrier absent from live')

@@ -75,14 +75,32 @@ def cr_skin_paths(out):
  return paths
 
 
+# An R-99 skin (build_wingman.py --r99-skin): a folder with `<size> COL SPC.dds` (one image for both
+# the albedo and the specular, the user's 2026-10-09 set says) replacing its main material's.
+R99_SKIN={'dir':None}
+
+
+def r99_skin_paths(out):
+ if R99_SKIN['dir'] is None:return {}
+ import subprocess
+ folder=Path(R99_SKIN['dir']);dest=out/'inputs/r99-skin';dest.mkdir(parents=True,exist_ok=True)
+ found=sorted((p for p in folder.glob('*.dds') if 'COL' in p.name.upper()),key=lambda p:p.stat().st_size)
+ wm.require(bool(found),f'No COL dds in the R-99 skin {folder}')
+ subprocess.run([str(ROOT/'tools/bin/texconv/texconv.exe'),'-nologo','-y','-ft','png','-f','R8G8B8A8_UNORM','-o',str(dest),str(found[-1])],check=True,capture_output=True)
+ png=dest/(found[-1].stem+'.png')
+ return dict(col=png,spc=png)
+
+
 def texture_sources(key,meshes,out=None):
  result={};assets=wm.CONFIGS[key]['assets']
  materials=read(assets/'materials.json')['materials']
- skin=skin_paths(out) if out is not None and key=='wm' else {}
+ skin=(skin_paths(out) if key=='wm' else r99_skin_paths(out) if key=='r9' else {}) if out is not None else {}
+ # the skin goes on the weapon's main material (`<model>_main`)
+ main={'wm':SKIN_MATERIAL}.get(key) or Path(wm.CONFIGS[key]['stem']).name.removesuffix('_v')+'_main'
  for mesh in meshes:
   mat=next(m for m in materials if m['guid']==f'{mesh.Material().Hash():016x}');paths={}
   for t in sorted(mat['textures'],key=lambda t:t['slot']):paths.setdefault(t['usage'].lstrip('_'),assets/next(p for p in t['files'] if p.endswith('.png')))
-  if mesh.Material().Name()==SKIN_MATERIAL:paths.update(skin)
+  if mesh.Material().Name()==main:paths.update(skin)
   wm.require('col' in paths,'Missing local albedo texture');result[mesh.Material().Name()]=paths
  return result
 
