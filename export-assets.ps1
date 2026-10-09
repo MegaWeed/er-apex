@@ -267,6 +267,7 @@ Step 8 'the Wingman, the R-99 and the kunai (about 12 min)' {
     Set-Content $mark $want
     Run 'apex-data\audio\wingman\manifest.json' python tools/fuseaudio/export_audio.py --set wingman
     Run 'apex-data\audio\r99\manifest.json' python tools/fuseaudio/export_audio.py --set r99
+    Run 'apex-data\audio\kunai\manifest.json' python tools/fuseaudio/export_audio.py --set kunai
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_wingman.png' python tools/apexhud/export_wingman.py --legend octane
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_r97.png' python tools/apexhud/export_wingman.py --legend octane --weapon r99
     # optional HUD fonts (not in git): the .ttf/.otf files in apex-data\fonts for the HUD's digits and letters

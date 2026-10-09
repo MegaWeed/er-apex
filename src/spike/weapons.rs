@@ -564,8 +564,12 @@ fn melee_update(fire: bool, can: bool) {
     }
     s.0 = Some(std::time::Instant::now());
     drop(s);
+    // the swing's sounds (`melee_idle_swipe` frames 0 and 2; stand-ins: export_audio.py --set kunai)
+    crate::audio::play("karambit_mvmt_melee_idle_swipe_1p", R301_VOLUME);
+    crate::audio::play_in("octane_effort_melee_1p", R301_VOLUME, 2.0 / 30.0);
     let hit = super::gun::fire_ray_ex(0.0, (0.0, 0.0), glam::Vec3::ZERO, 2, MELEE_RANGE, true, |_, _| MELEE_DAMAGE * super::gun::damage_mult());
     if let Some(line) = hit.and_then(|o| o.line) {
+        crate::audio::play("generic_kunaiimpact_1p_vs_3p", R301_VOLUME);
         log(format!("melee: {line}"));
     }
 }
@@ -609,7 +613,10 @@ fn phase_sounds(now: Phase, gun: Gun) {
             Phase::Holstering { slot: Slot::ChargeRifle, .. } => super::chargerifle::sound_holster(),
             Phase::Drawing { slot: Slot::ChargeRifle, first, .. } => super::chargerifle::sound_draw(first),
             Phase::Holstering { slot: Slot::R301, .. } => unequip.iter().for_each(|n| crate::audio::play(n, R301_VOLUME)),
-            // the kunai: no sounds exported (待定)
+            // the kunai (`--set kunai`): its draw's QC sound, and the grip turned back for its put-away
+            // (its holster has none: a stand-in)
+            Phase::Holstering { slot: Slot::Melee, .. } => crate::audio::play("wraith_mvmt_kunai_grip_standard2reverse", R301_VOLUME),
+            Phase::Drawing { slot: Slot::Melee, .. } => crate::audio::play("wraith_mvmt_kunai_grip_reverse2standard", R301_VOLUME),
             Phase::Drawing { slot: Slot::R301, .. } => equip.iter().for_each(|n| crate::audio::play(n, R301_VOLUME)),
             _ => {}
         }

@@ -310,6 +310,8 @@ struct Kunai {
 
 const KUNAI_FADE: f32 = 0.2;
 const KUNAI_INSPECT_FRAMES: u32 = 145;
+/// Its inspect's sounds at their QC frames (`inspect`: AE_CL_PLAYSOUND 1, 43, 124).
+const KUNAI_INSPECT_SOUNDS: &[(u32, &str)] = &[(1, "wraith_mvmt_kunai_inspect_basic_p1"), (43, "wraith_mvmt_kunai_inspect_basic_p2"), (124, "wraith_mvmt_kunai_inspect_basic_p3")];
 
 impl Kunai {
     fn step(&mut self, dt: f32, m: &Moving) {
@@ -546,13 +548,20 @@ pub fn step(dt: f32, i: &Inputs) {
                 layers.push(ability::Layer { samples: vec![("kn_inspect_0".into(), 1.0)], cycle: t / total, weight, mode: ability::Mode::Over });
                 Some(t + dt)
             }
-            _ => None,
+            Some(t) => {
+                // cut short: its sounds end with it (played out: they ring on)
+                if t < (KUNAI_INSPECT_FRAMES - 1) as f32 / 30.0 {
+                    KUNAI_INSPECT_SOUNDS.iter().for_each(|(_, n)| crate::audio::stop(n));
+                }
+                None
+            }
+            None => None,
         };
         for (k, l) in layers.into_iter().enumerate() {
             o.layers.insert(k, l);
         }
-    } else {
-        a.kunai_inspect = None;
+    } else if a.kunai_inspect.take().is_some() {
+        KUNAI_INSPECT_SOUNDS.iter().for_each(|(_, n)| crate::audio::stop(n));
     }
     // the Charge Rifle's discharge: `sustained_discharge` and its `charge_loop_layer` added on
     if a.view == Weapon::ChargeRifle
@@ -621,6 +630,10 @@ pub fn start_inspect() -> String {
             return "inspect: kn_inspect_0 not in the pack".into();
         }
         a.kunai_inspect = Some(0.0);
+        KUNAI_INSPECT_SOUNDS.iter().for_each(|(_, n)| crate::audio::stop(n));
+        for &(frame, n) in KUNAI_INSPECT_SOUNDS {
+            crate::audio::play_in(n, 0.5, frame as f32 / 30.0);
+        }
         return format!("inspect: kn_inspect_0 ({:.1} s)", (KUNAI_INSPECT_FRAMES - 1) as f32 / 30.0);
     }
     let w = a.view;

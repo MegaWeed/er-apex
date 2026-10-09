@@ -16,7 +16,7 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 - **Weapon wheel**: hold Tab, turn the view (or press 1-3) to pick a gun, let go to switch. Key 2 is still the Charge Rifle.
 - **The R-99 is the Cutting Edge model** (reactive skin model `r99_react_v20_ascension_v`), animated on the base R-99's rig.
 - **Inspect**: key 5 plays the inspect of the gun in hand, with its sounds; a shot, aiming, a reload, a switch, sprint or an ability cuts it.
-- **Holstered mode**: key 3 puts the gun away and takes out Wraith's heirloom kunai (its first-person model and animations from your Apex install); you run a little faster (×1.1, ini `holster_speed`), the left mouse button swings it (30 damage up to 2 m), 5 plays its inspect, and 3 again (or 1 / 2) brings the gun back. The HUD stays as it was.
+- **Holstered mode**: key 3 puts the gun away and takes out Wraith's heirloom kunai (its first-person model and animations from your Apex install); you run a little faster (×1.1, ini `holster_speed`), the left mouse button swings it (30 damage up to 2 m), 5 plays its inspect (all with the kunai's sounds), and 3 again (or 1 / 2) brings the gun back. The HUD stays as it was.
 - **Wingman**: semi-auto, 8 rounds, 50 a shot, head ×1.5, reload 2.1 s, zoom 60°, Apex's view kick. **Charge Rifle**: 8 rounds.
 - **Custom skins (optional)**: put your own textures in `apex-data\skins\` and step 8 uses them (see [Weapon skins](#weapon-skins-optional)). No skin textures are in the repository.
 
@@ -269,6 +269,7 @@ python tools/apexpov/bake_wingman.py                  # -> apex-data\pov\octane_
 python tools/fusepov/build_wingman.py                 # -> er-data\s3\octane_pov_wingman (model 998); skins: see below
 python tools/fuseaudio/export_audio.py --set wingman
 python tools/fuseaudio/export_audio.py --set r99
+python tools/fuseaudio/export_audio.py --set kunai
 python tools/apexhud/export_wingman.py --legend octane
 python tools/apexhud/export_wingman.py --legend octane --weapon r99
 python tools/apexhud/custom_font.py                   # only with fonts in apex-data\fonts: -> apex-data\hud\custom_font
