@@ -112,12 +112,33 @@ def kunai_skin_paths(out):
  return paths
 
 
+# A Flatline skin (build_wingman.py --flatline-skin): a folder (any subfolders) with `*COL*.dds` and
+# `*SPC*.dds` (the largest of each; the user's 2026-10-09 set: COL2048.dds, 2048SPC.dds) replacing
+# its Teal Zeal material's albedo and specular (0x7D8B14A315E42417, 0x62178FCDBF0B72DF); the set's
+# third image, its emissive (0x9751C40ED639402C, its "AO"), is not used: no emissive here.
+FLATLINE_SKIN={'dir':None}
+
+
+def flatline_skin_paths(out):
+ if FLATLINE_SKIN['dir'] is None:return {}
+ import subprocess
+ folder=Path(FLATLINE_SKIN['dir']);paths={}
+ for usage,tag in (('col','COL'),('spc','SPC')):
+  found=sorted((p for p in folder.rglob('*.dds') if tag in p.name.upper()),key=lambda p:p.stat().st_size)
+  if not found:continue
+  target=out/'inputs/flatline-skin'/usage;target.mkdir(parents=True,exist_ok=True)
+  subprocess.run([str(ROOT/'tools/bin/texconv/texconv.exe'),'-nologo','-y','-ft','png','-f','R8G8B8A8_UNORM','-o',str(target),str(found[-1])],check=True,capture_output=True)
+  paths[usage]=target/(found[-1].stem+'.png')
+ wm.require('col' in paths,f'No COL dds in the Flatline skin {folder}')
+ return paths
+
+
 def texture_sources(key,meshes,out=None):
  result={};assets=wm.CONFIGS[key]['assets']
  materials=read(assets/'materials.json')['materials']
- skin=(skin_paths(out) if key=='wm' else r99_skin_paths(out) if key=='r9' else kunai_skin_paths(out) if key=='kn' else {}) if out is not None else {}
+ skin=(skin_paths(out) if key=='wm' else r99_skin_paths(out) if key=='r9' else kunai_skin_paths(out) if key=='kn' else flatline_skin_paths(out) if key=='fl' else {}) if out is not None else {}
  # the skin goes on the weapon's main material (`<model>_main`)
- main={'wm':SKIN_MATERIAL,'kn':KUNAI_SKIN_MATERIAL}.get(key) or Path(wm.CONFIGS[key]['stem']).name.removesuffix('_v')+'_main'
+ main={'wm':SKIN_MATERIAL,'kn':KUNAI_SKIN_MATERIAL,'fl':'flatline_lgnd_v20_trshunter_main'}.get(key) or Path(wm.CONFIGS[key]['stem']).name.removesuffix('_v')+'_main'
  for mesh in meshes:
   mat=next(m for m in materials if m['guid']==f'{mesh.Material().Hash():016x}');paths={}
   for t in sorted(mat['textures'],key=lambda t:t['slot']):paths.setdefault(t['usage'].lstrip('_'),assets/next(p for p in t['files'] if p.endswith('.png')))
