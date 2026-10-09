@@ -273,6 +273,7 @@ Step 8 'the Wingman, the R-99, the Flatline and the kunai (about 16 min)' {
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_wingman.png' python tools/apexhud/export_wingman.py --legend octane
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_r97.png' python tools/apexhud/export_wingman.py --legend octane --weapon r99
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_flatline.png' python tools/apexhud/export_wingman.py --legend octane --weapon flatline
+    Run 'apex-data\hud\octane\extra\rui\menu\buttons\melee_skins\wraith_kunai.png' python tools/apexhud/export_wingman.py --legend octane --weapon kunai
     # optional HUD fonts (not in git): the .ttf/.otf files in apex-data\fonts for the HUD's digits and letters
     if (Get-ChildItem (Join-Path $Root 'apex-data\fonts') -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in '.ttf', '.otf' }) {
         Run 'apex-data\hud\custom_font\meta.json' python tools/apexhud/custom_font.py

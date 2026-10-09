@@ -21,7 +21,12 @@ REPO = Path(__file__).resolve().parents[2]
 # the weapons of slot 1 beyond the R-301 (whose icon and name the HUD pack has): settings, icon, name
 WEAPONS = {'wingman': ('mp_weapon_wingman.txt', 'rui/weapon_icons/r5/weapon_wingman', '#WPN_WINGMAN_SHORT'),
            'r99': ('mp_weapon_r97.txt', 'rui/weapon_icons/r5/weapon_r97', '#WPN_R97_SHORT'),
-           'flatline': ('mp_weapon_vinson.txt', 'rui/weapon_icons/r5/weapon_flatline', '#WPN_VINSON_SHORT')}
+           'flatline': ('mp_weapon_vinson.txt', 'rui/weapon_icons/r5/weapon_flatline', '#WPN_VINSON_SHORT'),
+           # the kunai (the kill feed's icon for a swing): its melee skin's `equipImage` (item flavour
+           # settings/itemflav/melee_skin/kunai.rpak; its weapon settings' hud_icon is the generic fist)
+           'kunai': ('melee_wraith_kunai.txt', 'rui/menu/buttons/melee_skins/wraith_kunai', None)}
+# icons that are not their weapon settings' hud_icon: where they are named
+ICON_SOURCES = {'rui/menu/buttons/melee_skins/wraith_kunai': 'settings/itemflav/melee_skin/kunai.rpak equipImage'}
 SETTINGS = REPO / 'apex-data/export/weapon/mp_weapon_wingman.txt'
 ICON = 'rui/weapon_icons/r5/weapon_wingman'
 NAME_KEY = '#WPN_WINGMAN_SHORT'
@@ -71,8 +76,11 @@ def export(game, out):
         size = list(im.size)
     index = read_json(images)
     index[ICON] = {'guid': f'{guid:016x}', 'payload_image': ('extra/' + ICON + '.png'), 'size': size,
-                   'evidence': [settings_line('hud_icon', ICON)], 'package': 'ui.rpak'}
+                   'evidence': [{'kind': 'item_flavor', 'source': ICON_SOURCES[ICON]} if ICON in ICON_SOURCES else settings_line('hud_icon', ICON)], 'package': 'ui.rpak'}
     write_json(images, index)
+    if NAME_KEY is None:
+        print(f'PASS HUD icon: {ICON} {size[0]}x{size[1]}')
+        return
     entries = localization(out, keys=[NAME_KEY])
     if not entries[NAME_KEY]['values']:
         raise RuntimeError(f'{NAME_KEY}: not in the local localization')
