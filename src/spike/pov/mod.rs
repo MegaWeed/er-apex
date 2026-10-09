@@ -698,6 +698,12 @@ pub fn start_inspect() -> String {
     let mut g = ANIM.lock().unwrap_or_else(|e| e.into_inner());
     let Some(a) = g.as_mut() else { return "inspect: no view model".into() };
     if melee_slot() {
+        // on the run: no inspect, the sprint's knife pose starts over (the user's 2026-10-09 ask, as
+        // Apex does on a sprint)
+        if a.signals.moving.is_some_and(|m| m.sprinting && !m.sliding) {
+            a.kunai.sprint_t = 0.0;
+            return "inspect: on the run, the kunai's sprint from its start".into();
+        }
         // Apex: a random one of them by weight, every press (again while one plays: the new one
         // crossfades over it)
         let crouched = a.signals.moving.is_some_and(|m| m.crouched);
