@@ -83,8 +83,9 @@ pub enum Weapon {
     #[default]
     R301,
     ChargeRifle,
-    /// the R-301's slot when the pack has the Wingman
+    /// the R-301's slot's other guns (the weapon wheel: weapons.rs `Gun`)
     Wingman,
+    R99,
 }
 
 impl Weapon {
@@ -94,6 +95,7 @@ impl Weapon {
             Weapon::R301 => "",
             Weapon::ChargeRifle => "cr_",
             Weapon::Wingman => "wm_",
+            Weapon::R99 => "r9_",
         }
     }
 }
@@ -158,6 +160,26 @@ static WM_DEFS: [SeqDef; 15] = [
     def("wm_wind_effect_layer", &[(1, 30.0), (16, 30.0)], Axes::Velocity, FADE, FADE, false),
 ];
 
+/// The R-99's (retail `r99_base_v_animRig.qc` through apex-data/pov/octane_wingman/r99_sequences.json;
+/// its reloads are `reload_seq` / `reload_empty_seq`).
+static R9_DEFS: [SeqDef; 15] = [
+    def("r9_ads_in", &[(11, 30.0), (12, 30.0)], Axes::Crouch, 0.1, FADE, false),
+    def("r9_ads_out", &[(16, 30.0), (16, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("r9_idle", &[(191, 30.0), (191, 30.0)], Axes::Ads, 0.3, 0.3, true),
+    def("r9_crouch", &[(191, 30.0), (191, 30.0)], Axes::Ads, 0.3, 0.3, true),
+    def("r9_idle_to_crouch", &[(29, 30.0), (191, 30.0)], Axes::Ads, FADE, FADE, false),
+    def("r9_crouch_to_idle", &[(29, 30.0), (191, 30.0)], Axes::Ads, FADE, FADE, false),
+    def("r9_fire", &[(28, 30.0), (20, 30.0), (28, 30.0), (20, 30.0)], Axes::AdsCrouch, 0.05, FADE, false),
+    def("r9_jump", &[(31, 30.0), (22, 30.0), (31, 30.0), (22, 30.0)], Axes::AdsCrouch, FADE, 0.35, false),
+    def("r9_land", &[(19, 30.0), (19, 30.0), (19, 30.0), (19, 30.0)], Axes::AdsCrouch, 0.05, 0.35, false),
+    def("r9_sprint", &[(21, 36.0)], Axes::One, FADE, FADE, true),
+    def("r9_sprintraise", &[(11, 30.0)], Axes::One, FADE, FADE, false),
+    def("r9_sprintslide", &[(14, 30.0)], Axes::One, FADE, FADE, false),
+    def("r9_reload_seq", &[(73, 30.0), (73, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("r9_reload_empty_seq", &[(94, 30.0), (94, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("r9_wind_effect_layer", &[(1, 30.0), (16, 30.0)], Axes::Velocity, FADE, FADE, false),
+];
+
 impl Seq {
     pub const ALL: [Seq; 15] = [
         Seq::AdsIn,
@@ -188,6 +210,7 @@ impl Seq {
             Weapon::R301 => &DEFS[self as usize],
             Weapon::ChargeRifle => &CR_DEFS[self as usize],
             Weapon::Wingman => &WM_DEFS[self as usize],
+            Weapon::R99 => &R9_DEFS[self as usize],
         }
     }
 

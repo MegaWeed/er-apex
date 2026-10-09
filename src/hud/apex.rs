@@ -78,6 +78,10 @@ const EMPTY_STOCK_SNIPER: &str = "rui/pilot_loadout/mods/empty_stock_sniper";
 /// (the retail weapon settings), retail's `ammo_pool_type` "sniper", semi-auto (single shot), its
 /// empty slots the magazine and the sight (推断: the pistol's attachments as retail's loot has them).
 const WINGMAN_ICON: &str = "rui/weapon_icons/r5/weapon_wingman";
+/// The R-99 (the weapon wheel; tools/apexhud/export_wingman.py `--weapon r99`): its `hud_icon`, light
+/// ammo, automatic, its empty slots the barrel, the magazine, the sight and the stock.
+const R99_ICON: &str = "rui/weapon_icons/r5/weapon_r97";
+const R99_SLOTS: [&str; 4] = EMPTY_SLOTS;
 pub const IMAGES: &[(&str, tex::Kind)] = &[
     (BATTERY_ICON, tex::Kind::Color),
     (AMMO_BADGE, tex::Kind::Color),
@@ -94,6 +98,7 @@ pub const IMAGES: &[(&str, tex::Kind)] = &[
     (SINGLE_SHOT, tex::Kind::Color),
     (EMPTY_STOCK_SNIPER, tex::Kind::Faint),
     (WINGMAN_ICON, tex::Kind::Color),
+    (R99_ICON, tex::Kind::Color),
     // the frag grenade's `hud_icon` (U9; tools/apexhud/export_extra.py)
     (super::grenade::ICON, tex::Kind::Color),
 ];
@@ -127,6 +132,28 @@ fn look(slot: u8) -> Look {
             badge: SNIPER_BADGE,
             mode: SINGLE_SHOT,
             slots: &CHARGE_RIFLE_SLOTS,
+        }
+    } else if slot == 0 && crate::spike::weapons::primary_gun() == crate::spike::weapons::Gun::R301 {
+        Look {
+            name_key: "#WPN_RSPN101_SHORT",
+            fallback: "R-301",
+            icon: "weapon_slot",
+            ammo_key: "AMMO_SMALL_COLOR",
+            ammo_fallback: [180, 123, 68],
+            badge: AMMO_BADGE,
+            mode: FIRE_MODE,
+            slots: &EMPTY_SLOTS,
+        }
+    } else if slot == 0 && crate::spike::weapons::primary_gun() == crate::spike::weapons::Gun::R99 {
+        Look {
+            name_key: "#WPN_R97_SHORT",
+            fallback: "R-99",
+            icon: R99_ICON,
+            ammo_key: "AMMO_SMALL_COLOR",
+            ammo_fallback: [180, 123, 68],
+            badge: AMMO_BADGE,
+            mode: FIRE_MODE,
+            slots: &R99_SLOTS,
         }
     } else {
         Look {
@@ -493,8 +520,55 @@ pub fn draw(dl: &DrawListMut, pack: &Pack, size: [f32; 2], fov: f32) {
     kill_feed(&top_right, pack);
     damage_indicators(dl, pack, size);
     knock_message(dl, pack, size, &c);
+    if let Some(w) = spike::weapons::wheel() {
+        weapon_wheel(&Pen::new(dl, size, Anchor::TopCenter), pack, w.hovered, &c);
+    }
     let Some(g) = gun else { return };
     aim(dl, pack, size, fov, &g, &c);
+}
+
+/// The weapon wheel (Tab held: spike/weapons.rs): four sectors round the screen's centre, clockwise
+/// from the top the R-301, the R-99, the Wingman and the Charge Rifle, each with its icon and name;
+/// the one pointed at bright, the one in hand marked.
+fn weapon_wheel(p: &Pen, pack: &Pack, hovered: Option<usize>, c: &Colors) {
+    use spike::weapons::{Gun, Slot};
+    let (cx, cy) = (960.0, 540.0);
+    let (r0, r1) = (110.0, 260.0);
+    let held = match spike::weapons::active() {
+        Slot::ChargeRifle => 3,
+        Slot::R301 => match spike::weapons::primary_gun() {
+            Gun::R301 => 0,
+            Gun::R99 => 1,
+            Gun::Wingman => 2,
+        },
+    };
+    let icons = ["weapon_slot", R99_ICON, WINGMAN_ICON, CHARGE_RIFLE_ICON];
+    for (k, (_, name)) in spike::weapons::WHEEL.iter().enumerate() {
+        // the sector's middle: up, right, down, left
+        let mid = (k as f32) * std::f32::consts::FRAC_PI_2;
+        let at = |a: f32, r: f32| [cx + r * a.sin(), cy - r * a.cos()];
+        let steps = 12;
+        let span = std::f32::consts::FRAC_PI_2 - 0.06;
+        let a0 = mid - span * 0.5;
+        let on = hovered == Some(k);
+        let fill = if on { alpha(c.white, 0.35) } else { alpha(c.panel, 0.75) };
+        for i in 0..steps {
+            let (u, v) = (a0 + span * i as f32 / steps as f32, a0 + span * (i + 1) as f32 / steps as f32);
+            p.poly(&[at(u, r0), at(u, r1), at(v, r1), at(v, r0)], fill);
+        }
+        let rim = if on { c.white } else { c.rim };
+        let outer: Vec<[f32; 2]> = (0..=steps).map(|i| at(a0 + span * i as f32 / steps as f32, r1)).collect();
+        for w in outer.windows(2) {
+            p.line(w[0], w[1], rim, if on { 3.0 } else { 1.5 });
+        }
+        let centre = at(mid, (r0 + r1) * 0.5);
+        p.image(icons[k], [centre[0] - 70.0, centre[1] - 38.0, 140.0, 56.0], if on { 1.0 } else { 0.8 });
+        let label = if k == 0 { pack.weapon_name.as_str() } else { name };
+        p.text(Face::Bold, label, centre[0], centre[1] + 26.0, 14.0, if on { c.white } else { alpha(c.white, 0.75) }, Align::Center);
+        if k == held {
+            p.text(Face::Body, "IN HAND", centre[0], centre[1] + 46.0, 10.0, alpha(c.white, 0.6), Align::Center);
+        }
+    }
 }
 
 /// Inside a convex polygon (either winding)?

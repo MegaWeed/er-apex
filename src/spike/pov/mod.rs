@@ -42,11 +42,13 @@ const INCH: f32 = 0.0254;
 /// Carrier groups: 0 the arms, 1 the R-301, 2 the injector, 3 the pad, 4 the battery (T021), 5
 /// the Charge Rifle, 6 the frag grenade in the hand, 7 and 8 two thrown grenades (T022), 9 the
 /// Wingman (in the R-301's slot: tools/apexpov/bake_wingman.py).
-const GROUPS: usize = 10;
+const GROUPS: usize = 11;
 /// The Charge Rifle's, the hand grenade's and the Wingman's groups.
 const RIFLE: usize = 5;
 const FRAG: usize = 6;
 const WINGMAN: usize = 9;
+/// The R-99's group (part LG: bake_wingman.py).
+const R99G: usize = 10;
 pub const THROWN: [u8; 2] = [7, 8];
 
 /// Where the carriers of a group that does not show go (dev `fp hide`). The renderer takes
@@ -102,10 +104,14 @@ const CR_MUZZLE: Xf = Xf { t: Vec3::new(0.0, 0.895_842, 20.380_127), r: Quat::ID
 /// the R-301's -90° rotation).
 const WM_MUZZLE: Xf = Xf { t: Vec3::new(0.0, 2.795_282, 9.549_05), r: MUZZLE.r };
 
+/// `muzzle_flash` on the R-99's `def_c_base` (retail `r99_base_v.qc` `$definebone`).
+const R9_MUZZLE: Xf = Xf { t: Vec3::new(0.0, 3.288_844, 17.839_268), r: MUZZLE.r };
+
 /// A weapon's muzzle on its `def_c_base` (the Charge Rifle's turn not needed: the R-301's).
 fn muzzle_of(w: Weapon) -> Xf {
     match w {
         Weapon::Wingman => WM_MUZZLE,
+        Weapon::R99 => R9_MUZZLE,
         _ => MUZZLE,
     }
 }
@@ -312,9 +318,15 @@ fn view_weapon(rifle: bool, primary: Weapon) -> Weapon {
     if slot == Slot::ChargeRifle && rifle { Weapon::ChargeRifle } else { primary }
 }
 
-/// The weapon of the R-301's slot: the Wingman when the pack has it (bake_wingman.py), else the R-301.
+/// The weapon of the R-301's slot (weapons.rs `primary_gun`, the wheel's choice) when the pack has
+/// it (bake_wingman.py), else the R-301.
 fn primary_weapon() -> Weapon {
-    if with_pack(|p| p.has_wingman()).unwrap_or(false) { Weapon::Wingman } else { Weapon::R301 }
+    use super::weapons::Gun;
+    match super::weapons::primary_gun() {
+        Gun::Wingman if with_pack(|p| p.has_wingman()).unwrap_or(false) => Weapon::Wingman,
+        Gun::R99 if with_pack(|p| p.has_r99()).unwrap_or(false) => Weapon::R99,
+        _ => Weapon::R301,
+    }
 }
 
 /// Once a frame: steps the animation graphs by `dt` seconds and poses the view model.
@@ -343,7 +355,12 @@ pub fn step(dt: f32, i: &Inputs) {
     a.sway.step(&s, &R301_HIP, &R301_ZOOMED);
     a.drawn_turn = a.posed.as_ref().map(|p| p.camera_turn);
     let rifle = with_pack(|p| p.has_rifle()).unwrap_or(false);
-    a.view = view_weapon(rifle, a.graph.weapon());
+    // slot 1's gun changed (the wheel): its own graph
+    let primary = primary_weapon();
+    if a.graph.weapon() != primary {
+        a.graph = Graph::new_for(primary);
+    }
+    a.view = view_weapon(rifle, primary);
     let r301_shot = a.last_shots.is_some_and(|n| i.shots > n);
     a.last_shots = Some(i.shots);
     let cr_shot = a.cr_last_shots.is_some_and(|n| i.cr_shots > n);
@@ -444,7 +461,9 @@ fn inspect_clip(w: Weapon) -> Option<(&'static str, u32)> {
     match w {
         Weapon::Wingman => Some(("wm_inspect_0", 199)),
         Weapon::ChargeRifle => Some(("cr_inspect_basic_0", 336)),
-        Weapon::R301 => None,
+        // T012's `inspect_basic` and the R-99's `inspect_new`
+        Weapon::R301 => Some(("inspect_basic_0", 336)),
+        Weapon::R99 => Some(("r9_inspect_new_0", 316)),
     }
 }
 
@@ -464,6 +483,8 @@ fn inspect_sounds(w: Weapon) -> &'static [(u32, &'static str)] {
         ],
         // `chargerifle_base_v_animRig.qc` inspect_basic
         Weapon::ChargeRifle => &[(4, "weapon_inspect_sniper_start"), (91, "weapon_inspect_sniper_mid"), (234, "weapon_inspect_sniper_mid"), (315, "weapon_inspect_sniper_end")],
+        // `r99_base_v_animRig.qc` inspect_new (the R-301's: none exported)
+        Weapon::R99 => &[(0, "weapon_r97_inspect")],
         Weapon::R301 => &[],
     }
 }
@@ -609,6 +630,8 @@ fn hold_offset(p: Params, w: Weapon) -> Vec3 {
         Weapon::R301 => (OFFSET_HIP, OFFSET_ADS),
         Weapon::ChargeRifle => (CR_OFFSET_HIP, CR_OFFSET_ADS),
         Weapon::Wingman => (WM_OFFSET_HIP, WM_OFFSET_ADS),
+        // the R-99's (`mp_weapon_r97.txt`: `viewmodel_offset_ads` "0 0 0", no hip one)
+        Weapon::R99 => (Vec3::ZERO, Vec3::ZERO),
     };
     let o = hip.lerp(ads, e) + Vec3::new(0.0, OFFSET_BACK, 0.0);
     let duck = DUCK_OFFSET * (p.crouch.clamp(0.0, 1.0) * std::f32::consts::FRAC_PI_2).sin() * (1.0 - a);
@@ -752,7 +775,7 @@ fn groups_shown(ab: Option<&ability::Out>, frame: u64, view: Weapon) -> [bool; G
         None => (true, false, false, false, false),
     };
     let held = gun_group(view);
-    let mut s = [true, gun && held == 1, stim, pad, battery, gun && held == RIFLE, frag, false, false, gun && held == WINGMAN];
+    let mut s = [true, gun && held == 1, stim, pad, battery, gun && held == RIFLE, frag, false, false, gun && held == WINGMAN, gun && held == R99G];
     let d = dev_state();
     for (g, f) in d.force.iter().enumerate() {
         if let Some(f) = f {
@@ -771,6 +794,7 @@ fn gun_group(w: Weapon) -> usize {
         Weapon::R301 => 1,
         Weapon::ChargeRifle => RIFLE,
         Weapon::Wingman => WINGMAN,
+        Weapon::R99 => R99G,
     }
 }
 
@@ -841,17 +865,18 @@ fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis
             let m = mirror(Xf { t: m.t * INCH, r: m.r }).mul(c.er_bind);
             match (shown, vis.hide) {
                 (true, _) | (false, Hide::Posed) => (m.t, m.r, at, shown),
-                (false, Hide::Hand) => (if matches!(c.group as usize, 1 | RIFLE | FRAG | WINGMAN) { right } else { left }, Quat::IDENTITY, at, false),
+                (false, Hide::Hand) => (if matches!(c.group as usize, 1 | RIFLE | FRAG | WINGMAN | R99G) { right } else { left }, Quat::IDENTITY, at, false),
                 (false, Hide::Eye) => (Vec3::ZERO, Quat::IDENTITY, at, false),
                 (false, Hide::Behind) => (Vec3::new(0.0, 0.0, 20.0), Quat::IDENTITY, at, false),
             }
         })
         .collect();
     let shown = |g: usize| vis.show.get(g).copied().unwrap_or(false);
-    let muzzle_view = match (p.cr_gun, p.wm_gun, p.gun) {
-        (Some(cr), _, _) if shown(RIFLE) => Some(held.mul(world[cr]).mul(CR_MUZZLE)),
-        (_, Some(wm), _) if shown(WINGMAN) => Some(held.mul(world[wm]).mul(WM_MUZZLE)),
-        (_, _, Some(g)) if shown(1) => Some(held.mul(world[g]).mul(MUZZLE)),
+    let muzzle_view = match (p.cr_gun, p.wm_gun, p.r9_gun, p.gun) {
+        (Some(cr), _, _, _) if shown(RIFLE) => Some(held.mul(world[cr]).mul(CR_MUZZLE)),
+        (_, Some(wm), _, _) if shown(WINGMAN) => Some(held.mul(world[wm]).mul(WM_MUZZLE)),
+        (_, _, Some(r9), _) if shown(R99G) => Some(held.mul(world[r9]).mul(R9_MUZZLE)),
+        (_, _, _, Some(g)) if shown(1) => Some(held.mul(world[g]).mul(MUZZLE)),
         _ => None,
     }
     .map(|m| mirror_point(m.t * INCH));
@@ -950,12 +975,12 @@ pub fn dev(args: &[&str]) -> String {
         }
         ["force", g, v] => match (group(Some(g)), *v) {
             (Some(g), "show" | "hide" | "auto") => d.force[g] = (*v != "auto").then_some(*v == "show"),
-            _ => return "usage: fp force <group 0-9> show|hide|auto".into(),
+            _ => return "usage: fp force <group 0-10> show|hide|auto".into(),
         },
         ["flip", "off"] => d.flip = None,
         ["flip", g, n] => match (group(Some(g)), n.parse::<u64>().ok().filter(|&n| n > 0)) {
             (Some(g), Some(n)) => d.flip = Some((g as u8, n)),
-            _ => return "usage: fp flip <group 0-9> <frames> | off".into(),
+            _ => return "usage: fp flip <group 0-10> <frames> | off".into(),
         },
         ["play", "stim", f] | ["play", "pad", f] => {
             let kind = match (args[1], f.parse::<usize>().ok()) {
@@ -1296,15 +1321,20 @@ mod tests {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("apex-data/pov/octane_wingman/fuse_pov.anim");
         let Ok(d) = std::fs::read(&path) else { return };
         let p = pack::parse(&d).unwrap();
-        assert!(p.has_wingman() && p.has_rifle(), "{} clips", p.clips.len());
-        for s in graph::Seq::ALL {
-            let def = s.def_in(Weapon::Wingman);
-            for (k, &(frames, fps)) in def.samples.iter().enumerate() {
-                let c = p.sample_in(s, k, Weapon::Wingman).unwrap_or_else(|| panic!("{}_{k} missing", def.name));
-                assert_eq!((c.frames as u32, c.fps), (frames, fps), "{}_{k}", def.name);
+        assert!(p.has_wingman() && p.has_rifle() && p.has_r99(), "{} clips", p.clips.len());
+        for w in [Weapon::Wingman, Weapon::R99] {
+            for s in graph::Seq::ALL {
+                let def = s.def_in(w);
+                for (k, &(frames, fps)) in def.samples.iter().enumerate() {
+                    let c = p.sample_in(s, k, w).unwrap_or_else(|| panic!("{}_{k} missing", def.name));
+                    assert_eq!((c.frames as u32, c.fps), (frames, fps), "{}_{k}", def.name);
+                }
             }
         }
-        for w in [Weapon::Wingman, Weapon::ChargeRifle] {
+        for n in ["holster_0", "draw_0", "draw_1"] {
+            assert!(clip_for(&p, n, Weapon::R99).is_some_and(|c| c.name == format!("r9_{n}")), "r9_{n}");
+        }
+        for w in [Weapon::Wingman, Weapon::ChargeRifle, Weapon::R99, Weapon::R301] {
             let (name, frames) = inspect_clip(w).unwrap();
             let c = p.clip(name).unwrap_or_else(|| panic!("{name} missing"));
             assert!(c.frames as u32 == frames && c.fps == 30.0 && !c.additive, "{name}");
@@ -1317,20 +1347,23 @@ mod tests {
         let v = (35f32.to_radians().tan() * 0.75).atan();
         let (tv, th) = (v.tan(), v.tan() * 16.0 / 9.0);
         let in_view = |at: Vec3| at.z < -0.05 && (at.y / -at.z).abs() < tv && (at.x / -at.z).abs() < th;
+        for (w, group, muzzle) in [(Weapon::Wingman, WINGMAN, WM_MUZZLE), (Weapon::R99, R99G, R9_MUZZLE)] {
+        let _ = muzzle;
         for ads in [0.0, 1.0] {
-            let mut g = Graph::new_for(Weapon::Wingman);
+            let mut g = Graph::new_for(w);
             for _ in 0..60 {
                 g.step(1.0 / 60.0, &Signals { ads, ..Default::default() });
             }
-            let show = groups_shown(None, 0, Weapon::Wingman);
-            assert!(show[WINGMAN] && !show[1] && !show[RIFLE]);
-            let posed = pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show, hide: Hide::Hand, weapon: Weapon::Wingman }).unwrap();
-            let shown = p.carriers.iter().zip(&posed.carriers).filter(|(c, x)| c.group as usize == WINGMAN && x.3 && in_view(x.2)).count();
-            assert!(shown > 0, "ads {ads}: no Wingman carrier in view");
+            let show = groups_shown(None, 0, w);
+            assert!(show[group] && !show[1] && !show[RIFLE]);
+            let posed = pose_pack(&p, &g.out(), &Sway::default(), None, Vis { show, hide: Hide::Hand, weapon: w }).unwrap();
+            let shown = p.carriers.iter().zip(&posed.carriers).filter(|(c, x)| c.group as usize == group && x.3 && in_view(x.2)).count();
+            assert!(shown > 0, "{w:?} ads {ads}: no carrier in view");
             assert!(p.carriers.iter().zip(&posed.carriers).filter(|(c, _)| c.group == 1).all(|(_, x)| !x.3));
             let m = posed.muzzle_view.expect("the Wingman's muzzle");
-            println!("Wingman ads {ads}: {shown} carriers in view; muzzle {m:.3} (m, mirrored pov frame)");
+            println!("{w:?} ads {ads}: {shown} carriers in view; muzzle {m:.3} (m, mirrored pov frame)");
             assert!(m.z < -0.1 && m.length() < 1.0, "muzzle {m}");
+        }
         }
     }
 

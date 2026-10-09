@@ -56,8 +56,10 @@ fn run(dir: PathBuf, rx: mpsc::Receiver<Msg>) {
     let frag = dir.join("frag_grenade");
     // the Wingman's, in the R-301's place (`--set wingman`)
     let wingman = dir.join("wingman");
+    // the R-99's (the weapon wheel; `--set r99`)
+    let r99 = dir.join("r99");
     let mut dirs = vec![dir.as_path()];
-    for set in [&octane, &defender, &frag, &wingman] {
+    for set in [&octane, &defender, &frag, &wingman, &r99] {
         if set.join("manifest.json").exists() {
             dirs.push(set.as_path());
         }
