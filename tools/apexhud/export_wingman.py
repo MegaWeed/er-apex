@@ -18,6 +18,9 @@ sys.dont_write_bytecode = True
 from export_extra import string_to_guid, ensure_tool, run_rsx, read_json, write_json, localization, LEGENDS, output_path, Image  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
+# the weapons of slot 1 beyond the R-301 (whose icon and name the HUD pack has): settings, icon, name
+WEAPONS = {'wingman': ('mp_weapon_wingman.txt', 'rui/weapon_icons/r5/weapon_wingman', '#WPN_WINGMAN_SHORT'),
+           'r99': ('mp_weapon_r97.txt', 'rui/weapon_icons/r5/weapon_r97', '#WPN_R97_SHORT')}
 SETTINGS = REPO / 'apex-data/export/weapon/mp_weapon_wingman.txt'
 ICON = 'rui/weapon_icons/r5/weapon_wingman'
 NAME_KEY = '#WPN_WINGMAN_SHORT'
@@ -43,16 +46,16 @@ def export(game, out):
     row = rows.get(guid)
     if not row or row['type'] != 'uiia' or row['file_name'] != 'ui.rpak':
         raise RuntimeError(f'{ICON}: GUID {guid:016x} not in the local ui.rpak')
-    raw = out / 'raw/images_wingman'
+    raw = out / ('raw/images_' + Path(ICON).name)
     if raw.exists():
         shutil.rmtree(raw)
     manifest = out / 'run_manifest.json'
     kept = manifest.read_bytes() if manifest.exists() else None
     try:
-        run_rsx(ensure_tool(), game, out, 'images_wingman', 'raw/images_wingman', 'uiia', ['--exportexact', row['asset_name']], packages=['ui.rpak'])
+        run_rsx(ensure_tool(), game, out, 'images_' + Path(ICON).name, 'raw/images_' + Path(ICON).name, 'uiia', ['--exportexact', row['asset_name']], packages=['ui.rpak'])
     finally:
         if manifest.exists():
-            shutil.move(manifest, out / 'wingman_run_manifest.json')
+            shutil.move(manifest, out / (Path(ICON).name + '_run_manifest.json'))
         if kept is not None:
             manifest.write_bytes(kept)
     meta = next((p for p in raw.rglob('*.meta.json') if read_json(p)['guid'] == f'{guid:016x}'), None)
@@ -76,7 +79,7 @@ def export(game, out):
     texts[NAME_KEY] = {'key_guid': entries[NAME_KEY]['key_guid'], 'values': entries[NAME_KEY]['values'],
                        'evidence': [settings_line('shortprintname', NAME_KEY)]}
     write_json(strings, texts)
-    print(f'PASS wingman HUD: {ICON} {size[0]}x{size[1]}; {NAME_KEY} = {entries[NAME_KEY]["values"].get("english")!r}')
+    print(f'PASS slot 1 HUD: {ICON} {size[0]}x{size[1]}; {NAME_KEY} = {entries[NAME_KEY]["values"].get("english")!r}')
 
 
 def main():
@@ -84,7 +87,11 @@ def main():
     parser.add_argument('--game', type=Path, help='Apex Legends install folder (default: APEX_LEGENDS_DIR)')
     parser.add_argument('--legend', choices=LEGENDS, default='octane')
     parser.add_argument('--out', type=Path)
+    parser.add_argument('--weapon', choices=tuple(WEAPONS), default='wingman')
     args = parser.parse_args()
+    global SETTINGS, ICON, NAME_KEY
+    settings, ICON, NAME_KEY = WEAPONS[args.weapon]
+    SETTINGS = REPO / 'apex-data/export/weapon' / settings
     export(args.game or gamedirs.apex(), output_path(args.legend, args.out))
 
 

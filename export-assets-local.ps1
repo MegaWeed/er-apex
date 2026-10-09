@@ -237,12 +237,15 @@ Step 7 'first-person base pose (about 1 min)' {
     Run 'er-data\s4\fuse_er.anim' python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS
 }
 
-Step 8 'the Wingman in the R-301''s place (about 4 min)' {
+Step 8 'the Wingman and the R-99 (about 8 min)' {
     Run 'apex-data\assets\wingman\verification.json' python tools/apexassets/wingman_assets.py
+    Run 'apex-data\assets\r99\verification.json' python tools/apexassets/r99_assets.py
     Run 'apex-data\pov\octane_wingman\fuse_pov.anim' python tools/apexpov/bake_wingman.py
     Run 'er-data\s3\octane_pov_wingman\wingman-verification.json' python tools/fusepov/build_wingman.py
     Run 'apex-data\audio\wingman\manifest.json' python tools/fuseaudio/export_audio.py --set wingman
+    Run 'apex-data\audio\r99\manifest.json' python tools/fuseaudio/export_audio.py --set r99
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_wingman.png' python tools/apexhud/export_wingman.py --legend octane
+    Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_r97.png' python tools/apexhud/export_wingman.py --legend octane --weapon r99
 }
 
 "`nall assets ready ($made made, $skipped already there). Start the game: pwsh play.ps1"

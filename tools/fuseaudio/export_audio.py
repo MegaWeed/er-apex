@@ -34,6 +34,7 @@ DEFENDER_OUT = OUT / 'defender'
 FRAG_OUT = OUT / 'frag_grenade'
 # the Wingman in the R-301's place
 WINGMAN_OUT = OUT / 'wingman'
+R99_OUT = OUT / 'r99'
 R5_SCRIPTS = s3record.R5_ROOT / 'platform/scripts'  # S3's scripts, as tools/s3_evidence.json recorded them
 GAME = gamedirs.apex()
 RSX = REPO / 'tools/apexassets/rsx_source/bin/Release_NoGui/rsx.exe'
@@ -405,6 +406,30 @@ def wingman_references():
     return _refs_from_specs(specs)
 
 
+def r99_references():
+    """The R-99 in slot 1 (the weapon wheel): its retail weapon settings' sounds and its view model's
+    QC sounds (tools/apexassets/r99_assets.py)."""
+    retail = REPO / 'apex-data/export/weapon/mp_weapon_r97.txt'
+    qc = REPO / 'apex-data/assets/r99/ability_sequences.json'
+    specs = [
+        ('Weapon_R97_Fire_First_1P', 'a burst starts', [(retail, 'burst_or_looping_fire_sound_start_1p')]),
+        ('Weapon_R97_Fire_Loop_1P', 'a burst goes on', [(retail, 'burst_or_looping_fire_sound_middle_1p')]),
+        ('Weapon_R97_Fire_Last_1P', 'a burst ends', [(retail, 'burst_or_looping_fire_sound_end_1p')]),
+        ('Weapon_R97_SecondShot_1P', 'a shot', [(retail, 'fire_sound_2_player_1p')]),
+        ('Weapon_R97_ADS_In', 'aim in', [(retail, 'sound_zoom_in')]),
+        ('Weapon_R97_ADS_Out', 'aim out', [(retail, 'sound_zoom_out')]),
+        ('assault_rifle_dryfire', 'an empty trigger', [(retail, 'sound_dryfire')]),
+        ('Weapon_R97_Equip', 'drawn (draw frame 0)', [(qc, 'draw')]),
+        ('Weapon_R97_UnEquip', 'put away (holster frame 0)', [(qc, 'holster')]),
+        ('Weapon_R97_Inspect', 'inspect (frame 0)', [(qc, 'inspect_new')]),
+    ]
+    for event in ['Wpn_R97_Reload_PullMag', 'Wpn_R97_Reload_InsertMag', 'Wpn_R97_Reload_HandGrab']:
+        specs.append((event, 'reload (QC frame)', [(qc, 'reload_seq'), (qc, 'reload_empty_seq')]))
+    for event in ['Wpn_R97_Reload_ChargeBack', 'Wpn_R97_Reload_ChargeForward']:
+        specs.append((event, 'empty reload (QC frame)', [(qc, 'reload_empty_seq')]))
+    return _refs_from_specs(specs)
+
+
 def _frag_evidence(path, input_path, field, literal, requested):
     """The lines of one input that name the event (frag_references)."""
     evidence = []
@@ -482,18 +507,19 @@ def frag_references():
 
 def set_root(root):
     """Read apex-data/ and the RSX build of another checkout (a worktree has neither)."""
-    global REPO, OUT, OCTANE_OUT, DEFENDER_OUT, FRAG_OUT, WINGMAN_OUT, RSX
+    global REPO, OUT, OCTANE_OUT, DEFENDER_OUT, FRAG_OUT, WINGMAN_OUT, R99_OUT, RSX
     REPO = Path(root).resolve()
     OUT = REPO / 'apex-data/audio'
     OCTANE_OUT = OUT / 'octane'
     DEFENDER_OUT = OUT / 'defender'
     FRAG_OUT = OUT / 'frag_grenade'
     WINGMAN_OUT = OUT / 'wingman'
+    R99_OUT = OUT / 'r99'
     RSX = REPO / 'tools/apexassets/rsx_source/bin/Release_NoGui/rsx.exe'
 
 
 def output_directory(set_name, requested=None):
-    own = {'octane': OCTANE_OUT, 'defender': DEFENDER_OUT, 'frag': FRAG_OUT, 'wingman': WINGMAN_OUT}.get(set_name)
+    own = {'octane': OCTANE_OUT, 'defender': DEFENDER_OUT, 'frag': FRAG_OUT, 'wingman': WINGMAN_OUT, 'r99': R99_OUT}.get(set_name)
     output = (requested if requested is not None else own if own is not None else OUT).resolve()
     if own is not None and not output.is_relative_to(own.resolve()):
         raise ValueError(f'The {set_name} output directory must stay inside {own}')
@@ -502,7 +528,7 @@ def output_directory(set_name, requested=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--set', choices=('r301', 'octane', 'defender', 'frag', 'wingman'), default='r301', help='Sound set (default: r301)')
+    parser.add_argument('--set', choices=('r301', 'octane', 'defender', 'frag', 'wingman', 'r99'), default='r301', help='Sound set (default: r301)')
     parser.add_argument('--output-dir', type=Path, help='Override output root; Octane stays inside audio/octane/, the Charge Rifle inside audio/defender/, frag inside audio/frag_grenade/')
     parser.add_argument('--root', type=Path, help="Checkout whose apex-data/ and RSX build are used (default: this script's)")
     parser.add_argument('--analyze-only', action='store_true', help='Verify/rebuild manifests from exported raw WAVs')
@@ -513,8 +539,8 @@ def main():
     out = output_directory(args.set, args.output_dir)
     # the ability-style sets (exact spellings, every play action kept, loop data): Octane's, the
     # Charge Rifle's, the frag's
-    octane = args.set in ('octane', 'defender', 'frag', 'wingman')
-    defender = args.set in ('defender', 'wingman')
+    octane = args.set in ('octane', 'defender', 'frag', 'wingman', 'r99')
+    defender = args.set in ('defender', 'wingman', 'r99')
     playback_folder = 'playback' if octane else 'r301'
     matrix = np.asarray(json.loads(args.matrix.read_text()) if args.matrix else DEFAULT_MATRIX, dtype=np.float64)
     if matrix.shape != (2, 6) or not np.isfinite(matrix).all():
@@ -523,7 +549,7 @@ def main():
     matrix /= np.maximum(1, np.abs(matrix).sum(axis=1))[:, None]
     for folder in (playback_folder, 'raw', 'logs', 'logs/rsx_runtime'):
         (out / folder).mkdir(parents=True, exist_ok=True)
-    refs = wingman_references() if args.set == 'wingman' else defender_references() if defender else frag_references() if args.set == 'frag' else octane_references() if octane else references()
+    refs = r99_references() if args.set == 'r99' else wingman_references() if args.set == 'wingman' else defender_references() if defender else frag_references() if args.set == 'frag' else octane_references() if octane else references()
     events = {r['asset_name'].lower(): r for r in csv.DictReader(
         (REPO / 'apex-data/assets/lists/audio_events.csv').open(encoding='utf8'))}
     available = {(r['asset_name'], r['file_name']): r for r in csv.DictReader(
@@ -609,7 +635,7 @@ def main():
         samples, info = read_wave(path, include_loop_data=octane)
         # Null is a real silent timing layer with explicit -96 dB action volume.
         silent = info['peak'] == 0
-        if silent and (octane or source['name'] != 'null_12s'):
+        if silent and source['name'] != 'null_12s':
             raise ValueError(f'Unexpected silent source: {path}')
         if info['sample_rate'] != source['sample_rate']:
             raise ValueError(f'Decoded rate does not match source record: {path}')
