@@ -29,7 +29,7 @@ use eldenring::position::{HavokPosition, PositionDelta};
 use fromsoftware_shared::FromStatic;
 use glam::Vec3;
 
-use crate::{dlog, log, paths, state};
+use crate::{log, paths, state};
 
 const DAMAGE: f32 = 15.0;
 const FIRE_RATE: f32 = 13.5;
@@ -537,7 +537,18 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
     let mut best: Option<(f32, FieldInsHandle, f32, u32)> = None;
     for c in wcm.chr_sets.iter().flatten().flat_map(|s| s.characters()) {
         let c: &ChrIns = c;
-        if !matches!(c.team_type, 6 | 7) || c.modules.data.hp <= 0 {
+        if c.modules.data.hp <= 0 {
+            continue;
+        }
+        if !super::body::is_enemy_team(c.team_type) {
+            // which characters the shots pass because of their team: once per character kind
+            if deal && c.team_type != 1 {
+                let (h, rad) = super::body::cylinder(c);
+                let q = c.modules.physics.position;
+                if ray_cylinder(origin, dir, Vec3::new(q.0, q.1, q.2), h, rad).is_some_and(|t| t < range) {
+                    note_skipped(c.npc_param_id as u32, c.team_type);
+                }
+            }
             continue;
         }
         let (h, rad) = super::body::cylinder(c);
@@ -566,7 +577,7 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
     };
     if let Some(w) = wall {
         if deal {
-            dlog(format!("gun: shot blocked by the map {:.1} m out (target npc {npc} at {t:.1} m)", (w - start).length()));
+            log(format!("gun: shot blocked by the map {:.1} m out (target npc {npc} at {t:.1} m)", (w - start).length()));
         }
         return Some(RayOut { line: None, end: w, on: RayEnd::Map });
     }
@@ -588,6 +599,16 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
         }
     }
     Some(RayOut { line: Some(format!("hit npc {npc} {} at {t:.1} m for {amount:.1}: {res}", zone.name())), end, on: RayEnd::Target })
+}
+
+/// Logs a character the shots passed through because of its team (once per npc and team).
+fn note_skipped(npc: u32, team: u8) {
+    static SEEN: Mutex<Vec<(u32, u8)>> = Mutex::new(Vec::new());
+    let mut seen = SEEN.lock().unwrap_or_else(|e| e.into_inner());
+    if seen.len() < 256 && !seen.contains(&(npc, team)) {
+        seen.push((npc, team));
+        log(format!("gun: shot passed npc {npc}: team {team} is not hit (ini friendly_teams / enemy_teams): no damage"));
+    }
 }
 
 /// The nearest t >= 0 where the ray meets an upright cylinder (base centre, height, radius).
