@@ -15,6 +15,10 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 - **Custom skins**: `python tools/fusepov/build_wingman.py --skin <folder> --cr-skin <folder>`. `--skin` holds `Wingman_Default_col.dds` (optional `_spc`, `_nml`, `_gls`); `--cr-skin` holds `col/`, `nml/`, `gls/`, each with `.dds` files in several sizes (the largest is used). No skin textures are in the repository.
 - **No DLC needed**: without Shadow of the Erdtree, `erextract` skips `DLC.bhd`.
 - `export-assets.ps1` has a step 8 that makes the Wingman's assets.
+- **Magazines**: Wingman 8, Charge Rifle 8.
+- **Targets**: every character but the player's side (teams 1, 2, 8, 12; ini `friendly_teams`) can be hit, as in Elden Ring.
+- **Movement**: the ground's collision is read again every second and a fall into the ground is caught; on a lift the game carries the player until it stops.
+- **Settings**: `pwsh play.ps1 -Fov 90 -FpsLimit 120 -PlayerName "name"` (fov 90 by default, the game's 60 FPS by default, the HUD name from `ER_APEX_PLAYER_NAME`).
 
 Known limits: the third-person body still holds the R-301; the Wingman's hammer does not move on its own; emissive textures are not used.
 
