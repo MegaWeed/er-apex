@@ -467,7 +467,11 @@ def sentinel_references():
     for event in ['weapon_sentinel_reload_gunup', 'weapon_sentinel_reload_magout', 'weapon_sentinel_reload_maggrab',
                   'weapon_sentinel_reload_magslot', 'weapon_sentinel_reload_maginsert', 'weapon_sentinel_reload_gundown']:
         specs.append((event, 'reload (QC frame)', [(qc, 'reload')]))
-    return _refs_from_specs(specs)
+    # the amped shot's own layers (its electric crack, `Wpn_Sentinel_1P_Fire_Alt_Electrical`, and
+    # the gun's report): sub-events the bank's `weapon_sentinel_fire_alt_1p` plays by the
+    # interior/exterior state, which its resolve leaves out; the outdoor one, named here
+    stand_ins = ['weapon_sentinel_fire_alt_1p_ExtBase', 'weapon_sentinel_fire_1p_ExtBase']
+    return _refs_from_specs(specs) + [{'logical': e.lower(), 'requested_event': e, 'use': 'a shot (amped), its own layers', 'input': 'stand-in', 'field': '', 'event': e, 'evidence': []} for e in stand_ins]
 
 
 def flatline_references():
