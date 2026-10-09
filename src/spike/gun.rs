@@ -22,7 +22,7 @@
 //! degrees (its unit in Apex is to be confirmed).
 
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use eldenring::cs::{CSCamera, CSHavokMan, ChrIns, FieldInsHandle, WorldChrMan};
 use eldenring::position::{HavokPosition, PositionDelta};
@@ -824,7 +824,20 @@ fn next(s: &mut u32) -> f32 {
 /// camera with the part of the view kick the view does not show (viewfx.rs).
 fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
     let (damage, head, legs) = (sp.damage, sp.head_scale, sp.leg_scale);
-    HOMING.store(sp.homing, Ordering::Relaxed);
+    // a homing gun (the Sentinel): a round that flies to an enemy in the cone ahead (homing.rs),
+    // else the shot goes as any other
+    if sp.homing
+        && let Some(line) = super::homing::fire(|zone| {
+            let scale = match zone {
+                Zone::Head => head,
+                Zone::Legs => legs,
+                Zone::Body => 1.0,
+            };
+            damage * (scale * damage_mult())
+        })
+    {
+        return Some(line);
+    }
     let out = fire_ray(spread_deg, r, crate::viewfx::weapon_aim_offset(), 0, |zone, _| {
         let scale = match zone {
             Zone::Head => head,
@@ -834,12 +847,9 @@ fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
         // ini `gun_damage_mult` (read fresh; the user's 3 on 2026-10-05)
         damage * (scale * damage_mult())
     });
-    HOMING.store(false, Ordering::Relaxed);
     out
 }
 
-/// This shot homes (set by `shoot` for a homing gun, taken by `fire_ray_ex`).
-static HOMING: AtomicBool = AtomicBool::new(false);
 /// Seconds towards the next round back (a `regen` gun).
 static REGEN: Mutex<f32> = Mutex::new(0.0);
 
@@ -899,13 +909,7 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
     }
     // uniform in the cone's disc: angle a around the axis, radius sqrt(r) of the half-angle
     let (a, rad) = (r.0 * std::f32::consts::TAU, r.1.sqrt() * spread_deg.to_radians().tan());
-    let mut dir = (fwd + right * (rad * a.cos()) + up * (rad * a.sin())).normalize();
-    // a homing gun's shot (the Sentinel: homing.rs) turns to the enemy nearest the crosshair
-    if deal && HOMING.swap(false, Ordering::Relaxed) {
-        if let Some(d) = super::homing::steer(origin, fwd) {
-            dir = d;
-        }
-    }
+    let dir = (fwd + right * (rad * a.cos()) + up * (rad * a.sin())).normalize();
     // `fp trace`: the shot goes along the render camera (the crosshair), the view punch included
     // (D-023), not along the eye's line
     if crate::spike::pov::tracing() {
@@ -971,8 +975,20 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
     if !deal {
         return Some(RayOut { line: None, end, on: RayEnd::Target });
     }
-    let zone = if y >= HEAD_ZONE { Zone::Head } else if y < LEG_ZONE { Zone::Legs } else { Zone::Body };
+    let zone = zone_at(y);
     let amount = damage(zone, t);
+    let line = apply_hit(handle, amount, zone, end, weapon);
+    Some(RayOut { line: Some(format!("hit npc {npc} {} at {t:.1} m for {amount:.1}: {line}", zone.name())), end, on: RayEnd::Target })
+}
+
+/// The zone at a height on a target (0 its feet .. 1 its top).
+pub(super) fn zone_at(y: f32) -> Zone {
+    if y >= HEAD_ZONE { Zone::Head } else if y < LEG_ZONE { Zone::Legs } else { Zone::Body }
+}
+
+/// A hit's damage and its HUD record (hit marker, damage number, kill feed): the ray's or a homing
+/// round's (homing.rs). What the damage bridge said.
+pub(super) fn apply_hit(handle: FieldInsHandle, amount: f32, zone: Zone, end: Vec3, weapon: u8) -> String {
     let res = super::combat::shoot(handle.clone(), amount);
     super::stats::dealt(amount);
     let now = std::time::Instant::now();
@@ -984,7 +1000,7 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
             h.pop_front();
         }
     }
-    Some(RayOut { line: Some(format!("hit npc {npc} {} at {t:.1} m for {amount:.1}: {res}", zone.name())), end, on: RayEnd::Target })
+    res
 }
 
 /// Logs a character the shots passed through because its team is not an enemy one (once per npc

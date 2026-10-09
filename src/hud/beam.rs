@@ -254,7 +254,30 @@ fn warm_up(t: f32) -> f32 {
     1.0 - (1.0 - x) * (1.0 - x)
 }
 
+/// The Sentinel's homing rounds in flight (spike/homing.rs): a bright streak each, its tail along
+/// where it came from, a glow at its head (推断: Apex's amped Sentinel tracer is a particle system
+/// no local tool reads).
+pub fn draw_rounds(dl: &DrawListMut, size: [f32; 2]) {
+    let rounds = crate::spike::homing::rounds();
+    if rounds.is_empty() {
+        return;
+    }
+    make_textures();
+    let k = size[1] / 1080.0;
+    let col = [0.55, 0.85, 1.0];
+    for (pos, dir) in rounds {
+        let tail = pos - dir * 1.5;
+        let Some((a, b)) = clip(tail, pos) else { continue };
+        let (Some(pa), Some(pb)) = (project(a, size), project(b, size)) else { continue };
+        let w = px(pos, 0.12, size).unwrap_or(0.0).clamp(3.0 * k, 40.0 * k);
+        band(dl, pa, pb, w * 0.3, w, rgba(col, 0.55));
+        band(dl, pa, pb, w * 0.12, w * 0.4, rgba(CORE, 0.95));
+        soft(dl, pb, w * 2.0, rgba(col, 0.7));
+    }
+}
+
 pub fn draw(dl: &DrawListMut, size: [f32; 2]) {
+    draw_rounds(dl, size);
     let b = chargerifle::beams();
     if b.laser.is_none() && b.shot.is_none() && b.cancel.is_none() {
         return;
