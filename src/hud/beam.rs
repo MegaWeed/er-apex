@@ -276,8 +276,24 @@ pub fn draw_rounds(dl: &DrawListMut, size: [f32; 2]) {
     }
 }
 
+/// Pathfinder's grapple cable (spike/grapple.rs): from his left hand (low left of the view) to the
+/// hook, a dark line with a thin light core; reeling back it shortens to the hand.
+pub fn draw_cable(dl: &DrawListMut, size: [f32; 2]) {
+    let Some((end, back)) = crate::spike::grapple::cable() else { return };
+    let Some((eye, fwd, right, up)) = view() else { return };
+    let hand = eye + fwd.normalize_or_zero() * 0.5 - right.normalize_or_zero() * 0.22 - up.normalize_or_zero() * 0.2;
+    let end = end + (hand - end) * back;
+    let Some((a, b)) = clip(hand, end) else { return };
+    let (Some(pa), Some(pb)) = (project(a, size), project(b, size)) else { return };
+    let k = size[1] / 1080.0;
+    dl.add_line(pa, pb, [0.08, 0.08, 0.09, 0.9]).thickness(4.0 * k).build();
+    dl.add_line(pa, pb, [0.75, 0.8, 0.85, 0.6]).thickness(1.2 * k).build();
+    dl.add_circle(pb, 4.0 * k, [0.2, 0.2, 0.22, 1.0]).filled(true).build();
+}
+
 pub fn draw(dl: &DrawListMut, size: [f32; 2]) {
     draw_rounds(dl, size);
+    draw_cable(dl, size);
     let b = chargerifle::beams();
     if b.laser.is_none() && b.shot.is_none() && b.cancel.is_none() {
         return;

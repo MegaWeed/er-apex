@@ -39,6 +39,7 @@ KUNAI_OUT = OUT / 'kunai'
 FLATLINE_OUT = OUT / 'flatline'
 SENTINEL_OUT = OUT / 'sentinel'
 HITS_OUT = OUT / 'hits'
+GRAPPLE_OUT = OUT / 'grapple'
 R5_SCRIPTS = s3record.R5_ROOT / 'platform/scripts'  # S3's scripts, as tools/s3_evidence.json recorded them
 GAME = gamedirs.apex()
 RSX = REPO / 'tools/apexassets/rsx_source/bin/Release_NoGui/rsx.exe'
@@ -434,6 +435,13 @@ def r99_references():
     return _refs_from_specs(specs)
 
 
+def grapple_references():
+    """Pathfinder's grapple (spike/grapple.rs): its fire, the hook's catch on a surface, the reel's
+    loop and the retract, named here (the ability's weapon settings name only its UI sounds)."""
+    events = ['pilot_grapple_fire', 'default_grapple_impact_1p_vs_3p', 'pilot_grapple_traverse_1p', 'pilot_grapple_retract_1p']
+    return [{'logical': e.lower(), 'requested_event': e, 'use': 'the grapple', 'input': 'stand-in', 'field': '', 'event': e, 'evidence': []} for e in events]
+
+
 def hits_references():
     """A damaging hit's sound (the user's 2026-10-09 ask: Apex's armour-break): the shield break as
     the attacker hears it (`humanshield_break_1p_vs_3p`), named here, not from a weapon's settings."""
@@ -590,7 +598,7 @@ def frag_references():
 
 def set_root(root):
     """Read apex-data/ and the RSX build of another checkout (a worktree has neither)."""
-    global REPO, OUT, OCTANE_OUT, DEFENDER_OUT, FRAG_OUT, WINGMAN_OUT, R99_OUT, KUNAI_OUT, FLATLINE_OUT, SENTINEL_OUT, HITS_OUT, RSX
+    global REPO, OUT, OCTANE_OUT, DEFENDER_OUT, FRAG_OUT, WINGMAN_OUT, R99_OUT, KUNAI_OUT, FLATLINE_OUT, SENTINEL_OUT, HITS_OUT, GRAPPLE_OUT, RSX
     REPO = Path(root).resolve()
     OUT = REPO / 'apex-data/audio'
     OCTANE_OUT = OUT / 'octane'
@@ -602,11 +610,12 @@ def set_root(root):
     FLATLINE_OUT = OUT / 'flatline'
     SENTINEL_OUT = OUT / 'sentinel'
     HITS_OUT = OUT / 'hits'
+    GRAPPLE_OUT = OUT / 'grapple'
     RSX = REPO / 'tools/apexassets/rsx_source/bin/Release_NoGui/rsx.exe'
 
 
 def output_directory(set_name, requested=None):
-    own = {'octane': OCTANE_OUT, 'defender': DEFENDER_OUT, 'frag': FRAG_OUT, 'wingman': WINGMAN_OUT, 'r99': R99_OUT, 'kunai': KUNAI_OUT, 'flatline': FLATLINE_OUT, 'sentinel': SENTINEL_OUT, 'hits': HITS_OUT}.get(set_name)
+    own = {'octane': OCTANE_OUT, 'defender': DEFENDER_OUT, 'frag': FRAG_OUT, 'wingman': WINGMAN_OUT, 'r99': R99_OUT, 'kunai': KUNAI_OUT, 'flatline': FLATLINE_OUT, 'sentinel': SENTINEL_OUT, 'hits': HITS_OUT, 'grapple': GRAPPLE_OUT}.get(set_name)
     output = (requested if requested is not None else own if own is not None else OUT).resolve()
     if own is not None and not output.is_relative_to(own.resolve()):
         raise ValueError(f'The {set_name} output directory must stay inside {own}')
@@ -615,7 +624,7 @@ def output_directory(set_name, requested=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--set', choices=('r301', 'octane', 'defender', 'frag', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'hits'), default='r301', help='Sound set (default: r301)')
+    parser.add_argument('--set', choices=('r301', 'octane', 'defender', 'frag', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'hits', 'grapple'), default='r301', help='Sound set (default: r301)')
     parser.add_argument('--output-dir', type=Path, help='Override output root; Octane stays inside audio/octane/, the Charge Rifle inside audio/defender/, frag inside audio/frag_grenade/')
     parser.add_argument('--root', type=Path, help="Checkout whose apex-data/ and RSX build are used (default: this script's)")
     parser.add_argument('--analyze-only', action='store_true', help='Verify/rebuild manifests from exported raw WAVs')
@@ -626,8 +635,8 @@ def main():
     out = output_directory(args.set, args.output_dir)
     # the ability-style sets (exact spellings, every play action kept, loop data): Octane's, the
     # Charge Rifle's, the frag's
-    octane = args.set in ('octane', 'defender', 'frag', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'hits')
-    defender = args.set in ('defender', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'hits')
+    octane = args.set in ('octane', 'defender', 'frag', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'hits', 'grapple')
+    defender = args.set in ('defender', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'hits', 'grapple')
     playback_folder = 'playback' if octane else 'r301'
     matrix = np.asarray(json.loads(args.matrix.read_text()) if args.matrix else DEFAULT_MATRIX, dtype=np.float64)
     if matrix.shape != (2, 6) or not np.isfinite(matrix).all():
@@ -636,7 +645,7 @@ def main():
     matrix /= np.maximum(1, np.abs(matrix).sum(axis=1))[:, None]
     for folder in (playback_folder, 'raw', 'logs', 'logs/rsx_runtime'):
         (out / folder).mkdir(parents=True, exist_ok=True)
-    refs = hits_references() if args.set == 'hits' else sentinel_references() if args.set == 'sentinel' else flatline_references() if args.set == 'flatline' else kunai_references() if args.set == 'kunai' else r99_references() if args.set == 'r99' else wingman_references() if args.set == 'wingman' else defender_references() if defender else frag_references() if args.set == 'frag' else octane_references() if octane else references()
+    refs = grapple_references() if args.set == 'grapple' else hits_references() if args.set == 'hits' else sentinel_references() if args.set == 'sentinel' else flatline_references() if args.set == 'flatline' else kunai_references() if args.set == 'kunai' else r99_references() if args.set == 'r99' else wingman_references() if args.set == 'wingman' else defender_references() if defender else frag_references() if args.set == 'frag' else octane_references() if octane else references()
     events = {r['asset_name'].lower(): r for r in csv.DictReader(
         (REPO / 'apex-data/assets/lists/audio_events.csv').open(encoding='utf8'))}
     available = {(r['asset_name'], r['file_name']): r for r in csv.DictReader(

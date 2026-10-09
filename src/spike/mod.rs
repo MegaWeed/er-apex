@@ -9,6 +9,7 @@ pub mod combat;
 pub mod fx;
 pub mod grenade;
 pub mod homing;
+pub mod grapple;
 pub mod gun;
 pub mod kcc;
 pub mod lethal;

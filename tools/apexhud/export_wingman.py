@@ -25,9 +25,12 @@ WEAPONS = {'wingman': ('mp_weapon_wingman.txt', 'rui/weapon_icons/r5/weapon_wing
            'sentinel': ('mp_weapon_sentinel.txt', 'rui/weapon_icons/r5/weapon_sentinel', '#WPN_SENTINEL_SHORT'),
            # the kunai (the kill feed's icon for a swing): its melee skin's `equipImage` (item flavour
            # settings/itemflav/melee_skin/kunai.rpak; its weapon settings' hud_icon is the generic fist)
-           'kunai': ('melee_wraith_kunai.txt', 'rui/menu/buttons/melee_skins/wraith_kunai', None)}
+           'kunai': ('melee_wraith_kunai.txt', 'rui/menu/buttons/melee_skins/wraith_kunai', None),
+           # Pathfinder's grapple (Q's other ability): its item flavour's icon
+           'grapple': ('mp_ability_grapple.txt', 'rui/hud/tactical_icons/tactical_pathfinder', None)}
 # icons that are not their weapon settings' hud_icon: where they are named
-ICON_SOURCES = {'rui/menu/buttons/melee_skins/wraith_kunai': 'settings/itemflav/melee_skin/kunai.rpak equipImage'}
+ICON_SOURCES = {'rui/menu/buttons/melee_skins/wraith_kunai': 'settings/itemflav/melee_skin/kunai.rpak equipImage',
+                'rui/hud/tactical_icons/tactical_pathfinder': 'settings/itemflav/ability/pathfinder_tac_grapple.rpak icon'}
 SETTINGS = REPO / 'apex-data/export/weapon/mp_weapon_wingman.txt'
 ICON = 'rui/weapon_icons/r5/weapon_wingman'
 NAME_KEY = '#WPN_WINGMAN_SHORT'
