@@ -32,6 +32,9 @@ CONFIGS={
  # bodygroup), detailD; detailC, the iron sights and the reactive fins (`def_lb_fin_*`, bones of the
  # reactive rig only) ride on them
  'r9':_config('r9','apex-data/assets/r99_ascension','lg',10,'mdl/techart/mshop/weapons/class/smg/r99/r99_react_v20_ascension_v','animrig/techart/mshop/weapons/class/smg/r99/r99_base_v_animRig','r99_react_v20_ascension_v',('body_0_','clip_0_','sight_front_1_','sight_rear_1_'),('def_c_base','def_c_magazine','def_c_detailD'),('L_ThighTwist1','L_CalfTwist1','R_ThighTwist1'),'R-99'),
+ # Wraith's heirloom kunai (the holstered mode, 2026-10-09) on part LG's next free twist leaf: one
+ # mesh, all of it on def_magazine (the knife; knife_base, its child, is not weighted)
+ 'kn':_config('kn','apex-data/assets/kunai','lg',11,'mdl/techart/mshop/weapons/class/heirloom/wraith/v18_kunai/heirloom_wraith_v18_kunai_v','animrig/techart/mshop/weapons/class/heirloom/wraith/v18_kunai/heirloom_wraith_v18_kunai_v_animRig','heirloom_wraith_v18_kunai_v',('projectile_0_',),('def_magazine',),('R_CalfTwist1',),'kunai'),
 }
 def _braced_qc(c):
  """The rig QC with a block on every `$sequence` (the R-99's has some on one line, which the shared

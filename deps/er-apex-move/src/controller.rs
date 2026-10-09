@@ -325,6 +325,11 @@ impl Controller {
         self.refresh_pose();
         old
     }
+    /// The caller's speed multiplier from now on (the holstered mode's faster run: er-apex weapons.rs).
+    pub fn set_speed_multiplier(&mut self, m: f32) {
+        self.params.speed_multiplier = Some(m);
+    }
+
     pub fn params(&self) -> &MoveParams {
         &self.params
     }

@@ -800,6 +800,8 @@ pub fn update(dt: f32) {
     };
 
     let ctl = k.ctl.as_mut().unwrap();
+    // the holstered mode (key 3, the kunai out: weapons.rs) runs a little faster
+    ctl.set_speed_multiplier(SPEED_MULT * super::weapons::move_scale());
     let before = ctl.state;
     let t0 = Instant::now();
     let result = ctl.step(&input, dt.clamp(0.0, 0.1));

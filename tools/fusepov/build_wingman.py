@@ -68,6 +68,7 @@ if __name__=='__main__':
  p.add_argument('--skin',type=Path,help='folder with Wingman_Default_col (and _spc, _nml, _gls) .png or .dds: the base material\'s textures replaced')
  p.add_argument('--r99-skin',type=Path,help='folder with <size> COL SPC.dds: the R-99''s main material''s albedo and specular replaced')
  p.add_argument('--cr-skin',type=Path,help='folder with col/, nml/, gls/ <size>.dds: the Charge Rifle\'s main material replaced')
+ p.add_argument('--kunai-skin',type=Path,help='folder with *_col.dds and *_spc.dds (any subfolders, the largest used): the kunai\'s textures replaced')
  a=p.parse_args()
- import mesh_wingman;mesh_wingman.SKIN['dir']=a.skin;mesh_wingman.CR_SKIN['dir']=a.cr_skin;mesh_wingman.R99_SKIN['dir']=a.r99_skin
+ import mesh_wingman;mesh_wingman.SKIN['dir']=a.skin;mesh_wingman.CR_SKIN['dir']=a.cr_skin;mesh_wingman.R99_SKIN['dir']=a.r99_skin;mesh_wingman.KUNAI_SKIN['dir']=a.kunai_skin
  build(a.out,a.matbin_bnd)

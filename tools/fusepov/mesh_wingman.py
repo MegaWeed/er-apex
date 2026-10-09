@@ -91,12 +91,33 @@ def r99_skin_paths(out):
  return dict(col=png,spc=png)
 
 
+# A kunai skin (build_wingman.py --kunai-skin): a folder holding `*_col.dds` and `*_spc.dds` (in
+# subfolders by size, the largest used; the user's 2026-10-09 set names them P2020_Default) replacing
+# the knife's material `throwing_knife` (the same texture slots: 0xCC8E6FAB22C01E3E, 0x321B95DEC3C8A32F).
+KUNAI_SKIN={'dir':None}
+KUNAI_SKIN_MATERIAL='throwing_knife'
+
+
+def kunai_skin_paths(out):
+ if KUNAI_SKIN['dir'] is None:return {}
+ import subprocess
+ folder=Path(KUNAI_SKIN['dir']);dest=out/'inputs/kunai-skin';paths={}
+ for usage in ('col','spc','nml','gls'):
+  found=sorted(folder.rglob(f'*_{usage}.dds'),key=lambda p:p.stat().st_size)
+  if not found:continue
+  target=dest/usage;target.mkdir(parents=True,exist_ok=True)
+  subprocess.run([str(ROOT/'tools/bin/texconv/texconv.exe'),'-nologo','-y','-ft','png','-f','R8G8B8A8_UNORM','-o',str(target),str(found[-1])],check=True,capture_output=True)
+  paths[usage]=target/(found[-1].stem+'.png')
+ wm.require('col' in paths,f'No *_col.dds in the kunai skin {folder}')
+ return paths
+
+
 def texture_sources(key,meshes,out=None):
  result={};assets=wm.CONFIGS[key]['assets']
  materials=read(assets/'materials.json')['materials']
- skin=(skin_paths(out) if key=='wm' else r99_skin_paths(out) if key=='r9' else {}) if out is not None else {}
+ skin=(skin_paths(out) if key=='wm' else r99_skin_paths(out) if key=='r9' else kunai_skin_paths(out) if key=='kn' else {}) if out is not None else {}
  # the skin goes on the weapon's main material (`<model>_main`)
- main={'wm':SKIN_MATERIAL}.get(key) or Path(wm.CONFIGS[key]['stem']).name.removesuffix('_v')+'_main'
+ main={'wm':SKIN_MATERIAL,'kn':KUNAI_SKIN_MATERIAL}.get(key) or Path(wm.CONFIGS[key]['stem']).name.removesuffix('_v')+'_main'
  for mesh in meshes:
   mat=next(m for m in materials if m['guid']==f'{mesh.Material().Hash():016x}');paths={}
   for t in sorted(mat['textures'],key=lambda t:t['slot']):paths.setdefault(t['usage'].lstrip('_'),assets/next(p for p in t['files'] if p.endswith('.png')))

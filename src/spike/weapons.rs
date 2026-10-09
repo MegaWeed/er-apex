@@ -33,6 +33,8 @@ pub enum Slot {
     /// the bullet gun's slot (key 1): the R-301, the R-99 or the Wingman (`Gun`, the wheel picks)
     R301 = 0,
     ChargeRifle = 1,
+    /// key 3: the holstered mode, Wraith's heirloom kunai in the hand (no gun; a little faster: `move_scale`)
+    Melee = 2,
 }
 
 impl Slot {
@@ -44,6 +46,7 @@ impl Slot {
         match self {
             Slot::R301 => primary_gun().name(),
             Slot::ChargeRifle => "Charge Rifle",
+            Slot::Melee => "Kunai",
         }
     }
 }
@@ -109,10 +112,16 @@ pub fn timing(slot: Slot) -> Timing {
     timing_of(slot, primary_gun())
 }
 
+/// The kunai (retail `heirloom_wraith_v18_kunai_v_animRig.qc`): `holster` 13 frames at 33 fps,
+/// `draw` 17 at 30 (its `drawfirst` is left out of the pack: the draw stands in); ready for a swing
+/// near the draw's end (推断).
+pub const KUNAI_TIMING: Timing = Timing { holster: 12.0 / 33.0, deploy: 16.0 / 30.0, deploy_first: 16.0 / 30.0, ready: 0.75, ready_first: 0.75 };
+
 fn timing_of(slot: Slot, gun: Gun) -> Timing {
     match slot {
         Slot::R301 => gun.timing(),
         Slot::ChargeRifle => CHARGE_RIFLE_TIMING,
+        Slot::Melee => KUNAI_TIMING,
     }
 }
 /// Where a switch is.
@@ -149,8 +158,8 @@ pub struct Loadout {
     primary: Gun,
     switch: Option<Switch>,
     /// whether each weapon has been drawn before (`deployfirst_time` only the first time): the
-    /// three guns, the Charge Rifle
-    drawn: [bool; 4],
+    /// three guns, the Charge Rifle, the kunai
+    drawn: [bool; 5],
 }
 
 impl Default for Loadout {
@@ -161,7 +170,7 @@ impl Default for Loadout {
 
 impl Loadout {
     pub const fn new(primary: Gun) -> Loadout {
-        let mut drawn = [false; 4];
+        let mut drawn = [false; 5];
         drawn[primary as usize] = true;
         Loadout { active: Slot::R301, primary, switch: None, drawn }
     }
@@ -180,7 +189,11 @@ impl Loadout {
     }
 
     fn drawn_index(slot: Slot, gun: Gun) -> usize {
-        if slot == Slot::ChargeRifle { 3 } else { gun.index() }
+        match slot {
+            Slot::R301 => gun.index(),
+            Slot::ChargeRifle => 3,
+            Slot::Melee => 4,
+        }
     }
 
     /// The slot the switch goes to (the active one when there is none).
@@ -209,7 +222,7 @@ impl Loadout {
     }
 
     fn request_with(&mut self, slot: Slot, gun: Gun) -> bool {
-        if slot == self.target() && (slot == Slot::ChargeRifle || gun == self.target_gun()) {
+        if slot == self.target() && (slot != Slot::R301 || gun == self.target_gun()) {
             return false;
         }
         // the weapon in hand: the one being put away while its holster lasts, else the active one
@@ -218,7 +231,7 @@ impl Loadout {
             Some(s) if s.to == Slot::R301 => (self.active, s.to_gun),
             _ => (self.active, self.primary),
         };
-        if from == slot && (slot == Slot::ChargeRifle || from_gun == gun) {
+        if from == slot && (slot != Slot::R301 || from_gun == gun) {
             // changed his mind during the put-away: it comes out again (a draw, not a first one)
             self.active = slot;
             self.primary = from_gun;
@@ -280,7 +293,11 @@ impl Loadout {
     }
 
     fn slot_name(&self, slot: Slot, gun: Gun) -> &'static str {
-        if slot == Slot::R301 { gun.name() } else { "Charge Rifle" }
+        match slot {
+            Slot::R301 => gun.name(),
+            Slot::ChargeRifle => "Charge Rifle",
+            Slot::Melee => "Kunai",
+        }
     }
 
     pub fn describe(&self) -> String {
@@ -359,10 +376,11 @@ pub fn describe() -> String {
 /// ready frame). The R-301's pull-out is their own (pov/ability.rs, pov/ordnance.rs).
 pub fn redraw_after_offhand(by: &str) {
     let mut l = loadout();
-    if l.target() == Slot::ChargeRifle {
+    if l.target() != Slot::R301 {
+        let name = l.target().name();
         l.redraw();
         drop(l);
-        log(format!("weapons: Charge Rifle out again after {by}: {}", describe()));
+        log(format!("weapons: {name} out again after {by}: {}", describe()));
     }
 }
 
@@ -480,6 +498,8 @@ pub fn update(dt: f32, t: Trigger) -> bool {
             log(select(Slot::R301, "key 1"));
         } else if pressed[1] {
             log(select(Slot::ChargeRifle, "key 2"));
+        } else if pressed[4] {
+            log(toggle_melee("key 3"));
         } else if pressed[2] && ready() {
             log(super::pov::start_inspect());
         }
@@ -499,7 +519,60 @@ pub fn update(dt: f32, t: Trigger) -> bool {
         && !super::battery::busy()
         && !super::grenade::gun_away();
     super::chargerifle::update(dt, t, rifle_in_hand, rifle_in_hand && ready);
+    melee_update(t.fire, active == Slot::Melee && ready && !super::battery::busy() && !super::grenade::gun_away());
     active != Slot::R301 || !ready
+}
+
+/// The slot to go back to when key 3 is pressed again in the holstered mode.
+static BEFORE_MELEE: Mutex<Slot> = Mutex::new(Slot::R301);
+
+/// Key 3: the holstered mode (the kunai) on, or back to the weapon before it.
+pub fn toggle_melee(by: &str) -> String {
+    let target = loadout().target();
+    if target == Slot::Melee {
+        let back = *BEFORE_MELEE.lock().unwrap_or_else(|e| e.into_inner());
+        select(back, by)
+    } else {
+        *BEFORE_MELEE.lock().unwrap_or_else(|e| e.into_inner()) = target;
+        select(Slot::Melee, by)
+    }
+}
+
+/// The holstered mode's run (ini `holster_speed`, default 1.1): the kunai in hand or coming out.
+pub fn move_scale() -> f32 {
+    let on = match phase() {
+        Phase::Ready(s) | Phase::Drawing { slot: s, .. } => s == Slot::Melee,
+        Phase::Holstering { .. } => false,
+    };
+    if on { crate::paths::number::<f32>("holster_speed").map_or(1.1, |m| m.clamp(0.5, 2.0)) } else { 1.0 }
+}
+
+/// Apex's melee: 30 damage out to 2 m (`melee_damage`, `melee_range` 推断 from the retail feel); one
+/// swing each `SWING_EVERY` seconds, its `melee_idle_swipe` (26 frames at 30 fps) in the hands.
+const MELEE_DAMAGE: f32 = 30.0;
+const MELEE_RANGE: f32 = 2.0;
+const SWING_EVERY: f32 = 0.6;
+/// The last swing (pov/mod.rs plays it) and the trigger last frame.
+static SWING: Mutex<(Option<std::time::Instant>, bool)> = Mutex::new((None, false));
+
+fn melee_update(fire: bool, can: bool) {
+    let mut s = SWING.lock().unwrap_or_else(|e| e.into_inner());
+    let pulled = fire && !s.1;
+    s.1 = fire;
+    if !(pulled && can) || s.0.is_some_and(|t| t.elapsed().as_secs_f32() < SWING_EVERY) {
+        return;
+    }
+    s.0 = Some(std::time::Instant::now());
+    drop(s);
+    let hit = super::gun::fire_ray_ex(0.0, (0.0, 0.0), glam::Vec3::ZERO, 2, MELEE_RANGE, true, |_, _| MELEE_DAMAGE * super::gun::damage_mult());
+    if let Some(line) = hit.and_then(|o| o.line) {
+        log(format!("melee: {line}"));
+    }
+}
+
+/// Seconds since the last kunai swing (pov/mod.rs: its `melee_idle_swipe`).
+pub fn swing_age() -> Option<f32> {
+    SWING.lock().unwrap_or_else(|e| e.into_inner()).0.map(|t| t.elapsed().as_secs_f32())
 }
 
 /// Slot 1's guns' put-away and pull-out sounds (their view models' QCs: `holster` frame 0
@@ -536,6 +609,7 @@ fn phase_sounds(now: Phase, gun: Gun) {
             Phase::Holstering { slot: Slot::ChargeRifle, .. } => super::chargerifle::sound_holster(),
             Phase::Drawing { slot: Slot::ChargeRifle, first, .. } => super::chargerifle::sound_draw(first),
             Phase::Holstering { slot: Slot::R301, .. } => unequip.iter().for_each(|n| crate::audio::play(n, R301_VOLUME)),
+            // the kunai: no sounds exported (待定)
             Phase::Drawing { slot: Slot::R301, .. } => equip.iter().for_each(|n| crate::audio::play(n, R301_VOLUME)),
             _ => {}
         }
@@ -576,6 +650,8 @@ pub fn zoom() -> (f32, f32, f32, f32) {
             Gun::Wingman => (0.18, 0.16, 0.0, 1.0),
         },
         Slot::ChargeRifle => (super::chargerifle::ZOOM_IN, super::chargerifle::ZOOM_OUT, super::chargerifle::ADS_FOV_FROM, super::chargerifle::ADS_FOV_TO),
+        // the kunai does not aim (`aiming`): the zoom only goes out
+        Slot::Melee => (0.2, 0.2, 0.0, 1.0),
     }
 }
 
@@ -586,6 +662,7 @@ pub fn zoom_fov() -> f32 {
         Slot::R301 if primary_gun() == Gun::R301 => 55.0,
         Slot::R301 => 60.0,
         Slot::ChargeRifle => 55.0,
+        Slot::Melee => 70.0,
     }
 }
 
@@ -596,7 +673,7 @@ pub fn zoom_fov() -> f32 {
 pub fn kick_spring() -> ([glam::Vec3; 4], (f32, f32)) {
     use glam::Vec3;
     match active() {
-        Slot::R301 => ([Vec3::new(120.0, 60.0, 150.0), Vec3::new(30.0, 30.0, 30.0), Vec3::new(100.0, 55.0, 150.0), Vec3::new(25.0, 25.0, 20.0)], (0.4, 0.3)),
+        Slot::R301 | Slot::Melee => ([Vec3::new(120.0, 60.0, 150.0), Vec3::new(30.0, 30.0, 30.0), Vec3::new(100.0, 55.0, 150.0), Vec3::new(25.0, 25.0, 20.0)], (0.4, 0.3)),
         Slot::ChargeRifle => {
             use super::chargerifle::*;
             ([SPRING_K_HIP, SPRING_C_HIP, SPRING_K_ADS, SPRING_C_ADS], (WEAPON_FRACTION_HIP, WEAPON_FRACTION_ADS))
@@ -605,13 +682,15 @@ pub fn kick_spring() -> ([glam::Vec3; 4], (f32, f32)) {
 }
 /// Whether the aim button counts this frame: held, and the weapon in hand drawn (推断).
 pub fn aiming(held: bool) -> bool {
-    held && ready()
+    held && ready() && active() != Slot::Melee
 }
 
 /// What the HUD draws for the weapon in hand (gun.rs / chargerifle.rs state).
 pub fn hud() -> Option<super::gun::HudState> {
     match active() {
-        Slot::R301 => super::gun::hud(),
+        // the holstered mode keeps the HUD as it was (the user's 2026-10-09 ask): slot 1's gun
+        Slot::Melee if *BEFORE_MELEE.lock().unwrap_or_else(|e| e.into_inner()) == Slot::ChargeRifle => super::chargerifle::hud(),
+        Slot::R301 | Slot::Melee => super::gun::hud(),
         Slot::ChargeRifle => super::chargerifle::hud(),
     }
 }
@@ -621,6 +700,7 @@ pub fn dev(args: &[&str]) -> String {
     match args.first().copied() {
         Some("1") => select(Slot::R301, "dev"),
         Some("2") => select(Slot::ChargeRifle, "dev"),
+        Some("3" | "kunai") => toggle_melee("dev"),
         Some("r301") => select_gun(Some(Gun::R301), "dev"),
         Some("r99") => select_gun(Some(Gun::R99), "dev"),
         Some("wingman") => select_gun(Some(Gun::Wingman), "dev"),
@@ -680,6 +760,27 @@ mod tests {
         assert!(!l.ready() && matches!(l.phase(), Phase::Drawing { first: false, .. }));
         run(&mut l, 0.06);
         assert!(l.ready());
+    }
+
+    /// Key 3: the Wingman put away (0.36 s), the kunai drawn (0.53 s), then the Wingman back with its
+    /// plain draw; slot 1's gun stays the Wingman throughout.
+    #[test]
+    fn holstered_mode_and_back() {
+        let mut l = Loadout::default();
+        assert!(l.request(Slot::Melee));
+        assert!(!l.request(Slot::Melee), "the kunai again: nothing");
+        run(&mut l, 0.3);
+        assert!(matches!(l.phase(), Phase::Holstering { slot: Slot::R301, .. }));
+        run(&mut l, 0.1);
+        assert!(matches!(l.phase(), Phase::Drawing { slot: Slot::Melee, .. }), "{:?}", l.phase());
+        run(&mut l, 0.6);
+        assert_eq!(l.phase(), Phase::Ready(Slot::Melee));
+        assert_eq!(l.shown_gun(), Gun::Wingman);
+        assert!(l.request(Slot::R301));
+        run(&mut l, 0.4);
+        assert!(matches!(l.phase(), Phase::Drawing { slot: Slot::R301, first: false, .. }), "{:?}", l.phase());
+        run(&mut l, 0.5);
+        assert_eq!(l.phase(), Phase::Ready(Slot::R301));
     }
 
     /// The wheel: another gun into slot 1 while it is in hand: the Wingman put away (0.36 s), the R-99

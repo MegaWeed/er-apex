@@ -536,7 +536,8 @@ fn weapon_wheel(p: &Pen, pack: &Pack, hovered: Option<usize>, c: &Colors) {
     let (r0, r1) = (110.0, 260.0);
     let held = match spike::weapons::active() {
         Slot::ChargeRifle => 3,
-        Slot::R301 => match spike::weapons::primary_gun() {
+        // the kunai is not on the wheel: slot 1's gun marked
+        Slot::R301 | Slot::Melee => match spike::weapons::primary_gun() {
             Gun::R301 => 0,
             Gun::R99 => 1,
             Gun::Wingman => 2,

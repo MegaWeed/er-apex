@@ -16,6 +16,7 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 - **Weapon wheel**: hold Tab, turn the view (or press 1-3) to pick a gun, let go to switch. Key 2 is still the Charge Rifle.
 - **The R-99 is the Cutting Edge model** (reactive skin model `r99_react_v20_ascension_v`), animated on the base R-99's rig.
 - **Inspect**: key 5 plays the inspect of the gun in hand, with its sounds; a shot, aiming, a reload, a switch, sprint or an ability cuts it.
+- **Holstered mode**: key 3 puts the gun away and takes out Wraith's heirloom kunai (its first-person model and animations from your Apex install); you run a little faster (×1.1, ini `holster_speed`), the left mouse button swings it (30 damage up to 2 m), 5 plays its inspect, and 3 again (or 1 / 2) brings the gun back. The HUD stays as it was.
 - **Wingman**: semi-auto, 8 rounds, 50 a shot, head ×1.5, reload 2.1 s, zoom 60°, Apex's view kick. **Charge Rifle**: 8 rounds.
 - **Custom skins (optional)**: put your own textures in `apex-data\skins\` and step 8 uses them (see [Weapon skins](#weapon-skins-optional)). No skin textures are in the repository.
 
@@ -31,7 +32,7 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 **Setting up**
 
 - **No DLC needed**: without Shadow of the Erdtree, `erextract` skips `DLC.bhd`.
-- `export-assets.ps1` has eight steps (step 8: the Wingman, the R-99 and the skins); run it once as below.
+- `export-assets.ps1` has eight steps (step 8: the Wingman, the R-99, the kunai and the skins); run it once as below.
 
 Known limits: the third-person body still holds the R-301; the Wingman's hammer does not move on its own; emissive textures are not used.
 
@@ -99,7 +100,7 @@ pwsh play.ps1
 - It backs up the test save to `scratch\saves`, installs the mod into `scratch\mod` and starts the game offline through me3, in a 1920×1080 window. The game skips the title screen and continues the test save's last character at the grace "The First Step" in Limgrave: Octane in first person, Wingman in hand, three soldiers next to the grace as targets.
 - The test save `ER0000_fuse.sl2` needs at least one character. me3 copies it from your normal save the first time it starts the game.
 - **Click the game window** to play with keyboard and mouse. The game sees no controller unless you start it with `-Pad`.
-- Keys: WASD, Space jump, Shift sprint, Ctrl crouch / slide; left mouse fire, right mouse aim, R reload; hold Tab for the weapon wheel (or 1-3), 2 the Charge Rifle, 5 inspect; Q stim, Z jump pad, 4 shield battery, G frag grenade; **F5** your own ELDEN RING character and back.
+- Keys: WASD, Space jump, Shift sprint, Ctrl crouch / slide; left mouse fire, right mouse aim, R reload; hold Tab for the weapon wheel (or 1-3), 2 the Charge Rifle, 3 the holstered mode (the kunai), 5 inspect; Q stim, Z jump pad, 4 shield battery, G frag grenade; **F5** your own ELDEN RING character and back.
 - Options: `-Fov 90` (70-110), `-FpsLimit 120` (default: the game's 60), `-PlayerName "name"` (the HUD's name), `-Pad` (controller).
 - By default gun damage is ×3 and the Jump Pad has no cooldown; `-Season3` uses the Season 3 values. `-NoSpawn`: no soldiers.
 - More soldiers: `pwsh tools/dev/game.ps1 spawn`. A friendly NPC stands about 10.5 m from the grace; do not shoot it. Back to the grace: `pwsh tools/dev/game.ps1 cmd "warp 1042361951"`. Quit: `pwsh tools/dev/game.ps1 stop`.
@@ -251,14 +252,15 @@ python tools/fusemesh/convert_fuse.py --geometry-only   # skeleton alignment onl
 python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS   # -> er-data\s4\fuse_er.anim
 ```
 
-**8. The Wingman and the R-99 (about 8 min; this fork)**
+**8. The Wingman, the R-99 and the kunai (about 12 min; this fork)**
 
-The Wingman, the R-99 and the R-99's Cutting Edge model, from your Apex install like the steps before. `build_wingman.py` adds both guns to model 998 and its animation pack, on top of step 6's `octane_pov_weapons` stage, and takes the optional skins.
+The Wingman, the R-99, the R-99's Cutting Edge model and Wraith's heirloom kunai, from your Apex install like the steps before. `build_wingman.py` adds them to model 998 and its animation pack, on top of step 6's `octane_pov_weapons` stage, and takes the optional skins.
 
 ```powershell
 python tools/apexassets/wingman_assets.py
 python tools/apexassets/r99_assets.py
 python tools/apexassets/r99_ascension_assets.py       # Cutting Edge (r99_react_v20_ascension_v)
+python tools/apexassets/kunai_assets.py               # Wraith's heirloom kunai (heirloom_wraith_v18_kunai_v)
 python tools/apexpov/bake_wingman.py                  # -> apex-data\pov\octane_wingman\fuse_pov.anim
 python tools/fusepov/build_wingman.py                 # -> er-data\s3\octane_pov_wingman (model 998); skins: see below
 python tools/fuseaudio/export_audio.py --set wingman
@@ -276,11 +278,12 @@ Each folder you put in `apex-data\skins\` replaces that gun's textures (any othe
 | `apex-data\skins\wingman\` | `Wingman_Default_col.dds` (optional `_spc`, `_nml`, `_gls`; `.png` works too) | the Wingman's base material |
 | `apex-data\skins\chargerifle\` | `col\`, `nml\`, `gls\`, each with `.dds` files in several sizes such as `1024.dds`, `2048.dds`; the largest is used | the Charge Rifle's main material |
 | `apex-data\skins\r99\` | `<size> COL SPC.dds`, such as `2048 COL SPC.dds`; the largest is used | the R-99's albedo and specular |
+| `apex-data\skins\kunai\` | `*_col.dds` and `*_spc.dds` (in subfolders too, such as `1024\P2020_Default_col.dds`); the largest is used | the kunai's albedo and specular |
 
 Run `pwsh export-assets.ps1` again after adding, changing or removing a skin folder: step 8 notices that the set of skins changed and makes model 998 again; the rest is skipped. By hand:
 
 ```powershell
-python tools/fusepov/build_wingman.py --skin apex-data\skins\wingman --cr-skin apex-data\skins\chargerifle --r99-skin apex-data\skins\r99
+python tools/fusepov/build_wingman.py --skin apex-data\skins\wingman --cr-skin apex-data\skins\chargerifle --r99-skin apex-data\skins\r99 --kunai-skin apex-data\skins\kunai
 ```
 
 Then start the game with `pwsh play.ps1`. `game.ps1 install -Legend octane` takes the last stage of each chain: 999 from `octane_gun`; 998, the material bundle and the animation pack from `octane_pov_wingman` (else `octane_pov_weapons` / `octane_weapons`); plus the base pose `fuse_er.anim` and the ground jump pad `padworld.json`. When a stage is incomplete, it uses the stage before it.
