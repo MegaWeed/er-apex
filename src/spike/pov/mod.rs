@@ -306,9 +306,13 @@ struct Kunai {
     sprint_w: f32,
     jump: Option<f32>,
     land: Option<f32>,
+    /// seconds since the controller last said sprinting (a frame or two without it keeps the pose)
+    since_sprint: f32,
 }
 
 const KUNAI_FADE: f32 = 0.2;
+/// How long the sprint pose stays after the controller stops saying sprinting.
+const SPRINT_HOLD: f32 = 0.15;
 const KUNAI_INSPECT_FRAMES: u32 = 145;
 /// Its inspect's sounds at their QC frames (`inspect`: AE_CL_PLAYSOUND 1, 43, 124).
 const KUNAI_INSPECT_SOUNDS: &[(u32, &str)] = &[(1, "wraith_mvmt_kunai_inspect_basic_p1"), (43, "wraith_mvmt_kunai_inspect_basic_p2"), (124, "wraith_mvmt_kunai_inspect_basic_p3")];
@@ -317,13 +321,16 @@ impl Kunai {
     fn step(&mut self, dt: f32, m: &Moving) {
         self.idle += dt;
         self.sprint_t += dt;
-        let want = if m.sprinting && !m.sliding { 1.0 } else { 0.0 };
+        self.since_sprint = if m.sprinting && !m.sliding { 0.0 } else { self.since_sprint + dt };
+        let want = if self.since_sprint < SPRINT_HOLD { 1.0 } else { 0.0 };
         let d = dt / KUNAI_FADE;
         self.sprint_w = if want > self.sprint_w { (self.sprint_w + d).min(1.0) } else { (self.sprint_w - d).max(0.0) };
-        if m.jumped {
+        // a one-shot playing is not started again (a run over bumps lands every few frames: each
+        // restart snapped the knife back to the clip's first frame)
+        if m.jumped && self.jump.is_none() {
             self.jump = Some(0.0);
         }
-        if m.landed {
+        if m.landed && self.land.is_none() {
             self.land = Some(0.0);
         }
         self.jump = self.jump.map(|t| t + dt).filter(|t| *t < 30.0 / 30.0);

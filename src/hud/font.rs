@@ -54,9 +54,9 @@ struct Meta {
 #[derive(Deserialize)]
 struct MetaFont {
     font_index: u32,
-    /// the custom atlas's (custom_font.py: the font file's stem, lower case)
+    /// the custom atlas's (custom_font.py: the font file's stem, lower case); Apex's meta has null
     #[serde(default)]
-    name: String,
+    name: Option<String>,
     /// [code point, texture index, x, y, w, h]
     unicode_to_texture_rect: Vec<[i64; 6]>,
 }
@@ -131,7 +131,7 @@ fn read_custom(c: &Custom) -> Result<(Atlas, HashMap<Face, HashMap<u32, [usize; 
     let m = read_meta(&c.meta)?;
     let mut tables = HashMap::new();
     for (face, name) in &c.faces {
-        let font = m.fonts.iter().find(|f| f.name == *name).ok_or_else(|| format!("no font {name} in {}", c.meta.display()))?;
+        let font = m.fonts.iter().find(|f| f.name.as_deref() == Some(name.as_str())).ok_or_else(|| format!("no font {name} in {}", c.meta.display()))?;
         tables.insert(*face, rects(font).into_iter().filter(|(cp, _)| (33..127).contains(cp)).collect());
     }
     Ok((read_atlas(&c.atlas)?, tables))
