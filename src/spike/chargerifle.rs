@@ -79,7 +79,8 @@ use crate::log;
 
 // ---- S3 numbers ------------------------------------------------------------------------------
 
-pub const CLIP: u32 = 4;
+/// S3's `ammo_clip_size` 4, plus 4 (the user, 2026-10-09).
+pub const CLIP: u32 = 8;
 /// `sustained_discharge_duration`, `sustained_discharge_pulse_frequency`: the release's, from the
 /// video (the TEMP file: 1.25, 0.104).
 pub const DISCHARGE: f32 = 0.5;
