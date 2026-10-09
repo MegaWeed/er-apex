@@ -13,7 +13,7 @@
 **武器**
 
 - **六把枪**：Wingman（开局拿在手上）、R-99、R-301、平行步枪（青色热情皮肤模型）、哨兵、Charge Rifle。
-- **哨兵**（特意改过）：全自动每秒 3 发，弹匣 7 发，每 0.4 秒自动补 1 发（不用换弹），用充能后的开火音效；**子弹自动追踪**：面朝方向 60 米、左右各 30° 的锥形范围内有敌人时，开枪打出一发发光的追踪子弹，从枪口飞出、拐弯追着敌人飞，飞到才算命中，准星不会动（ini `homing`、`homing_range`、`homing_angle`、`homing_height`、`homing_speed` 可改，默认值写在 `src/spike/homing.rs` 开头）。第一人称模型、动画、音效、HUD 图标都由 `export-assets.ps1` 第 8 步从本机 Apex 导出。
+- **哨兵**（特意改过）：全自动每秒 3 发，弹匣 7 发，每 0.4 秒自动补 1 发（不用换弹），用充能后的开火音效，每发命中都算爆头（70 × 1.8，击杀栏带爆头标记）；**子弹自动追踪**：面朝方向 60 米、左右各 30° 的锥形范围内有敌人时，开枪打出一发发光的追踪子弹，从枪口飞出、拐弯追着敌人飞，飞到才算命中，准星不会动（ini `homing`、`homing_range`、`homing_angle`、`homing_height`、`homing_speed` 可改，默认值写在 `src/spike/homing.rs` 开头）。第一人称模型、动画、音效、HUD 图标都由 `export-assets.ps1` 第 8 步从本机 Apex 导出。
 - **武器轮盘**：按住 Tab，转视角（或按 1～3）选枪，松开就换。按 2 仍是 Charge Rifle。
 - **R-99 用刀锋（Cutting Edge）模型**（进化皮肤模型 `r99_react_v20_ascension_v`），套在原版 R-99 的骨架上播放动画。
 - **检视动作**：按 5 播放手中武器的检视和音效，开火、开镜、换弹、切枪、冲刺或用技能会打断。
@@ -109,7 +109,7 @@ pwsh play.ps1
 - **点一下游戏窗口**就能用键盘鼠标玩。不加 `-Pad` 时游戏看不到手柄。
 - 按键：WASD 移动、空格跳、Shift 冲刺、Ctrl 蹲 / 滑铲；鼠标左键开火、右键开镜、R 换弹；按住 Tab 开武器轮盘（或按 1～3），2 切 Charge Rifle，3 收枪模式（苦无），5 检视；Q 兴奋剂、Z 跳板、4 护盾电池、G 破片手雷；**F5** 切回艾尔登法环角色，再按切回来。
 - 选项：`-Fov 90`（70～110）、`-FpsLimit 120`（默认原版 60）、`-PlayerName "名字"`（HUD 显示的名字）、`-Pad`（用手柄）。
-- 默认枪伤害 ×3、跳板无冷却；加 `-Season3` 用 S3 原值。`-NoSpawn`：不刷士兵。
+- 默认枪伤害 ×3（Charge Rifle 不吃这个加成，保持原伤害）、跳板无冷却；加 `-Season3` 用 S3 原值。`-NoSpawn`：不刷士兵。
 - 再刷士兵：`pwsh tools/dev/game.ps1 spawn`。赐福旁约 10.5 m 有一名友方 NPC，别朝它开枪。回到赐福：`pwsh tools/dev/game.ps1 cmd "warp 1042361951"`。退出：`pwsh tools/dev/game.ps1 stop`。
 
 ## 编译

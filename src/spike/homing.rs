@@ -111,8 +111,9 @@ fn acquire(eye: Vec3, fwd: Vec3, s: Settings) -> Option<(FieldInsHandle, u32, Ve
 }
 
 /// A homing gun's shot: a round towards the enemy in the cone ahead, `damage` its damage for the
-/// zone it will hit. None: homing off or no enemy there (the caller fires an ordinary shot).
-pub fn fire(damage: impl Fn(Zone) -> f32) -> Option<String> {
+/// zone it will hit (`head_only`: a headshot, at the head). None: homing off or no enemy there (the
+/// caller fires an ordinary shot).
+pub fn fire(head_only: bool, damage: impl Fn(Zone) -> f32) -> Option<String> {
     let s = settings();
     if !s.on || s.range <= 0.0 || s.angle_deg <= 0.0 {
         return None;
@@ -120,7 +121,8 @@ pub fn fire(damage: impl Fn(Zone) -> f32) -> Option<String> {
     let (eye, fwd) = view()?;
     let (target, npc, at) = acquire(eye, fwd, s)?;
     let from = crate::firstperson::muzzle_world().unwrap_or(eye + fwd * 0.6);
-    let zone = super::gun::zone_at(s.height);
+    // a head-only gun's round goes to the head and hits as a headshot
+    let zone = if head_only { Zone::Head } else { super::gun::zone_at(s.height) };
     let round = Round { pos: from, vel: fwd * s.speed, target, npc, damage: damage(zone), zone, born: Instant::now() };
     let line = format!("homing round at npc {npc}, {:.1} m away", (at - eye).length());
     ROUNDS.lock().unwrap_or_else(|e| e.into_inner()).push(round);
@@ -148,7 +150,8 @@ pub fn update(dt: f32) {
             r.pos += r.vel * dt;
             return r.born.elapsed().as_secs_f32() < 0.5;
         };
-        let at = aim_point(c, s.height);
+        // a headshot round flies to the head (0.92 of the body: gun.rs HEAD_ZONE is 0.85 up)
+        let at = aim_point(c, if r.zone == Zone::Head { 0.92 } else { s.height });
         let to = at - r.pos;
         let dist = to.length();
         let step = s.speed * dt;

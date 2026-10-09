@@ -13,7 +13,7 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 **Weapons**
 
 - **Six guns**: the Wingman (in hand at the start), the R-99, the R-301, the VK-47 Flatline (its Teal Zeal skin model), the Sentinel and the Charge Rifle.
-- **Sentinel** (changed on purpose): automatic at 3 a second, 7 rounds, a round back into the magazine every 0.4 s (no reload), the amped shot's sound, and **homing rounds**: with an enemy in a cone straight ahead (60 m, 30° each side; the crosshair does not move), a shot is a glowing round that flies from the muzzle, curves after the enemy and hits it when it gets there (ini `homing`, `homing_range`, `homing_angle`, `homing_height`, `homing_speed`; the defaults are at the top of `src/spike/homing.rs`). Their first-person models, animations, sounds and HUD icons are all exported from your Apex install by `export-assets.ps1` step 8.
+- **Sentinel** (changed on purpose): automatic at 3 a second, 7 rounds, a round back into the magazine every 0.4 s (no reload), the amped shot's sound, every hit a headshot (70 x 1.8, the kill feed's headshot mark), and **homing rounds**: with an enemy in a cone straight ahead (60 m, 30° each side; the crosshair does not move), a shot is a glowing round that flies from the muzzle, curves after the enemy and hits it when it gets there (ini `homing`, `homing_range`, `homing_angle`, `homing_height`, `homing_speed`; the defaults are at the top of `src/spike/homing.rs`). Their first-person models, animations, sounds and HUD icons are all exported from your Apex install by `export-assets.ps1` step 8.
 - **Weapon wheel**: hold Tab, turn the view (or press 1-3) to pick a gun, let go to switch. Key 2 is still the Charge Rifle.
 - **The R-99 is the Cutting Edge model** (reactive skin model `r99_react_v20_ascension_v`), animated on the base R-99's rig.
 - **Inspect**: key 5 plays the inspect of the gun in hand, with its sounds; a shot, aiming, a reload, a switch, sprint or an ability cuts it.
@@ -109,7 +109,7 @@ pwsh play.ps1
 - **Click the game window** to play with keyboard and mouse. The game sees no controller unless you start it with `-Pad`.
 - Keys: WASD, Space jump, Shift sprint, Ctrl crouch / slide; left mouse fire, right mouse aim, R reload; hold Tab for the weapon wheel (or 1-3), 2 the Charge Rifle, 3 the holstered mode (the kunai), 5 inspect; Q stim, Z jump pad, 4 shield battery, G frag grenade; **F5** your own ELDEN RING character and back.
 - Options: `-Fov 90` (70-110), `-FpsLimit 120` (default: the game's 60), `-PlayerName "name"` (the HUD's name), `-Pad` (controller).
-- By default gun damage is ×3 and the Jump Pad has no cooldown; `-Season3` uses the Season 3 values. `-NoSpawn`: no soldiers.
+- By default gun damage is ×3 (not the Charge Rifle's: it keeps its own) and the Jump Pad has no cooldown; `-Season3` uses the Season 3 values. `-NoSpawn`: no soldiers.
 - More soldiers: `pwsh tools/dev/game.ps1 spawn`. A friendly NPC stands about 10.5 m from the grace; do not shoot it. Back to the grace: `pwsh tools/dev/game.ps1 cmd "warp 1042361951"`. Quit: `pwsh tools/dev/game.ps1 stop`.
 
 ## Building
