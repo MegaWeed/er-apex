@@ -209,6 +209,9 @@ struct Kcc {
     /// while he stood still: a lift (`on_moving_ground`)
     ground: Option<f32>,
     ground_moving: u32,
+    /// On a lift: the game's ground under him last frame (released) and since when it has not moved:
+    /// the controller takes him back only once the lift has stood still for `LIFT_HOLD_MS`
+    lift: Option<(Option<f32>, Instant)>,
     /// In the air: where the flight comes down (the game's map ray along the arc) and when that
     /// was worked out (`window_centre`).
     landing: Option<(Vec3, Instant)>,
@@ -251,6 +254,7 @@ impl Kcc {
             last_recovery: None,
             ground: None,
             ground_moving: 0,
+            lift: None,
             landing: None,
         }
     }
@@ -519,7 +523,7 @@ fn window_centre(k: &mut Kcc, at: Vec3, player: &PlayerIns) -> Vec3 {
     centre
 }
 
-/// While the ground moved under him the game keeps him this long before the controller tries again.
+/// The game keeps him on a lift until the ground under him has not moved for this long.
 const LIFT_HOLD_MS: u64 = 1500;
 
 /// Whether the game's ground under his feet has moved up or down for 3 frames in a row while he
@@ -624,6 +628,22 @@ pub fn update(dt: f32) {
 
     // (re)start where the Tarnished stands, with a window fetched right away
     if k.ctl.is_none() {
+        // on a lift the game carries him until it has stood still a while (a lift going down left
+        // him standing on the air when the controller took him back mid-way, 2026-10-08)
+        if let Some((last, still)) = k.lift {
+            let ground = wall_between(here + Vec3::Y * 0.5, here - Vec3::Y * 3.0, 0.0, player).map(|g| g.y);
+            let moved = match (ground, last) {
+                (Some(g), Some(l)) => (g - l).abs() > 0.003,
+                (a, b) => a.is_some() != b.is_some(),
+            };
+            let still = if moved { Instant::now() } else { still };
+            if still.elapsed().as_millis() < LIFT_HOLD_MS as u128 {
+                k.lift = Some((ground, still));
+                return;
+            }
+            log(format!("kcc: the lift stopped at {here:.2?}: the controller takes him back"));
+            k.lift = None;
+        }
         if k.retry_at.is_some_and(|t| Instant::now() < t) {
             return;
         }
@@ -828,7 +848,7 @@ pub fn update(dt: f32) {
         k.ground = None;
         k.ground_moving = 0;
         k.release(Some(player));
-        k.retry_at = Some(Instant::now() + std::time::Duration::from_millis(LIFT_HOLD_MS));
+        k.lift = Some((None, Instant::now()));
         return;
     }
 

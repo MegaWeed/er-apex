@@ -6,12 +6,12 @@ test save ER0000_fuse.sl2 (backed up to scratch\saves before each start).
   pwsh play.ps1             gun damage x3 and no Jump Pad cooldown (play-test values)
   pwsh play.ps1 -Season3    Season 3 values
   pwsh play.ps1 -NoSpawn    no soldiers at the grace
-  pwsh play.ps1 -Fov 90 -FpsLimit 120   first-person field of view (70-110), frame cap (0: the game's 60)
+  pwsh play.ps1 -Fov 90 -FpsLimit 120   first-person field of view (70-110, default 90), frame cap (default 0: the game's 60)
   pwsh play.ps1 -PlayerName "name"   the HUD's player name (default: ER_APEX_PLAYER_NAME, else the save's character)
 
 Quit: pwsh tools/dev/game.ps1 stop
 #>
-param([switch]$Season3, [switch]$NoSpawn, [string]$PlayerName = $env:ER_APEX_PLAYER_NAME, [int]$Fov = 90, [int]$FpsLimit = 120)
+param([switch]$Season3, [switch]$NoSpawn, [string]$PlayerName = $env:ER_APEX_PLAYER_NAME, [int]$Fov = 90, [int]$FpsLimit = 0)
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 $Game = "$Root\tools\dev\game.ps1"

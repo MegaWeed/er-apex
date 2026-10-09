@@ -79,7 +79,8 @@ use crate::log;
 
 // ---- S3 numbers ------------------------------------------------------------------------------
 
-pub const CLIP: u32 = 4;
+/// S3's `ammo_clip_size` 4, plus 4 (the user, 2026-10-09).
+pub const CLIP: u32 = 8;
 /// `sustained_discharge_duration`, `sustained_discharge_pulse_frequency`: the release's, from the
 /// video (the TEMP file: 1.25, 0.104).
 pub const DISCHARGE: f32 = 0.5;
@@ -1020,20 +1021,20 @@ mod tests {
         }
     }
 
-    /// Four discharges, the fifth pull clicks and reloads (2 s, full at 143/173 of it); a reload
+    /// A magazine's discharges, the next pull clicks and reloads (2 s, full at 143/173 of it); a reload
     /// asked for with rounds left also takes 2 s (full at 106/136); none mid-discharge.
     #[test]
     fn magazine_and_reloads() {
         let mut r = Rifle::new();
         let mut ev = Vec::new();
         let mut t = 0.0;
-        for _ in 0..5 {
+        for _ in 0..=CLIP {
             t += 0.1;
             run(&mut r, t, held(true), &mut ev);
             t += 3.0;
             run(&mut r, t, held(false), &mut ev);
         }
-        assert_eq!(times(&ev, |e| matches!(e, Event::Fire { .. })).len(), 4, "{ev:?}");
+        assert_eq!(times(&ev, |e| matches!(e, Event::Fire { .. })).len(), CLIP as usize, "{ev:?}");
         assert!(ev.iter().any(|e| e.1 == Event::DryFire));
         let start = ev.iter().find(|e| e.1 == Event::ReloadStart { empty: true }).expect("empty reload").0;
         assert_eq!(r.ammo, CLIP, "the reload ran in the last 3 s");

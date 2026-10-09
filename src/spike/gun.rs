@@ -37,7 +37,8 @@ use crate::{log, paths, state};
 // 21, 2.4 / 3.2, 1.3, 0.75, automatic.)
 const DAMAGE: f32 = 50.0;
 const FIRE_RATE: f32 = 2.8;
-const CLIP: u32 = 5;
+/// `ammo_clip_size` 5, plus 3 (the user, 2026-10-09).
+const CLIP: u32 = 8;
 const RELOAD: f32 = 2.1;
 const RELOAD_EMPTY: f32 = 2.1;
 const HEAD_SCALE: f32 = 1.5;
