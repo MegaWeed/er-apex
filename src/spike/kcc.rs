@@ -428,6 +428,13 @@ pub fn pull(velocity: Vec3, gravity_scale: f32) -> bool {
     ctl.pull(v3(velocity / MPU), gravity_scale).is_ok()
 }
 
+/// The last step's move input (world, flat, camera-relative, length 0..1): the grapple's swing.
+static WISH: Mutex<Vec3> = Mutex::new(Vec3::ZERO);
+
+pub fn wish() -> Vec3 {
+    *WISH.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 /// The velocity (world m/s), whether on the ground.
 pub fn velocity() -> Option<(Vec3, bool)> {
     let g = KCC.lock().unwrap_or_else(|e| e.into_inner());
@@ -798,6 +805,7 @@ pub fn update(dt: f32) {
     }
     let flat = camera_flat();
     let wish = flat.map_or(Vec3::ZERO, |(f, r)| r * stick.x + f * stick.y);
+    *WISH.lock().unwrap_or_else(|e| e.into_inner()) = wish;
     // sprint is the held button: one press keeps sprinting while running on (Apex's sticky
     // sprint lives in the controller)
     let input = MoveInput {

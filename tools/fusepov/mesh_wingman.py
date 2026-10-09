@@ -115,7 +115,9 @@ def kunai_skin_paths(out):
 # A Flatline skin (build_wingman.py --flatline-skin): a folder (any subfolders) with `*COL*.dds` and
 # `*SPC*.dds` (the largest of each; the user's 2026-10-09 set: COL2048.dds, 2048SPC.dds) replacing
 # its Teal Zeal material's albedo and specular (0x7D8B14A315E42417, 0x62178FCDBF0B72DF); the set's
-# third image, its emissive (0x9751C40ED639402C, its "AO"), is not used: no emissive here.
+# third image, its emissive (0x9751C40ED639402C, its "AO" / `*AO*.dds`), is added onto the albedo
+# (the user's 2026-10-09 ask to see it): the 998 material has no emissive slot, so the art Apex lights
+# shows bright, not glowing in the dark (推断: an approximation).
 FLATLINE_SKIN={'dir':None}
 
 
@@ -130,6 +132,15 @@ def flatline_skin_paths(out):
   subprocess.run([str(ROOT/'tools/bin/texconv/texconv.exe'),'-nologo','-y','-ft','png','-f','R8G8B8A8_UNORM','-o',str(target),str(found[-1])],check=True,capture_output=True)
   paths[usage]=target/(found[-1].stem+'.png')
  wm.require('col' in paths,f'No COL dds in the Flatline skin {folder}')
+ glow=sorted((p for p in folder.rglob('*.dds') if 'AO' in p.name.upper()),key=lambda p:p.stat().st_size)
+ if glow:
+  import numpy as np
+  from PIL import Image
+  target=out/'inputs/flatline-skin/glow';target.mkdir(parents=True,exist_ok=True)
+  subprocess.run([str(ROOT/'tools/bin/texconv/texconv.exe'),'-nologo','-y','-ft','png','-f','R8G8B8A8_UNORM','-o',str(target),str(glow[-1])],check=True,capture_output=True)
+  col=Image.open(paths['col']).convert('RGBA');e=Image.open(target/(glow[-1].stem+'.png')).convert('RGB').resize(col.size,Image.LANCZOS)
+  a=np.asarray(col).astype(np.float32);a[...,:3]=np.clip(a[...,:3]+np.asarray(e,dtype=np.float32),0,255)
+  lit=paths['col'].with_name(paths['col'].stem+'_glow.png');Image.fromarray(a.astype(np.uint8),'RGBA').save(lit);paths['col']=lit
  return paths
 
 
