@@ -10,16 +10,28 @@
 
 本仓库 fork 自 [umiiii/er-apex](https://github.com/umiiii/er-apex)，在原版基础上：
 
-- **1 号武器换成 Wingman**（顶替 R-301）：第一人称模型、全部动画、音效、HUD 图标都从本机 Apex 导出；半自动、5 发、单发 50、爆头 ×1.5、换弹 2.1 秒、开镜 60°，后坐力用 Apex 的 Wingman 数值。2 号仍是 Charge Rifle。
-- **检视动作**：按 5 播放手中武器的检视（Wingman、Charge Rifle 各自的原版动画和音效），开火、开镜、换弹、切枪、冲刺或用技能会打断。
-- **自定义皮肤**：`python tools/fusepov/build_wingman.py --skin <文件夹> --cr-skin <文件夹>`。`--skin` 放 `Wingman_Default_col.dds`（可选 `_spc`、`_nml`、`_gls`）；`--cr-skin` 放 `col/`、`nml/`、`gls/` 子文件夹，各含若干尺寸的 `.dds`，取最大的一张。皮肤贴图不在仓库里。
+**武器**
+
+- **四把枪**：Wingman（开局拿在手上）、R-99、R-301、Charge Rifle。第一人称模型、动画、音效、HUD 图标都由 `export-assets.ps1` 第 8 步从本机 Apex 导出。
+- **武器轮盘**：按住 Tab，转视角（或按 1～3）选枪，松开就换。按 2 仍是 Charge Rifle。
+- **R-99 用刀锋（Cutting Edge）模型**（进化皮肤模型 `r99_react_v20_ascension_v`），套在原版 R-99 的骨架上播放动画。
+- **检视动作**：按 5 播放手中武器的检视和音效，开火、开镜、换弹、切枪、冲刺或用技能会打断。
+- **Wingman**：半自动、8 发、单发 50、爆头 ×1.5、换弹 2.1 秒、开镜 60°，后坐力用 Apex 的数值。**Charge Rifle**：8 发。
+- **自定义皮肤（可选）**：把自己的贴图放进 `apex-data\skins\`，第 8 步会自动用上（见[武器皮肤](#武器皮肤可选)）。仓库里不含任何皮肤贴图。
+
+**游玩**
+
+- **F5**：切回你自己的艾尔登法环角色，移动和碰撞、视角、HUD、护甲和武器都用游戏原生的，模组的枪、技能和 HUD 关闭。再按 F5 切回动力小子。
+- **键鼠按键提示**：默认游戏看不到任何手柄，界面提示是键盘鼠标。要用手柄玩：`pwsh play.ps1 -Pad`。
+- **敌人判定**：除玩家一方（阵营 1、2、8、12，可用 ini `friendly_teams` 改）外所有角色都能被击中，和原版一样，狗、乌鸦、入侵者、龙和 Boss 都算。
+- **移动**：每秒重读地面碰撞，下落中陷进地面时拉回，避免远处地图晚加载时穿地；坐电梯上下时由游戏接管，直到电梯停稳。
+- **Charge Rifle 音效**随射击结束而停：打断后不再有开火声，光束打到怪物身上也不会循环。
+- **设置**：`pwsh play.ps1 -Fov 90 -FpsLimit 120 -PlayerName "名字" -Pad`。FOV 默认 90；帧数默认原版 60；HUD 名字取 `-PlayerName` 或环境变量 `ER_APEX_PLAYER_NAME`，都没有时用存档角色名。
+
+**部署**
+
 - **没装 DLC 也能导出**：没有《黄金树幽影》时 `erextract` 跳过 `DLC.bhd`。
-- `export-assets.ps1` 新增第 8 步生成 Wingman 资源。
-- **武器轮盘**：按住 Tab，转视角（或按 1～3）选择 R-301、R-99、Wingman 或 Charge Rifle，松开换枪；R-99 和 Wingman 一样在第 8 步导出。
-- **弹匣**：Wingman 8 发，Charge Rifle 8 发。
-- **敌人判定**：除玩家一方（阵营 1、2、8、12，可用 ini `friendly_teams` 改）外所有角色都能被击中，和原版一样。
-- **移动**：每秒重读地面碰撞、下落中陷进地面时拉回，避免穿地；电梯由游戏接管直到停稳。
-- **设置**：`pwsh play.ps1 -Fov 90 -FpsLimit 120 -PlayerName "名字"`（FOV 默认 90，帧数默认原版 60，HUD 名字默认读环境变量 `ER_APEX_PLAYER_NAME`）。
+- `export-assets.ps1` 共八步（第 8 步：Wingman、R-99 和皮肤），按下面的流程运行一次即可。
 
 已知限制：第三人称身体手里仍是 R-301；Wingman 击锤不单独动作；自发光贴图未使用。
 
@@ -74,8 +86,9 @@ pwsh export-assets.ps1
 ```
 
 - 脚本会询问《Apex 英雄》的安装目录（里面有 `paks\Win64`）和《艾尔登法环》的 `Game` 目录（里面有 `eldenring.exe`）。能从 Steam 找到时会作为默认值显示，直接回车即可。两个目录只读取，不修改。
-- 然后检查工具链，按顺序执行[生成游戏资源](#生成游戏资源apex-dataer-data)的七个步骤，约 1 小时。第 4 步会启动一次游戏（约 1 分钟）读取玩家骨架，游戏自己退出之前不要操作它。
-- 产物已存在的命令会跳过，所以中途失败时排除原因后直接重新运行即可，会从停下的地方继续；上次被中断的命令会重新完整执行。全部重新生成：`-Force`；只重做第 5–7 步：`-From 5 -Force`。不想回答问题：`-ApexDir <目录> -EldenRingDir <目录>`。不生成测试场地（没有士兵当靶子）：`-NoArena`。
+- 然后检查工具链，按顺序执行[生成游戏资源](#生成游戏资源apex-dataer-data)的八个步骤，约 70 分钟。第 4 步会启动一次游戏（约 1 分钟）读取玩家骨架，游戏自己退出之前不要操作它。
+- 产物已存在的命令会跳过，所以中途失败时排除原因后直接重新运行即可，会从停下的地方继续；上次被中断的命令会重新完整执行。全部重新生成：`-Force`；只重做第 5–8 步：`-From 5 -Force`。不想回答问题：`-ApexDir <目录> -EldenRingDir <目录>`。不生成测试场地（没有士兵当靶子）：`-NoArena`。
+- 武器皮肤是可选的：在这一步之前或之后放进 `apex-data\skins\` 都行（见[武器皮肤](#武器皮肤可选)）。
 
 ### 3. 启动游戏
 
@@ -83,10 +96,11 @@ pwsh export-assets.ps1
 pwsh play.ps1
 ```
 
-- 脚本把测试存档备份到 `scratch\saves`，把模组装到 `scratch\mod`，再通过 me3 以 1920×1080 窗口离线启动游戏。游戏会跳过标题画面，「继续」测试存档里最后玩的角色，站在宁姆格福「引导之始」赐福旁：第一人称的动力小子，手持 R-301，赐福旁刷出三名士兵当靶子。
+- 脚本把测试存档备份到 `scratch\saves`，把模组装到 `scratch\mod`，再通过 me3 以 1920×1080 窗口离线启动游戏。游戏会跳过标题画面，「继续」测试存档里最后玩的角色，站在宁姆格福「引导之始」赐福旁：第一人称的动力小子，手持 Wingman，赐福旁刷出三名士兵当靶子。
 - 测试存档 `ER0000_fuse.sl2` 里要至少有一个角色。第一次用 me3 启动时，me3 会从正常存档复制一份。
-- **点一下游戏窗口**就能用键盘鼠标玩。
-- **F5** 切回艾尔登法环原本的角色（游戏自己的移动和碰撞、视角、HUD、护甲和武器，模组的枪和技能关闭），再按 F5 切回动力小子。
+- **点一下游戏窗口**就能用键盘鼠标玩。不加 `-Pad` 时游戏看不到手柄。
+- 按键：WASD 移动、空格跳、Shift 冲刺、Ctrl 蹲 / 滑铲；鼠标左键开火、右键开镜、R 换弹；按住 Tab 开武器轮盘（或按 1～3），2 切 Charge Rifle，5 检视；Q 兴奋剂、Z 跳板、4 护盾电池、G 破片手雷；**F5** 切回艾尔登法环角色，再按切回来。
+- 选项：`-Fov 90`（70～110）、`-FpsLimit 120`（默认原版 60）、`-PlayerName "名字"`（HUD 显示的名字）、`-Pad`（用手柄）。
 - 默认枪伤害 ×3、跳板无冷却；加 `-Season3` 用 S3 原值。`-NoSpawn`：不刷士兵。
 - 再刷士兵：`pwsh tools/dev/game.ps1 spawn`。赐福旁约 10.5 m 有一名友方 NPC，别朝它开枪。回到赐福：`pwsh tools/dev/game.ps1 cmd "warp 1042361951"`。退出：`pwsh tools/dev/game.ps1 stop`。
 
@@ -237,7 +251,39 @@ python tools/fusemesh/convert_fuse.py --geometry-only   # 只算骨架对齐 →
 python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS   # → er-data\s4\fuse_er.anim
 ```
 
-全部完成后用 `pwsh play.ps1` 启动游戏。`game.ps1 install -Legend octane` 会取各链条最后一级的产物：999 用 `octane_gun`，998、材质包和动画包用 `octane_pov_weapons` / `octane_weapons`，另外复制基础姿态 `fuse_er.anim` 和地上跳板 `padworld.json`。某一级不完整时退回上一级。
+**8. Wingman 与 R-99（约 8 分钟，本 fork 新增）**
+
+和前面几步一样，从本机 Apex 导出 Wingman、R-99 和 R-99 的刀锋模型。`build_wingman.py` 在第 6 步 `octane_pov_weapons` 的基础上，把这两把枪加进模型 998 和动画包，并套用可选的皮肤。
+
+```powershell
+python tools/apexassets/wingman_assets.py
+python tools/apexassets/r99_assets.py
+python tools/apexassets/r99_ascension_assets.py       # 刀锋（r99_react_v20_ascension_v）
+python tools/apexpov/bake_wingman.py                  # → apex-data\pov\octane_wingman\fuse_pov.anim
+python tools/fusepov/build_wingman.py                 # → er-data\s3\octane_pov_wingman（模型 998）；皮肤见下
+python tools/fuseaudio/export_audio.py --set wingman
+python tools/fuseaudio/export_audio.py --set r99
+python tools/apexhud/export_wingman.py --legend octane
+python tools/apexhud/export_wingman.py --legend octane --weapon r99
+```
+
+#### 武器皮肤（可选）
+
+`apex-data\skins\` 下放了哪个文件夹，就替换哪把枪的贴图（放在别处：`export-assets.ps1 -Skins <文件夹>`）：
+
+| 文件夹 | 文件 | 替换 |
+|---|---|---|
+| `apex-data\skins\wingman\` | `Wingman_Default_col.dds`（可选 `_spc`、`_nml`、`_gls`；`.png` 也行） | Wingman 的基础材质 |
+| `apex-data\skins\chargerifle\` | `col\`、`nml\`、`gls\` 子文件夹，各含若干尺寸的 `.dds`，如 `1024.dds`、`2048.dds`，取最大的一张 | Charge Rifle 的主材质 |
+| `apex-data\skins\r99\` | `<尺寸> COL SPC.dds`，如 `2048 COL SPC.dds`，取最大的一张 | R-99 的颜色和高光 |
+
+添加、更换或删除皮肤文件夹后，再运行一次 `pwsh export-assets.ps1`：第 8 步发现皮肤变了，会重新生成模型 998，其余步骤跳过。也可以手动执行：
+
+```powershell
+python tools/fusepov/build_wingman.py --skin apex-data\skins\wingman --cr-skin apex-data\skins\chargerifle --r99-skin apex-data\skins\r99
+```
+
+全部完成后用 `pwsh play.ps1` 启动游戏。`game.ps1 install -Legend octane` 会取各链条最后一级的产物：999 用 `octane_gun`，998、材质包和动画包用 `octane_pov_wingman`（没有时用 `octane_pov_weapons` / `octane_weapons`），另外复制基础姿态 `fuse_er.anim` 和地上跳板 `padworld.json`。某一级不完整时退回上一级。
 
 生成完的 `apex-data` 和 `er-data` 大部分是中间产物。游戏实际读取的部分约 490 MB：模型约 147 MB，动画包约 61 MB，HUD 约 45 MB，音效约 235 MB。
 
