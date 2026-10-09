@@ -442,6 +442,10 @@ def kunai_references():
     ]
     for event in ['Wraith_Mvmt_Kunai_Inspect_Basic_P1', 'Wraith_Mvmt_Kunai_Inspect_Basic_P2', 'Wraith_Mvmt_Kunai_Inspect_Basic_P3']:
         specs.append((event, 'inspect (QC frame)', [(qc, 'inspect')]))
+    for event in ['Wraith_Mvmt_Kunai_Inspect_Fly_P1', 'Wraith_Mvmt_Kunai_Inspect_Fly_P2', 'Wraith_Mvmt_Kunai_Inspect_Fly_P3', 'Wraith_Mvmt_Kunai_Inspect_Fly_P4']:
+        specs.append((event, 'inspect_fly (QC frame)', [(qc, 'inspect_fly')]))
+    for event in ['Wraith_Mvmt_Kunai_Inspect_Insignia_P1', 'Wraith_Mvmt_Kunai_Inspect_Insignia_P2', 'Wraith_Mvmt_Kunai_Inspect_Insignia_Charged', 'Wraith_Mvmt_Kunai_Inspect_Insignia_W_Appears']:
+        specs.append((event, 'inspect_insignia (QC frame)', [(qc, 'inspect_insignia')]))
     refs = [r for r in _refs_from_specs(specs) if r['event']]
     # the QC's swing sounds (`Mvmt_Melee_Kunai_Swipe_1P`, `effort_melee_1p`) are not in the local
     # bank's event table: stand-ins of the same kind, named here (推断, not from the QC)
