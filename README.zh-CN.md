@@ -20,6 +20,10 @@
 - **Wingman**：半自动、8 发、单发 50、爆头 ×1.5、换弹 2.1 秒、开镜 60°，后坐力用 Apex 的数值。**Charge Rifle**：8 发。
 - **自定义皮肤（可选）**：把自己的贴图放进 `apex-data\skins\`，第 8 步会自动用上（见[武器皮肤](#武器皮肤可选)）。仓库里不含任何皮肤贴图。
 
+**HUD 字体（可选）**
+
+- 把自己的 `.ttf` / `.otf` 放进 `apex-data\fonts\`，HUD 的数字和英文就用这些字体显示（中文等其他字符仍用 Apex 原字体）。默认所有文字用 `Apex Regular`（没有时用第一个字体）；ini 的 `hud_font_body`、`hud_font_numeric`、`hud_font_bold`（填字体文件名去掉扩展名的小写，或 `off`）可以分别指定，`hud_font = off` 全部关闭。字形图集由 `pwsh export-assets.ps1`（第 8 步）或 `python tools/apexhud/custom_font.py` 生成。仓库里不含字体文件。
+
 **游玩**
 
 - **F5**：切回你自己的艾尔登法环角色，移动和碰撞、视角、HUD、护甲和武器都用游戏原生的，模组的枪、技能和 HUD 关闭。再按 F5 切回动力小子。
@@ -267,6 +271,7 @@ python tools/fuseaudio/export_audio.py --set wingman
 python tools/fuseaudio/export_audio.py --set r99
 python tools/apexhud/export_wingman.py --legend octane
 python tools/apexhud/export_wingman.py --legend octane --weapon r99
+python tools/apexhud/custom_font.py                   # 仅当 apex-data\fonts 里有字体：→ apex-data\hud\custom_font
 ```
 
 #### 武器皮肤（可选）
