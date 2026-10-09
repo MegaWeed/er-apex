@@ -663,6 +663,7 @@ pub fn step(dt: f32, i: &Inputs) {
     }
     let t0 = Instant::now();
     let vis = Vis { show, hide, weapon: a.view };
+    MELEE_POSE.store(melee, std::sync::atomic::Ordering::Relaxed);
     a.posed = with_pack(|p| pose_pack(p, &out, &a.sway, posing.as_ref().or(a.ability_out.as_ref()), vis)).flatten();
     let us = t0.elapsed().as_secs_f32() * 1e6;
     if a.trace_until.is_some_and(|t| Instant::now() < t) {
@@ -952,6 +953,12 @@ fn blend_named(p: &Pack, l: &ability::Layer, b: usize, nb: usize, weapon: Weapon
 /// (`stim_`, `pad_`, `battery_`, `frag_`) and the rifle's as they are.
 fn clip_for<'a>(p: &'a Pack, name: &str, w: Weapon) -> Option<&'a Clip> {
     let prop = ["stim_", "pad_", "battery_", "frag_", "cr_", "wm_", "kn_"].iter().any(|k| name.starts_with(k));
+    // the kunai in the hands (the holstered mode): an ability's weapon clips are the kunai's own
+    // (`kn_draw`, `kn_holster`...) or none (the gun's arms over the kunai showed a gun's grip: the
+    // user, 2026-10-09, tossing the pad)
+    if !prop && MELEE_POSE.load(std::sync::atomic::Ordering::Relaxed) {
+        return p.clip(&format!("kn_{name}"));
+    }
     if w != Weapon::R301 && !prop {
         if let Some(c) = p.clip(&format!("{}{name}", w.prefix())) {
             return Some(c);
@@ -1072,6 +1079,9 @@ fn gun_group(w: Weapon) -> usize {
         Weapon::Sentinel => SENTINELG,
     }
 }
+
+/// The kunai is the hands' this frame (`clip_for`).
+static MELEE_POSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// What shows this frame and how the rest is put away.
 #[derive(Clone, Copy)]

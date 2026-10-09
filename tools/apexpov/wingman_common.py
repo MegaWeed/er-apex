@@ -130,13 +130,22 @@ def layout(base=None):
      if name not in idx:alias[name]=in_rig(b);name=alias[name]
      weights[name]=weights.get(name,0.)+w
   totals[key]=weights
-  prop=set(weights)|{b['name'] for b in rig if b['name'] not in pack_index}
+  prop=set(weights)
   for n in list(prop):
    require(n in idx,f'Weighted bone missing from rig: {n}');p=rig[idx[n]]['parent']
    while p>=0:
     name=rig[p]['name']
     if name in pack_index and sum(b['parent']==p for b in rig)>1 and name=='def_c_spineC':break
     prop.add(name);p=rig[p]['parent']
+  # the rig's own other bones (the Sentinel's shield clamps on the left forearm) are copied up to
+  # the first bone the pack has: walking on took the left arm into the copy, and the arms' left
+  # arm was left at rest (the user, 2026-10-09: "the Sentinel has no left hand")
+  for b in rig:
+   n=b['name']
+   if n in pack_index or n in prop:continue
+   prop.add(n);p=b['parent']
+   while p>=0 and rig[p]['name'] not in pack_index and rig[p]['name'] not in prop:
+    prop.add(rig[p]['name']);p=rig[p]['parent']
   # the R-301's own bones in the pack: a weapon's same-named ones are copies, never mapped onto the rifle
   masked_r301={'def_c_bolt','def_c_magazine','def_dust_cover_l','ja_ads_attachment','def_c_trigger','def_c_detailA','def_c_detailB','def_c_detailC','def_c_detailD','def_c_base','weapon_bone'}
   mapping={n:pack_index[n] for n in idx if n in pack_index and n not in prop and n not in masked_r301};rest=bp.ea.rest_pose(rig)
