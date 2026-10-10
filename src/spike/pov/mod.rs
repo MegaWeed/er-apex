@@ -571,6 +571,13 @@ pub fn step(dt: f32, i: &Inputs) {
         a.ability = None;
     }
     a.ability_out = a.ability.map(|ab| ab.out(params));
+    // the Sentinel's one-handed sprint (the stim) took the right hand over to the left (the user,
+    // 2026-10-10): with it, the graph's two-handed sprint shows under the stim's arms
+    if a.view == Weapon::Sentinel
+        && let Some(o) = a.ability_out.as_mut()
+    {
+        o.layers.retain(|l| l.samples.first().is_none_or(|s| !s.0.starts_with("sprint_onehanded")));
+    }
     // U9: the frag grenade out (spike/grenade.rs) takes the hands, over any ability
     if let Some(v) = crate::spike::grenade::view() {
         a.ability_out = Some(ordnance::out(v, params));
@@ -659,8 +666,8 @@ pub fn step(dt: f32, i: &Inputs) {
             stop_kunai_sounds(k);
         }
     }
-    // the Sentinel's bolt (`rechamber`, additive) after each shot, sped up to the mod's 3 shots a
-    // second; a new shot cuts it, the old one fading out under the new
+    // the Sentinel's bolt (`rechamber`, additive) after each shot, sped up to the mod's shot every
+    // 0.6 s; a new shot cuts it, the old one fading out under the new
     if a.view == Weapon::Sentinel && !melee {
         if shot {
             a.rechamber_out = a.rechamber.map(|t| (t, 0.0));
@@ -1062,13 +1069,10 @@ fn with_swap(ab: Option<&ability::Out>, swap: Option<(Vec<(String, f32)>, f32)>)
     Some(out)
 }
 
-/// The Charge Rifle's `sustained_discharge` (105 frames, 30 fps, looping, by ads x crouch) and its
-/// addlayer `charge_loop_layer` (by ads x chargeFraction: still at no charge, its 105-frame loop
-/// at full), both added on, `t` seconds into the discharge (U3; T022's clips).
 /// The Sentinel's `rechamber` (64 frames, additive; `sentinel_base_v_animRig.qc`) played over
-/// this many seconds (retail: 2.1 s; sped up for the mod's 3 shots a second, the bolt's back and
-/// front at frames 12 and 22 before the next shot), and its QC sounds.
-const RECHAMBER_SECONDS: f32 = 0.6;
+/// this many seconds (retail: 2.1 s; sped up for the mod's shot every 0.6 s: ready to fire, frame
+/// 50, at the next shot; the bolt's back and front at frames 12 and 22), and its QC sounds.
+const RECHAMBER_SECONDS: f32 = 0.75;
 const RECHAMBER_BLEND: f32 = 0.08;
 const RECHAMBER_SOUNDS: &[(u32, &str)] = &[(12, "weapon_sentinel_boltback"), (12, "weapon_sentinel_boltback_layer1"), (22, "weapon_sentinel_boltfront")];
 
@@ -1089,6 +1093,9 @@ fn rechamber_layer(t: f32, onehanded: bool, ads: f32, crouch: f32) -> ability::L
     ability::Layer { samples, cycle: (t / RECHAMBER_SECONDS).clamp(0.0, 1.0), weight, mode: ability::Mode::Add }
 }
 
+/// The Charge Rifle's `sustained_discharge` (105 frames, 30 fps, looping, by ads x crouch) and its
+/// addlayer `charge_loop_layer` (by ads x chargeFraction: still at no charge, its 105-frame loop
+/// at full), both added on, `t` seconds into the discharge (U3; T022's clips).
 fn discharge_layers(t: f32, charge: f32, ads: f32, crouch: f32) -> [ability::Layer; 2] {
     let cycle = (t.max(0.0) * 30.0 / 104.0).rem_euclid(1.0);
     let grid = |name: &str, a: f32, b: f32| {
