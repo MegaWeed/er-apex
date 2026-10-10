@@ -57,6 +57,8 @@ pub struct Spec {
     view_kick: Option<[[f32; 5]; 3]>,
     /// a shot's sounds (every play action together)
     fire_sounds: &'static [&'static str],
+    /// The shot's sounds at this times GUN_VOLUME.
+    fire_volume: f32,
     /// a burst's sounds instead (`looping_sounds`): start, loop (its length), end
     burst: Option<(&'static [&'static str], &'static [&'static str], f32, &'static [&'static str])>,
     ads_in: &'static str,
@@ -101,6 +103,7 @@ pub const R301: Spec = Spec {
     semi_auto: false,
     view_kick: None,
     fire_sounds: &["fire_3p"],
+    fire_volume: 1.0,
     burst: None,
     ads_in: "ads_in",
     ads_out: "ads_out",
@@ -146,6 +149,7 @@ pub const R99: Spec = Spec {
     semi_auto: false,
     view_kick: None,
     fire_sounds: &[],
+    fire_volume: 1.0,
     burst: Some((
         &["weapon_r97_fire_first_1p", "weapon_r97_fire_first_1p_layer1"],
         &["weapon_r97_fire_loop_1p", "weapon_r97_fire_loop_1p_layer1", "weapon_r97_fire_loop_1p_layer2"],
@@ -193,6 +197,7 @@ pub const WINGMAN: Spec = Spec {
     semi_auto: true,
     view_kick: Some([[-4.4, 0.8, 0.0, 0.65, 0.35], [-0.6, 0.5, 0.0, 0.8, 0.4], [0.1, 0.1, 0.15, 0.4, 0.2]]),
     fire_sounds: &["weapon_wingman_fire_1p", "weapon_wingman_fire_1p_layer1", "weapon_wingman_fire_1p_layer2", "weapon_wingman_fire_1p_layer3"],
+    fire_volume: 1.0,
     burst: None,
     ads_in: "weapon_wingman_ads_in",
     ads_out: "weapon_wingman_ads_out",
@@ -236,6 +241,7 @@ pub const FLATLINE: Spec = Spec {
     semi_auto: false,
     view_kick: None,
     fire_sounds: &[],
+    fire_volume: 1.0,
     burst: Some((
         &["weapon_vinson_firstshot_1p", "weapon_vinson_firstshot_1p_layer1", "weapon_vinson_firstshot_1p_layer2"],
         &[
@@ -292,6 +298,8 @@ pub const SENTINEL: Spec = Spec {
     view_kick: None,
     fire_sounds: &["weapon_sentinel_fire_alt_1p", "weapon_sentinel_fire_alt_1p_layer1", "weapon_sentinel_fire_alt_1p_layer2", "weapon_sentinel_fire_alt_1p_layer3", "weapon_sentinel_fire_alt_1p_layer4",
         "weapon_sentinel_fire_alt_1p_extbase", "weapon_sentinel_fire_alt_1p_extbase_layer1", "weapon_sentinel_fire_alt_1p_extbase_layer2", "weapon_sentinel_fire_alt_1p_extbase_layer3", "weapon_sentinel_fire_alt_1p_extbase_layer4"],
+    // 30% quieter (the user, 2026-10-10)
+    fire_volume: 0.7,
     burst: None,
     ads_in: "weapon_sentinel_ads_in",
     ads_out: "weapon_sentinel_ads_out",
@@ -739,7 +747,7 @@ pub fn update(dt: f32) {
             return;
         }
         g.ammo -= 1;
-        sp.fire_sounds.iter().for_each(|n| crate::audio::play(n, GUN_VOLUME));
+        sp.fire_sounds.iter().for_each(|n| crate::audio::play(n, GUN_VOLUME * sp.fire_volume));
         if let (None, Some((start, looped, every, _))) = (g.burst, sp.burst) {
             start.iter().chain(looped).for_each(|n| crate::audio::play(n, GUN_VOLUME));
             g.burst = Some(every);
