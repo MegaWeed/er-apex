@@ -543,16 +543,16 @@ pub fn step(dt: f32, i: &Inputs) {
     // landing instead of the graph's two-handed ones (last frame's ability output decides)
     let onehanded = a.ability_out.as_ref().is_some_and(|o| o.onehanded > 0.5);
     let (jumped, landed) = moving.map_or((false, false), |m| (m.jumped, m.landed));
+    // the Sentinel with the stim: the gun and the right hand as without it, the graph's two-handed
+    // pose, shots, jumps and landings (the stim's arms take the left hand: the user's 2026-10-10
+    // ask), none of the one-handed clips
+    let sn_stim = onehanded && a.view == Weapon::Sentinel;
     let graph_moving = moving.map(|mut m| {
-        if onehanded {
+        if onehanded && !sn_stim {
             (m.jumped, m.landed) = (false, false);
         }
         m
     });
-    // the Sentinel with the stim: its shots are the graph's two-handed ones (the right hand's fire,
-    // raised out of the sprint as without it; the stim's arms keep the left hand: the user's
-    // 2026-10-10 ask), not the one-handed fire
-    let sn_stim = onehanded && a.view == Weapon::Sentinel;
     a.signals = Signals { ads: i.ads, shot: r301_shot && (!onehanded || sn_stim), reload: i.reload, moving: graph_moving };
     a.graph.step(dt, &a.signals);
     a.cr_graph.step(dt, &Signals { ads: i.ads, shot: cr_shot && !onehanded, reload: i.cr_reload, moving: graph_moving });
@@ -575,12 +575,14 @@ pub fn step(dt: f32, i: &Inputs) {
         a.ability = None;
     }
     a.ability_out = a.ability.map(|ab| ab.out(params));
-    // the Sentinel's one-handed sprint (the stim) took the right hand over to the left (the user,
-    // 2026-10-10): with it, the graph's two-handed sprint shows under the stim's arms
+    // the Sentinel with the stim: only the stim's own clips (the injector, the left arm) over the
+    // graph's two-handed pose; its one-handed ones (the switch, idle, sprint, fire, aim) turned the
+    // gun and took the right hand over to the left (the user, 2026-10-10)
     if a.view == Weapon::Sentinel
         && let Some(o) = a.ability_out.as_mut()
+        && (o.show_stim || o.onehanded > 0.0)
     {
-        o.layers.retain(|l| l.samples.first().is_none_or(|s| !s.0.starts_with("sprint_onehanded") && !s.0.starts_with("fire_onehanded")));
+        o.layers.retain(|l| l.samples.first().is_none_or(|s| s.0.starts_with("stim_")));
     }
     // U9: the frag grenade out (spike/grenade.rs) takes the hands, over any ability
     if let Some(v) = crate::spike::grenade::view() {
@@ -671,10 +673,10 @@ pub fn step(dt: f32, i: &Inputs) {
         }
     }
     // the Sentinel's bolt (`rechamber`, additive) after each shot, sped up to the mod's shot every
-    // 0.8 s; a new shot cuts it, the old one fading out under the new. Not with the stim: its
-    // `rechamber_onehanded` is not a delta on this pose (the right hand 60 units off, the gun 40°
-    // turned: the user's 2026-10-10 report of a wrong pose shooting with the stim)
-    if a.view == Weapon::Sentinel && !melee && !onehanded {
+    // 0.8 s; a new shot cuts it, the old one fading out under the new. With the stim, the
+    // two-handed one too, under the stim's arms (its `rechamber_onehanded` is not a delta on this
+    // pose: the right hand 60 units off, the gun 40° turned)
+    if a.view == Weapon::Sentinel && !melee {
         if shot {
             a.rechamber_out = a.rechamber.map(|t| (t, 0.0));
             a.rechamber = Some(0.0);
@@ -698,7 +700,8 @@ pub fn step(dt: f32, i: &Inputs) {
         }
         if !layers.is_empty() {
             let o = posing.get_or_insert_with(|| a.ability_out.clone().unwrap_or(ability::Out { show_gun: true, ..Default::default() }));
-            o.layers.extend(layers);
+            // first: the stim's arms over it keep the left hand on the injector
+            o.layers.splice(0..0, layers);
         }
     } else {
         (a.rechamber, a.rechamber_out) = (None, None);
