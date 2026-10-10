@@ -266,14 +266,15 @@ pub const FLATLINE: Spec = Spec {
 };
 
 /// The Sentinel (`apex-data/export/weapon/mp_weapon_sentinel.txt`) as the user asked on 2026-10-09:
-/// automatic at 3 a second, a magazine of 7 that takes a round back every 0.4 s (no reload), shots
+/// automatic, a shot every 0.6 s (the user's 2026-10-10 change from 3 a second), a magazine of 7
+/// that takes a round back every 0.4 s (no reload), shots
 /// that home (homing.rs); 70 a round, head x1.8, legs x0.9 and its spread from the retail settings;
 /// its amped shot's sound (the shield-charged mod's `weapon_sentinel_fire_alt_1p` and its outdoor
 /// sub-event's own Sentinel layers, the electric crack among them, `--set sentinel`).
 pub const SENTINEL: Spec = Spec {
     gun: super::weapons::Gun::Sentinel,
     damage: 70.0,
-    fire_rate: 3.0,
+    fire_rate: 1.0 / 0.6,
     clip: 7,
     reload: 3.0,
     reload_empty: 4.0,
