@@ -61,6 +61,8 @@ struct Stats {
     /// Enemies already counted (selector, block), so a corpse counts once.
     counted: Vec<(u32, i32)>,
     feed: VecDeque<Kill>,
+    /// When each recent kill was (STREAK_SECONDS): the HUD's streak badge.
+    recent: VecDeque<Instant>,
     knock: Option<Knock>,
     taken: VecDeque<Taken>,
     /// Hits taken this frame, by whom: placed by `update` (lethal.rs holds the player then).
@@ -165,6 +167,7 @@ pub fn update() {
                 s.counted.remove(0);
             }
             s.feed.push_back(Kill { at: Instant::now(), victim: Some(victim.clone()), head: h.head, weapon: h.weapon });
+            s.recent.push_back(Instant::now());
             while s.feed.len() > 5 {
                 s.feed.pop_front();
             }
@@ -196,6 +199,19 @@ fn nearest_enemy(wcm: &WorldChrMan) -> Option<Vec3> {
 /// Kills and damage dealt so far.
 pub fn totals() -> (u32, f32) {
     with(|s| (s.kills, s.damage))
+}
+
+/// The streak badge's window (the user's 2026-10-10 ask: kills in the last minute).
+pub const STREAK_SECONDS: f32 = 60.0;
+
+/// Kills in the last STREAK_SECONDS.
+pub fn recent_kills() -> u32 {
+    with(|s| {
+        while s.recent.front().is_some_and(|t| t.elapsed().as_secs_f32() >= STREAK_SECONDS) {
+            s.recent.pop_front();
+        }
+        s.recent.len() as u32
+    })
 }
 
 /// Kill feed lines younger than FEED_SECONDS, oldest first: (age s, victim, headshot, weapon slot).

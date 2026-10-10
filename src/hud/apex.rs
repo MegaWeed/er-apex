@@ -554,6 +554,7 @@ pub fn draw(dl: &DrawListMut, pack: &Pack, size: [f32; 2], fov: f32) {
     }
     boss_bar(&Pen::new(dl, size, Anchor::BottomCenter), pack, &c);
     let top_right = Pen::new(dl, size, Anchor::TopRight);
+    streak_badge(&top_right, &c);
     match_stats(&top_right, &c);
     kill_feed(&top_right, pack);
     damage_indicators(dl, pack, size);
@@ -653,17 +654,39 @@ fn dots(p: &Pen, poly: &[[f32; 2]], col: [f32; 4]) {
     }
 }
 
+/// The streak badges, Apex's rank emblems in the user's own pictures (`rank/<name>.png` in or beside
+/// `hud_dir`).
+pub const RANK_BADGES: [&str; 3] = ["D1", "M1", "P1"];
+
+/// Top right, where Apex shows the ranked badge (the user's 2026-10-10 ask, sized and placed after
+/// their Apex screenshot): a kill-streak counter, D1 for 0-3 kills in the last minute, M1 for 4-10,
+/// P1 above 10, the count under it.
+fn streak_badge(p: &Pen, c: &Colors) {
+    let n = spike::stats::recent_kills();
+    let badge = RANK_BADGES[match n {
+        0..=3 => 0,
+        4..=10 => 1,
+        _ => 2,
+    }];
+    const RIGHT: f32 = 1906.0;
+    const TOP: f32 = 6.0;
+    const SIZE: f32 = 104.0;
+    p.image(badge, [RIGHT - SIZE, TOP, SIZE, SIZE], 1.0);
+    p.text(Face::Bold, &format!("{n} KILLS"), RIGHT - SIZE * 0.5, TOP + SIZE + 3.0, 13.0, c.white, Align::Center);
+}
+
 /// Top right, as the screenshot's match stats: kills (skull) and damage dealt, each in a slanted
 /// dotted cell. The screenshot's assists and knockdowns cells are left out: Elden Ring has
 /// neither (D-016: nothing made up). Positions measured off the screenshot (the kills cell moved
 /// next to the damage cell, where the two left out were).
 fn match_stats(p: &Pen, c: &Colors) {
     let (kills, damage) = spike::stats::totals();
-    const TOP: f32 = 82.0;
+    // under the streak badge's middle, left of it (moved 2026-10-10 from 82, x 13 to the right)
+    const TOP: f32 = 96.0;
     const H: f32 = 22.0;
     const LEAN: f32 = -0.78;
     let fill = rgb(28, 44, 58, 0.62);
-    for (x, w, icon, value, mask) in [(1606.0, 67.0, SKULL, kills.to_string(), false), (1685.0, 88.0, DEALT, format!("{damage:.0}"), true)] {
+    for (x, w, icon, value, mask) in [(1619.0, 67.0, SKULL, kills.to_string(), false), (1698.0, 88.0, DEALT, format!("{damage:.0}"), true)] {
         let q = cell(x, TOP, w, H, LEAN);
         p.poly(&q, fill);
         dots(p, &q, rgb(150, 170, 185, 0.16));
@@ -697,7 +720,7 @@ fn kill_feed(p: &Pen, pack: &Pack) {
     const HEAD: f32 = 18.0;
     for (i, (age, victim, head, weapon)) in lines.into_iter().enumerate() {
         let a = (1.0 - (age - (spike::stats::FEED_SECONDS - 0.5)).max(0.0) / 0.5).clamp(0.0, 1.0);
-        let y = 196.0 + i as f32 * (H + 4.0);
+        let y = 206.0 + i as f32 * (H + 4.0);
         let victim_w = victim.as_deref().map_or(0.0, |v| font::width(Face::Body, v, TEXT));
         let me_w = font::width(Face::Body, &me, TEXT);
         let total = 2.0 * GAP + me_w + GAP + GUN + if head { GAP + HEAD } else { 0.0 } + if victim.is_some() { GAP + victim_w } else { 0.0 };

@@ -234,6 +234,18 @@ fn load_pack() {
                         None => log(format!("hud: {name} not in the pack (re-export with tools/apexhud)")),
                     }
                 }
+                // the streak badges (apex.rs `streak_badge`): the user's own pictures, in `rank` in the
+                // pack's folder or beside it (apex-data/hud/rank: a re-export leaves them be)
+                for name in apex::RANK_BADGES {
+                    let file = format!("{name}.png");
+                    let inside = dir.join("rank").join(&file);
+                    let path = if inside.is_file() { inside } else { dir.parent().map_or(inside, |d| d.join("rank").join(&file)) };
+                    if path.is_file() {
+                        images.push((name.to_string(), path, tex::Kind::Color));
+                    } else {
+                        log(format!("hud: no {} (the streak badge)", path.display()));
+                    }
+                }
                 tex::load(images);
                 font::load(&p.font.atlas, &p.font.meta, vec![(font::Face::Body, p.font.body), (font::Face::Numeric, p.font.numeric), (font::Face::Bold, p.font.bold)], custom_fonts(&dir));
                 Some(p)
