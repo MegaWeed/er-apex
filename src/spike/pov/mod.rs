@@ -551,6 +551,10 @@ pub fn step(dt: f32, i: &Inputs) {
         if onehanded && !sn_stim {
             (m.jumped, m.landed) = (false, false);
         }
+        // and running with it, the walk's pose, not the sprint's (the user, 2026-10-10)
+        if sn_stim {
+            m.sprinting = false;
+        }
         m
     });
     a.signals = Signals { ads: i.ads, shot: r301_shot && (!onehanded || sn_stim), reload: i.reload, moving: graph_moving };
