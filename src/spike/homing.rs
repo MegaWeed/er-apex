@@ -73,6 +73,18 @@ struct Round {
 
 static ROUNDS: Mutex<Vec<Round>> = Mutex::new(Vec::new());
 
+/// The last shot of a homing gun (homing or not): the HUD's muzzle flash (hud/beam.rs).
+static SHOT: Mutex<Option<Instant>> = Mutex::new(None);
+
+pub fn shot_fired() {
+    *SHOT.lock().unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
+}
+
+/// Seconds since the last shot.
+pub fn since_shot() -> Option<f32> {
+    SHOT.lock().unwrap_or_else(|e| e.into_inner()).map(|t| t.elapsed().as_secs_f32())
+}
+
 /// The camera the player sees: eye, forward.
 fn view() -> Option<(Vec3, Vec3)> {
     let (eye, fwd, _, _) = crate::camera::view()?;

@@ -836,6 +836,9 @@ fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
     let (damage, head, legs) = (sp.damage, sp.head_scale, sp.leg_scale);
     // a homing gun (the Sentinel): a round that flies to an enemy in the cone ahead (homing.rs),
     // else the shot goes as any other
+    if sp.homing {
+        super::homing::shot_fired();
+    }
     if sp.homing
         && let Some(line) = super::homing::fire(sp.head_only, |zone| {
             let scale = match zone {
