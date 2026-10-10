@@ -298,8 +298,8 @@ pub const SENTINEL: Spec = Spec {
     view_kick: None,
     fire_sounds: &["weapon_sentinel_fire_alt_1p", "weapon_sentinel_fire_alt_1p_layer1", "weapon_sentinel_fire_alt_1p_layer2", "weapon_sentinel_fire_alt_1p_layer3", "weapon_sentinel_fire_alt_1p_layer4",
         "weapon_sentinel_fire_alt_1p_extbase", "weapon_sentinel_fire_alt_1p_extbase_layer1", "weapon_sentinel_fire_alt_1p_extbase_layer2", "weapon_sentinel_fire_alt_1p_extbase_layer3", "weapon_sentinel_fire_alt_1p_extbase_layer4"],
-    // 30% quieter (the user, 2026-10-10)
-    fire_volume: 0.7,
+    // 30% quieter, then 30% again (the user, 2026-10-10): 0.7 x 0.7
+    fire_volume: 0.49,
     burst: None,
     ads_in: "weapon_sentinel_ads_in",
     ads_out: "weapon_sentinel_ads_out",
