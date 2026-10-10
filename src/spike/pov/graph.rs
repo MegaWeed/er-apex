@@ -88,6 +88,7 @@ pub enum Weapon {
     R99,
     Flatline,
     Sentinel,
+    Mastiff,
 }
 
 impl Weapon {
@@ -100,6 +101,7 @@ impl Weapon {
             Weapon::R99 => "r9_",
             Weapon::Flatline => "fl_",
             Weapon::Sentinel => "sn_",
+            Weapon::Mastiff => "ms_",
         }
     }
 }
@@ -224,6 +226,28 @@ static SN_DEFS: [SeqDef; 15] = [
     def("sn_wind_effect_layer", &[(1, 30.0), (16, 30.0)], Axes::Velocity, FADE, FADE, false),
 ];
 
+/// The Mastiff's (retail `mastiff_base_v_animRig.qc` through
+/// apex-data/pov/octane_wingman/mastiff_sequences.json; QC fades as given, else FADE). Its reload is
+/// shell by shell (`reload_segStart` / `_segLoop` / `_segEnd`: pov/mod.rs plays them); the
+/// segments' starts stand here for the graph's two.
+static MS_DEFS: [SeqDef; 15] = [
+    def("ms_ads_in", &[(16, 30.0), (12, 30.0)], Axes::Crouch, 0.1, FADE, false),
+    def("ms_ads_out", &[(16, 30.0), (16, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("ms_idle", &[(191, 30.0), (191, 30.0)], Axes::Ads, 0.3, 0.3, true),
+    def("ms_crouch", &[(191, 30.0), (191, 30.0)], Axes::Ads, 0.3, 0.3, true),
+    def("ms_idle_to_crouch", &[(29, 30.0), (191, 30.0)], Axes::Ads, FADE, FADE, false),
+    def("ms_crouch_to_idle", &[(29, 30.0), (191, 30.0)], Axes::Ads, FADE, FADE, false),
+    def("ms_fire", &[(33, 30.0), (33, 30.0), (33, 30.0), (33, 30.0)], Axes::AdsCrouch, 0.05, FADE, false),
+    def("ms_jump", &[(31, 30.0), (22, 30.0), (31, 30.0), (22, 30.0)], Axes::AdsCrouch, FADE, 0.35, false),
+    def("ms_land", &[(19, 30.0), (19, 30.0), (19, 30.0), (19, 30.0)], Axes::AdsCrouch, 0.05, 0.35, false),
+    def("ms_sprint", &[(21, 36.0)], Axes::One, FADE, FADE, true),
+    def("ms_sprintraise", &[(11, 30.0)], Axes::One, FADE, FADE, false),
+    def("ms_sprintslide", &[(14, 30.0)], Axes::One, FADE, FADE, false),
+    def("ms_reload_segStart", &[(33, 30.0), (33, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("ms_reload_empty_segStart", &[(67, 30.0), (67, 30.0)], Axes::Crouch, FADE, FADE, false),
+    def("ms_wind_effect_layer", &[(1, 30.0), (16, 30.0)], Axes::Velocity, FADE, FADE, false),
+];
+
 impl Seq {
     pub const ALL: [Seq; 15] = [
         Seq::AdsIn,
@@ -257,6 +281,7 @@ impl Seq {
             Weapon::R99 => &R9_DEFS[self as usize],
             Weapon::Flatline => &FL_DEFS[self as usize],
             Weapon::Sentinel => &SN_DEFS[self as usize],
+            Weapon::Mastiff => &MS_DEFS[self as usize],
         }
     }
 

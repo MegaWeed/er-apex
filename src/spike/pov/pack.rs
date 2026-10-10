@@ -89,6 +89,9 @@ pub struct Pack {
     /// the Sentinel's own `def_c_base` and `weapon_bone` copies, if the pack has it
     pub sn_gun: Option<usize>,
     pub sn_weapon: Option<usize>,
+    /// the Mastiff's own `def_c_base` and `weapon_bone` copies, if the pack has it
+    pub ms_gun: Option<usize>,
+    pub ms_weapon: Option<usize>,
     pub carriers: Vec<Carrier>,
     pub clips: Vec<Clip>,
     /// the clip of each sample of each sequence, by `Seq as usize`: the R-301's, the Charge Rifle's
@@ -99,6 +102,7 @@ pub struct Pack {
     r9_samples: Vec<[Option<usize>; 4]>,
     fl_samples: Vec<[Option<usize>; 4]>,
     sn_samples: Vec<[Option<usize>; 4]>,
+    ms_samples: Vec<[Option<usize>; 4]>,
     /// every clip by name (the abilities' clips are found by name)
     by_name: std::collections::HashMap<String, usize>,
 }
@@ -118,6 +122,7 @@ impl Pack {
             Weapon::R99 => &self.r9_samples,
             Weapon::Flatline => &self.fl_samples,
             Weapon::Sentinel => &self.sn_samples,
+            Weapon::Mastiff => &self.ms_samples,
         };
         table.get(seq as usize)?.get(k).copied().flatten().map(|i| &self.clips[i])
     }
@@ -135,6 +140,11 @@ impl Pack {
     /// Whether the pack has the Flatline (its bones and clips).
     pub fn has_flatline(&self) -> bool {
         self.fl_gun.is_some() && self.fl_weapon.is_some() && self.fl_samples.iter().all(|k| k[0].is_some())
+    }
+
+    /// Whether the pack has the Mastiff (its bones and clips).
+    pub fn has_mastiff(&self) -> bool {
+        self.ms_gun.is_some() && self.ms_weapon.is_some() && self.ms_samples.iter().all(|k| k[0].is_some())
     }
 
     /// Whether the pack has the Sentinel (its bones and clips).
@@ -155,6 +165,7 @@ impl Pack {
             Weapon::R99 if self.r9_gun.is_some() => (self.r9_gun, self.r9_weapon),
             Weapon::Flatline if self.fl_gun.is_some() => (self.fl_gun, self.fl_weapon),
             Weapon::Sentinel if self.sn_gun.is_some() => (self.sn_gun, self.sn_weapon),
+            Weapon::Mastiff if self.ms_gun.is_some() => (self.ms_gun, self.ms_weapon),
             _ => (self.gun, self.weapon),
         }
     }
@@ -255,7 +266,8 @@ pub fn parse(d: &[u8]) -> Result<Pack, String> {
             })
             .collect()
     };
-    let (samples, cr_samples, wm_samples, r9_samples, fl_samples, sn_samples) = (table(Weapon::R301), table(Weapon::ChargeRifle), table(Weapon::Wingman), table(Weapon::R99), table(Weapon::Flatline), table(Weapon::Sentinel));
+    let (samples, cr_samples, wm_samples, r9_samples, fl_samples, sn_samples, ms_samples) =
+        (table(Weapon::R301), table(Weapon::ChargeRifle), table(Weapon::Wingman), table(Weapon::R99), table(Weapon::Flatline), table(Weapon::Sentinel), table(Weapon::Mastiff));
     let gun = names.iter().position(|n| n == "def_c_base");
     let weapon = names.iter().position(|n| n == "weapon_bone");
     let cr_gun = names.iter().position(|n| n == "cr:def_c_base");
@@ -267,8 +279,10 @@ pub fn parse(d: &[u8]) -> Result<Pack, String> {
     let fl_weapon = names.iter().position(|n| n == "fl:weapon_bone");
     let sn_gun = names.iter().position(|n| n == "sn:def_c_base");
     let sn_weapon = names.iter().position(|n| n == "sn:weapon_bone");
+    let ms_gun = names.iter().position(|n| n == "ms:def_c_base");
+    let ms_weapon = names.iter().position(|n| n == "ms:weapon_bone");
     let by_name = clips.iter().enumerate().map(|(i, c)| (c.name.clone(), i)).collect();
-    Ok(Pack { names, parents, camera, pov, gun, weapon, cr_gun, wm_gun, wm_weapon, r9_gun, r9_weapon, fl_gun, fl_weapon, sn_gun, sn_weapon, carriers, clips, samples, cr_samples, wm_samples, r9_samples, fl_samples, sn_samples, by_name })
+    Ok(Pack { names, parents, camera, pov, gun, weapon, cr_gun, wm_gun, wm_weapon, r9_gun, r9_weapon, fl_gun, fl_weapon, sn_gun, sn_weapon, ms_gun, ms_weapon, carriers, clips, samples, cr_samples, wm_samples, r9_samples, fl_samples, sn_samples, ms_samples, by_name })
 }
 
 static PACK: Mutex<Option<Result<Pack, String>>> = Mutex::new(None);

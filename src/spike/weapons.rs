@@ -61,10 +61,12 @@ pub enum Gun {
     Flatline = 3,
     /// the Sentinel (automatic, a self-filling magazine, homing shots: gun.rs `SENTINEL`)
     Sentinel = 4,
+    /// the Mastiff (a shotgun: pellets in a row, shell-by-shell reload: gun.rs `MASTIFF`)
+    Mastiff = 5,
 }
 
 impl Gun {
-    pub const ALL: [Gun; 5] = [Gun::R301, Gun::R99, Gun::Wingman, Gun::Flatline, Gun::Sentinel];
+    pub const ALL: [Gun; 6] = [Gun::R301, Gun::R99, Gun::Wingman, Gun::Flatline, Gun::Sentinel, Gun::Mastiff];
 
     pub fn index(self) -> usize {
         self as usize
@@ -77,6 +79,7 @@ impl Gun {
             Gun::Wingman => "Wingman",
             Gun::Flatline => "Flatline",
             Gun::Sentinel => "Sentinel",
+            Gun::Mastiff => "Mastiff",
         }
     }
 
@@ -94,6 +97,9 @@ impl Gun {
             Gun::Flatline => Timing { holster: 0.55, deploy: 0.6, deploy_first: 1.25, ready: 10.0 / 21.0, ready_first: 25.0 / 30.0 },
             // `mp_weapon_sentinel.txt`: 0.7, 1.0, 1.6; its view model's draw ready 15 of 36, drawfirst 42 of 50
             Gun::Sentinel => Timing { holster: 0.7, deploy: 1.0, deploy_first: 1.6, ready: 15.0 / 36.0, ready_first: 42.0 / 50.0 },
+            // `mp_weapon_mastiff.txt`: 0.6, 0.5, 1.25; its view model's draw ready 16 of 20 (its
+            // drawfirst stands in by the draw, 推断)
+            Gun::Mastiff => Timing { holster: 0.6, deploy: 0.5, deploy_first: 0.5, ready: 16.0 / 20.0, ready_first: 16.0 / 20.0 },
         }
     }
 }
@@ -425,12 +431,13 @@ pub enum Pick {
 }
 
 /// The weapon wheel's choices, clockwise from the top.
-pub const WHEEL: [(Pick, &str); 8] = [
+pub const WHEEL: [(Pick, &str); 9] = [
     (Pick::Gun(Some(Gun::R301)), "R-301"),
     (Pick::Gun(Some(Gun::R99)), "R-99"),
     (Pick::Gun(Some(Gun::Wingman)), "Wingman"),
     (Pick::Gun(Some(Gun::Flatline)), "Flatline"),
     (Pick::Gun(Some(Gun::Sentinel)), "Sentinel"),
+    (Pick::Gun(Some(Gun::Mastiff)), "Mastiff"),
     (Pick::Gun(None), "Charge Rifle"),
     (Pick::Q(super::grapple::QAbility::Stim), "Stim"),
     (Pick::Q(super::grapple::QAbility::Grapple), "Grapple"),
@@ -623,6 +630,10 @@ fn gun_sounds(gun: Gun) -> (&'static [&'static str], &'static [&'static str]) {
         // the Flatline's QC: the R-301's (`Weapon_R101_UnEquip` / `_Equip`, `--set flatline`)
         Gun::Flatline => (&["weapon_r101_unequip", "weapon_r101_unequip_layer1"], &["weapon_r101_equip", "weapon_r101_equip_layer1", "weapon_r101_equip_layer2"]),
         Gun::Sentinel => (&["weapon_sentinel_holster"], &["weapon_sentinel_draw"]),
+        Gun::Mastiff => (
+            &["weapon_mastiff_unequip", "weapon_mastiff_unequip_layer1"],
+            &["weapon_mastiff_equip", "weapon_mastiff_equip_layer1", "weapon_mastiff_equip_layer2", "weapon_mastiff_equip_layer3", "weapon_mastiff_equip_layer4"],
+        ),
         Gun::Wingman => (
             &["weapon_wingman_unequip", "weapon_wingman_unequip_layer1", "weapon_wingman_unequip_layer2"],
             &["weapon_wingman_equip", "weapon_wingman_equip_layer1", "weapon_wingman_equip_layer2"],
@@ -694,6 +705,8 @@ pub fn zoom() -> (f32, f32, f32, f32) {
             Gun::Flatline => (0.27, 0.23, 0.0, 1.0),
             // `mp_weapon_sentinel.txt`: 0.31 / 0.28, the view model's offset over 0.2 .. 0.8
             Gun::Sentinel => (0.31, 0.28, 0.2, 0.8),
+            // `mp_weapon_mastiff.txt`: zoom_time_in 0.22 / out 0.2
+            Gun::Mastiff => (0.22, 0.2, 0.0, 1.0),
         },
         Slot::ChargeRifle => (super::chargerifle::ZOOM_IN, super::chargerifle::ZOOM_OUT, super::chargerifle::ADS_FOV_FROM, super::chargerifle::ADS_FOV_TO),
         // the kunai does not aim (`aiming`): the zoom only goes out
@@ -752,8 +765,9 @@ pub fn dev(args: &[&str]) -> String {
         Some("wingman") => select_gun(Some(Gun::Wingman), "dev"),
         Some("flatline") => select_gun(Some(Gun::Flatline), "dev"),
         Some("sentinel") => select_gun(Some(Gun::Sentinel), "dev"),
+        Some("mastiff") => select_gun(Some(Gun::Mastiff), "dev"),
         None => format!("weapon: {} | {}", describe(), super::chargerifle::status()),
-        _ => "usage: weapon [1|2|3|r301|r99|wingman|flatline|sentinel]".into(),
+        _ => "usage: weapon [1|2|3|r301|r99|wingman|flatline|sentinel|mastiff]".into(),
     }
 }
 

@@ -51,6 +51,10 @@ CONFIGS={
  # model space, the game's foot IK under them does not reach them): its base model, the frame, the
  # bolt, the magazine; the bullet, the second magazine, its clip and the charge bolts ride on them
  'sn':_config('sn','apex-data/assets/sentinel','lg',13,'mdl/techart/mshop/weapons/class/sniper/sentinel/sentinel_base_v','animrig/techart/mshop/weapons/class/sniper/sentinel/sentinel_base_v_animRig','sentinel_base_v',('MAINBODY_0_','sight_front_1_'),('def_c_base','def_c_boltA','def_c_magazineA'),('L_FootTwist','R_FootTwist','L_Toe0'),'Sentinel'),
+ # the Mastiff (2026-10-10) on part LG's last live leaves the game leaves alone (the right toe, the
+ # knees' helpers): its default model, the frame, the pump (def_release: the charge handle) and the
+ # muzzle links; the other links, the magazine and the options ride on them
+ 'ms':_config('ms','apex-data/assets/mastiff','lg',14,'mdl/techart/mshop/weapons/class/shotgun/mastiff/mastiff_base_v','animrig/techart/mshop/weapons/class/shotgun/mastiff/mastiff_base_v_animRig','mastiff_base_v',('body_0_','charge_handle_0_'),('def_c_base','def_release','def_link_muzzle'),('R_Toe0','L_Knee','R_Knee'),'Mastiff'),
  'kn':_config('kn','apex-data/assets/kunai','lg',11,'mdl/techart/mshop/weapons/class/heirloom/wraith/v18_kunai/heirloom_wraith_v18_kunai_v','animrig/techart/mshop/weapons/class/heirloom/wraith/v18_kunai/heirloom_wraith_v18_kunai_v_animRig','heirloom_wraith_v18_kunai_v',('projectile_0_',),('def_magazine',),('R_CalfTwist1',),'kunai'),
 }
 def _braced_qc(c):
@@ -200,7 +204,8 @@ def sequence_rows(qc,key=KEY):
  c=CONFIGS[key];local=json.loads(c['metadata'].read_text(encoding='utf8'))['sequences'];seen={};rows=[];excluded=[]
  for name,seq in qc['sequences'].items():
   sequence=seq['sequence'];occurrence=seq['occurrence']
-  if sequence in EXCLUDED or any(t in sequence for t in ('_sniper','_TEMP','_late')):excluded.append(dict(sequence=sequence,occurrence=occurrence));continue
+  # (the Mastiff's inspect_basic is its inspect: kept, key 5)
+  if (sequence in EXCLUDED and (key,sequence)!=('ms','inspect_basic')) or any(t in sequence for t in ('_sniper','_TEMP','_late')):excluded.append(dict(sequence=sequence,occurrence=occurrence));continue
   files=[Path(qc['animations'][a]['file']).stem for a in seq['sample_animation_names']]
   candidates=[s for s in local if s['name']==sequence and s['blend_count']==len(files) and [b['name'] for b in s['blends']]==files and
     (not seq['activity'] or (s['activity']==seq['activity']['name'] and s['activity_weight']==seq['activity']['weight']))]

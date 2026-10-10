@@ -12,7 +12,8 @@
 
 **武器**
 
-- **六把枪**：Wingman（开局拿在手上）、R-99、R-301、平行步枪、哨兵、Charge Rifle。
+- **七把枪**：Wingman（开局拿在手上）、R-99、R-301、平行步枪、哨兵、敖犬、Charge Rifle。
+- **敖犬**：按 Apex 原数据：半自动，每秒 1.1 发，5 发弹，一枪 5 颗弹丸横向排成一排、每颗 19 伤害（`mastiff_4`，开镜更集中），一颗一颗装弹（开枪可打断装弹）。
 - **哨兵**（特意改过）：全自动每 0.8 秒一发，带 Apex 拉栓动作，弹匣 7 发，每 0.4 秒自动补 1 发（不用换弹），用充能后的开火音效，每发命中都算爆头（70 × 1.8，击杀栏带爆头标记）；**子弹自动追踪**：面朝方向 60 米、左右各 30° 的锥形范围内有敌人时，开枪打出一发发光的追踪子弹，从枪口飞出、拐弯追着敌人飞，飞到才算命中，准星不会动（ini `homing`、`homing_range`、`homing_angle`、`homing_height`、`homing_speed` 可改，默认值写在 `src/spike/homing.rs` 开头）。第一人称模型、动画、音效、HUD 图标都由 `export-assets.ps1` 第 8 步从本机 Apex 导出。
 - **武器轮盘**：按住 Tab，转视角（或按 1～3）选枪，松开就换。按 2 仍是 Charge Rifle。
 - **默认模型和贴图**：所有枪都用默认模型和默认贴图，每个人的 Apex 里都有。R-99 的刀锋模型和平行步枪的青色热情模型需要手动开启（`export-assets.ps1 -SkinModels`），下面的皮肤也是可选的。
@@ -261,9 +262,9 @@ python tools/fusemesh/convert_fuse.py --geometry-only   # 只算骨架对齐 →
 python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS   # → er-data\s4\fuse_er.anim
 ```
 
-**8. Wingman、R-99、平行步枪、哨兵与苦无（约 20 分钟，本 fork 新增）**
+**8. Wingman、R-99、平行步枪、哨兵、敖犬与苦无（约 25 分钟，本 fork 新增）**
 
-和前面几步一样，从本机 Apex 导出 Wingman、R-99、平行步枪、哨兵和恶灵的传家宝苦无，都是默认模型。`build_wingman.py` 在第 6 步 `octane_pov_weapons` 的基础上，把它们加进模型 998 和动画包，并套用可选的皮肤。
+和前面几步一样，从本机 Apex 导出 Wingman、R-99、平行步枪、哨兵、敖犬和恶灵的传家宝苦无，都是默认模型。`build_wingman.py` 在第 6 步 `octane_pov_weapons` 的基础上，把它们加进模型 998 和动画包，并套用可选的皮肤。
 
 ```powershell
 python tools/apexassets/wingman_assets.py
@@ -271,6 +272,7 @@ python tools/apexassets/r99_assets.py
 python tools/apexassets/flatline_base_assets.py       # 平行步枪（flatline_base_v）
 python tools/apexassets/kunai_assets.py               # 恶灵传家宝苦无（heirloom_wraith_v18_kunai_v）
 python tools/apexassets/sentinel_assets.py            # 哨兵（sentinel_base_v）
+python tools/apexassets/mastiff_assets.py             # 敖犬（mastiff_base_v）
 python tools/apexpov/bake_wingman.py                  # → apex-data\pov\octane_wingman\fuse_pov.anim
 python tools/fusepov/build_wingman.py                 # → er-data\s3\octane_pov_wingman（模型 998）；皮肤见下
 python tools/fuseaudio/export_audio.py --set wingman
@@ -278,12 +280,14 @@ python tools/fuseaudio/export_audio.py --set r99
 python tools/fuseaudio/export_audio.py --set kunai
 python tools/fuseaudio/export_audio.py --set flatline
 python tools/fuseaudio/export_audio.py --set sentinel
+python tools/fuseaudio/export_audio.py --set mastiff
 python tools/fuseaudio/export_audio.py --set hits
 python tools/fuseaudio/export_audio.py --set grapple
 python tools/apexhud/export_wingman.py --legend octane
 python tools/apexhud/export_wingman.py --legend octane --weapon r99
 python tools/apexhud/export_wingman.py --legend octane --weapon flatline
 python tools/apexhud/export_wingman.py --legend octane --weapon sentinel
+python tools/apexhud/export_wingman.py --legend octane --weapon mastiff
 python tools/apexhud/export_wingman.py --legend octane --weapon kunai
 python tools/apexhud/export_wingman.py --legend octane --weapon grapple
 python tools/apexhud/export_rank.py --legend octane    # 连杀徽章：Apex 的段位标

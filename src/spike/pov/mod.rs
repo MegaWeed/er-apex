@@ -42,7 +42,7 @@ const INCH: f32 = 0.0254;
 /// Carrier groups: 0 the arms, 1 the R-301, 2 the injector, 3 the pad, 4 the battery (T021), 5
 /// the Charge Rifle, 6 the frag grenade in the hand, 7 and 8 two thrown grenades (T022), 9 the
 /// Wingman (in the R-301's slot: tools/apexpov/bake_wingman.py).
-const GROUPS: usize = 14;
+const GROUPS: usize = 15;
 /// The Charge Rifle's, the hand grenade's and the Wingman's groups.
 const RIFLE: usize = 5;
 const FRAG: usize = 6;
@@ -55,6 +55,8 @@ const KUNAI: usize = 11;
 const FLATLINEG: usize = 12;
 /// The Sentinel's group (part LG: bake_wingman.py).
 const SENTINELG: usize = 13;
+/// The Mastiff's group (part LG: bake_wingman.py).
+const MASTIFFG: usize = 14;
 pub const THROWN: [u8; 2] = [7, 8];
 
 /// Where the carriers of a group that does not show go (dev `fp hide`). The renderer takes
@@ -117,6 +119,10 @@ const R9_MUZZLE: Xf = Xf { t: Vec3::new(0.0, 3.288_844, 17.839_268), r: MUZZLE.r
 const FL_MUZZLE: Xf = Xf { t: Vec3::new(0.0, 2.401_264, 20.680_613), r: MUZZLE.r };
 /// `muzzle_flash` on the Sentinel's `def_c_base` (retail `sentinel_base_v.qc` `$definebone`).
 const SN_MUZZLE: Xf = Xf { t: Vec3::new(0.004_915, 5.297_734, 40.482_044), r: MUZZLE.r };
+/// `muzzle_flash` on the Mastiff's `def_c_base` (retail `mastiff_base_v.qc` `$definebone`: on
+/// `def_link_muzzle` (0 3.818264 26.882694), 0.031925 down and 2.466867 ahead of it; the link's
+/// own small travel in the fire not followed).
+const MS_MUZZLE: Xf = Xf { t: Vec3::new(0.0, 3.786_339, 29.349_561), r: MUZZLE.r };
 
 /// A weapon's muzzle on its `def_c_base` (the Charge Rifle's turn not needed: the R-301's).
 fn muzzle_of(w: Weapon) -> Xf {
@@ -125,6 +131,7 @@ fn muzzle_of(w: Weapon) -> Xf {
         Weapon::R99 => R9_MUZZLE,
         Weapon::Flatline => FL_MUZZLE,
         Weapon::Sentinel => SN_MUZZLE,
+        Weapon::Mastiff => MS_MUZZLE,
         _ => MUZZLE,
     }
 }
@@ -306,6 +313,8 @@ struct Anim {
     /// the Sentinel's bolt after a shot: seconds into it, and the one a new shot cut (seconds into
     /// it, seconds since cut)
     rechamber: Option<f32>,
+    /// the Mastiff's shell-by-shell reload last frame: seconds into it (its sounds play as they pass)
+    seg_last: Option<f32>,
     rechamber_out: Option<(f32, f32)>,
 }
 
@@ -481,6 +490,7 @@ fn primary_weapon() -> Weapon {
         Gun::R99 if with_pack(|p| p.has_r99()).unwrap_or(false) => Weapon::R99,
         Gun::Flatline if with_pack(|p| p.has_flatline()).unwrap_or(false) => Weapon::Flatline,
         Gun::Sentinel if with_pack(|p| p.has_sentinel()).unwrap_or(false) => Weapon::Sentinel,
+        Gun::Mastiff if with_pack(|p| p.has_mastiff()).unwrap_or(false) => Weapon::Mastiff,
         _ => Weapon::R301,
     }
 }
@@ -509,6 +519,7 @@ pub fn step(dt: f32, i: &Inputs) {
         kunai_inspect: None,
         kunai_inspect_out: None,
         rechamber: None,
+        seg_last: None,
         rechamber_out: None,
     });
     let mut s = sway_input(dt, i, a.last_eye);
@@ -557,7 +568,9 @@ pub fn step(dt: f32, i: &Inputs) {
         }
         m
     });
-    a.signals = Signals { ads: i.ads, shot: r301_shot && (!onehanded || sn_stim), reload: i.reload, moving: graph_moving };
+    // the Mastiff's reload is its segments' (below), not the graph's
+    let reload = if a.view == Weapon::Mastiff { None } else { i.reload };
+    a.signals = Signals { ads: i.ads, shot: r301_shot && (!onehanded || sn_stim), reload, moving: graph_moving };
     a.graph.step(dt, &a.signals);
     a.cr_graph.step(dt, &Signals { ads: i.ads, shot: cr_shot && !onehanded, reload: i.cr_reload, moving: graph_moving });
     let out = if a.view == Weapon::ChargeRifle { a.cr_graph.out() } else { a.graph.out() };
@@ -628,7 +641,7 @@ pub fn step(dt: f32, i: &Inputs) {
     show[KUNAI] = false;
     if melee {
         let d = dev_state();
-        for g in [1, RIFLE, WINGMAN, R99G, FLATLINEG, SENTINELG] {
+        for g in [1, RIFLE, WINGMAN, R99G, FLATLINEG, SENTINELG, MASTIFFG] {
             if d.force[g].is_none() {
                 show[g] = false;
             }
@@ -675,6 +688,22 @@ pub fn step(dt: f32, i: &Inputs) {
         if let Some((k, _)) = a.kunai_inspect.take() {
             stop_kunai_sounds(k);
         }
+    }
+    // the Mastiff's reload, shell by shell (gun.rs `segmented_reload`): its start, a loop a shell
+    // and its end over the graph, and their sounds as they pass
+    match super::gun::segmented_reload().filter(|_| a.view == Weapon::Mastiff && !melee) {
+        Some((t, shells, empty, seg)) => {
+            let o = posing.get_or_insert_with(|| a.ability_out.clone().unwrap_or(ability::Out { show_gun: true, ..Default::default() }));
+            o.layers.push(mastiff_reload_layer(t, shells, empty, seg, m.duck_frac));
+            let last = a.seg_last.unwrap_or(-1.0);
+            for (at, name) in mastiff_reload_sounds(shells, empty, seg) {
+                if last < at && at <= t {
+                    crate::audio::play(name, 0.8);
+                }
+            }
+            a.seg_last = Some(t);
+        }
+        None => a.seg_last = None,
     }
     // the Sentinel's bolt (`rechamber`, additive) after each shot, sped up to the mod's shot every
     // 0.8 s; a new shot cuts it, the old one fading out under the new. With the stim, the
@@ -743,6 +772,8 @@ fn inspect_clip(w: Weapon) -> Option<(&'static str, u32)> {
         Weapon::Flatline => Some(("fl_inspect_basic_new_0", 336)),
         // `sentinel_base_v_animRig.qc` inspect
         Weapon::Sentinel => Some(("sn_inspect_0", 336)),
+        // `mastiff_base_v_animRig.qc` inspect_basic
+        Weapon::Mastiff => Some(("ms_inspect_basic_0", MS_INSPECT_FRAMES)),
     }
 }
 
@@ -767,6 +798,8 @@ fn inspect_sounds(w: Weapon) -> &'static [(u32, &'static str)] {
         Weapon::Flatline => &[(0, "weapon_vinson_inspect_basicnew")],
         // the Charge Rifle's sniper inspect sounds, at the Sentinel's QC frames
         Weapon::Sentinel => &[(4, "weapon_inspect_sniper_start"), (91, "weapon_inspect_sniper_mid"), (234, "weapon_inspect_sniper_mid"), (315, "weapon_inspect_sniper_end")],
+        // `mastiff_base_v_animRig.qc` inspect_basic
+        Weapon::Mastiff => &[(4, "weapon_inspect_shotgun_start"), (91, "weapon_inspect_shotgun_mid"), (234, "weapon_inspect_shotgun_mid"), (315, "weapon_inspect_shotgun_end")],
         Weapon::R301 => &[],
     }
 }
@@ -957,6 +990,9 @@ fn hold_offset(p: Params, w: Weapon) -> Vec3 {
         Weapon::Flatline => (Vec3::new(0.0, -0.5, -0.3), Vec3::new(0.0, 0.04, 0.0)),
         // the Sentinel's (`mp_weapon_sentinel.txt`: `viewmodel_offset_ads` "0 0.0 0", no hip one)
         Weapon::Sentinel => (Vec3::ZERO, Vec3::ZERO),
+        // the Mastiff's: none at the hip; its `viewmodel_offset_ads` "0 0.9 0" is by its sight's
+        // centre point (`viewmodel_offset_ads_by_centerpoint`), which ours does not do (推断: none)
+        Weapon::Mastiff => (Vec3::ZERO, Vec3::ZERO),
     };
     let o = hip.lerp(ads, e) + Vec3::new(0.0, OFFSET_BACK, 0.0);
     let duck = DUCK_OFFSET * (p.crouch.clamp(0.0, 1.0) * std::f32::consts::FRAC_PI_2).sin() * (1.0 - a);
@@ -1119,6 +1155,59 @@ fn rechamber_layer(t: f32, ads: f32, crouch: f32) -> ability::Layer {
 /// The Charge Rifle's `sustained_discharge` (105 frames, 30 fps, looping, by ads x crouch) and its
 /// addlayer `charge_loop_layer` (by ads x chargeFraction: still at no charge, its 105-frame loop
 /// at full), both added on, `t` seconds into the discharge (U3; T022's clips).
+/// The Mastiff's inspect's frames (`inspect_basic`, 30 fps: bake_wingman.py).
+const MS_INSPECT_FRAMES: u32 = 336;
+
+/// The Mastiff's reload segments: clip, frames played, of which (`reload_empty_segStart` goes on
+/// past its loop's entry at 46: the loop plays from there).
+const MS_START: (&str, f32) = ("ms_reload_segStart", 32.0);
+const MS_START_EMPTY: (&str, f32) = ("ms_reload_empty_segStart", 46.0);
+const MS_START_EMPTY_FRAMES: f32 = 66.0;
+const MS_LOOP: &str = "ms_reload_segLoop";
+const MS_END: &str = "ms_reload_segEnd";
+const MS_END_EMPTY: &str = "ms_reload_empty_segEnd";
+
+/// The Mastiff's reload `t` seconds in (gun.rs's times: the start, a loop a shell after the first,
+/// the end): its segment over the pose, by crouch, in over 0.1 s and out over its last 0.15 s.
+fn mastiff_reload_layer(t: f32, shells: u32, empty: bool, seg: super::gun::Segmented, crouch: f32) -> ability::Layer {
+    let start = if empty { seg.start_empty } else { seg.start };
+    let loops = shells.saturating_sub(1) as f32 * seg.shell;
+    let total = start + loops + seg.end;
+    let (name, cycle) = if t < start {
+        if empty {
+            (MS_START_EMPTY.0, t / start * MS_START_EMPTY.1 / MS_START_EMPTY_FRAMES)
+        } else {
+            (MS_START.0, t / start)
+        }
+    } else if t < start + loops {
+        (MS_LOOP, ((t - start) / seg.shell).fract())
+    } else {
+        (if empty { MS_END_EMPTY } else { MS_END }, ((t - start - loops) / seg.end).min(1.0))
+    };
+    let c = crouch.clamp(0.0, 1.0);
+    let samples = [(0, 1.0 - c), (1, c)].into_iter().filter(|s| s.1 > 0.0).map(|(k, w)| (format!("{name}_{k}"), w)).collect();
+    let weight = (t / 0.1).min((total - t) / 0.15).clamp(0.0, 1.0);
+    ability::Layer { samples, cycle: cycle.clamp(0.0, 1.0), weight, mode: ability::Mode::Over }
+}
+
+/// The Mastiff's reload's sounds (its QC's, at their frames in each segment: the start's 0 and 22
+/// of 33, the empty start's 0, 18 and 37 of 46, a shell's 5 of 17, the end's 2 of 21), seconds in.
+fn mastiff_reload_sounds(shells: u32, empty: bool, seg: super::gun::Segmented) -> Vec<(f32, &'static str)> {
+    let mut v = Vec::new();
+    let start = if empty { seg.start_empty } else { seg.start };
+    if empty {
+        v.extend([(0.0, "weapon_mastiff_reloadempty_start_pt1"), (18.0 / 46.0 * start, "weapon_mastiff_reloadempty_start_pt2"), (37.0 / 46.0 * start, "weapon_mastiff_reloadempty_start_pt3")]);
+    } else {
+        v.extend([(0.0, "weapon_mastiff_reload_start"), (22.0 / 33.0 * start, "weapon_mastiff_reload_loadshell")]);
+    }
+    for k in 1..shells {
+        v.push((start + (k - 1) as f32 * seg.shell + 5.0 / 17.0 * seg.shell, "weapon_mastiff_reload_loadshell"));
+    }
+    let end = start + shells.saturating_sub(1) as f32 * seg.shell + 2.0 / 21.0 * seg.end;
+    v.extend([(end, "weapon_mastiff_reload_end"), (end, "weapon_mastiff_reload_end_layer1")]);
+    v
+}
+
 fn discharge_layers(t: f32, charge: f32, ads: f32, crouch: f32) -> [ability::Layer; 2] {
     let cycle = (t.max(0.0) * 30.0 / 104.0).rem_euclid(1.0);
     let grid = |name: &str, a: f32, b: f32| {
@@ -1146,7 +1235,7 @@ fn groups_shown(ab: Option<&ability::Out>, frame: u64, view: Weapon) -> [bool; G
         None => (true, false, false, false, false),
     };
     let held = gun_group(view);
-    let mut s = [true, gun && held == 1, stim, pad, battery, gun && held == RIFLE, frag, false, false, gun && held == WINGMAN, gun && held == R99G, false, gun && held == FLATLINEG, gun && held == SENTINELG];
+    let mut s = [true, gun && held == 1, stim, pad, battery, gun && held == RIFLE, frag, false, false, gun && held == WINGMAN, gun && held == R99G, false, gun && held == FLATLINEG, gun && held == SENTINELG, gun && held == MASTIFFG];
     let d = dev_state();
     for (g, f) in d.force.iter().enumerate() {
         if let Some(f) = f {
@@ -1168,6 +1257,7 @@ fn gun_group(w: Weapon) -> usize {
         Weapon::R99 => R99G,
         Weapon::Flatline => FLATLINEG,
         Weapon::Sentinel => SENTINELG,
+        Weapon::Mastiff => MASTIFFG,
     }
 }
 
@@ -1259,7 +1349,7 @@ fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis
             let m = mirror(Xf { t: m.t * INCH, r: m.r }).mul(c.er_bind);
             match (shown, vis.hide) {
                 (true, _) | (false, Hide::Posed) => (m.t, m.r, at, shown),
-                (false, Hide::Hand) => (if matches!(c.group as usize, 1 | RIFLE | FRAG | WINGMAN | R99G | KUNAI | FLATLINEG | SENTINELG) { right } else { left }, Quat::IDENTITY, at, false),
+                (false, Hide::Hand) => (if matches!(c.group as usize, 1 | RIFLE | FRAG | WINGMAN | R99G | KUNAI | FLATLINEG | SENTINELG | MASTIFFG) { right } else { left }, Quat::IDENTITY, at, false),
                 (false, Hide::Eye) => (Vec3::ZERO, Quat::IDENTITY, at, false),
                 (false, Hide::Behind) => (Vec3::new(0.0, 0.0, 20.0), Quat::IDENTITY, at, false),
             }
@@ -1272,6 +1362,7 @@ fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis
         (_, _, Some(r9), _) if shown(R99G) => Some(held.mul(world[r9]).mul(R9_MUZZLE)),
         _ if shown(FLATLINEG) && p.fl_gun.is_some() => p.fl_gun.map(|fl| held.mul(world[fl]).mul(FL_MUZZLE)),
         _ if shown(SENTINELG) && p.sn_gun.is_some() => p.sn_gun.map(|sn| held.mul(world[sn]).mul(SN_MUZZLE)),
+        _ if shown(MASTIFFG) && p.ms_gun.is_some() => p.ms_gun.map(|ms| held.mul(world[ms]).mul(MS_MUZZLE)),
         (_, _, _, Some(g)) if shown(1) => Some(held.mul(world[g]).mul(MUZZLE)),
         _ => None,
     }
@@ -1717,8 +1808,8 @@ mod tests {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("apex-data/pov/octane_wingman/fuse_pov.anim");
         let Ok(d) = std::fs::read(&path) else { return };
         let p = pack::parse(&d).unwrap();
-        assert!(p.has_wingman() && p.has_rifle() && p.has_r99() && p.has_flatline() && p.has_sentinel(), "{} clips", p.clips.len());
-        for w in [Weapon::Wingman, Weapon::R99, Weapon::Flatline, Weapon::Sentinel] {
+        assert!(p.has_wingman() && p.has_rifle() && p.has_r99() && p.has_flatline() && p.has_sentinel() && p.has_mastiff(), "{} clips", p.clips.len());
+        for w in [Weapon::Wingman, Weapon::R99, Weapon::Flatline, Weapon::Sentinel, Weapon::Mastiff] {
             for s in graph::Seq::ALL {
                 let def = s.def_in(w);
                 for (k, &(frames, fps)) in def.samples.iter().enumerate() {
@@ -1743,7 +1834,7 @@ mod tests {
         let v = (35f32.to_radians().tan() * 0.75).atan();
         let (tv, th) = (v.tan(), v.tan() * 16.0 / 9.0);
         let in_view = |at: Vec3| at.z < -0.05 && (at.y / -at.z).abs() < tv && (at.x / -at.z).abs() < th;
-        for (w, group, muzzle) in [(Weapon::Wingman, WINGMAN, WM_MUZZLE), (Weapon::R99, R99G, R9_MUZZLE), (Weapon::Flatline, FLATLINEG, FL_MUZZLE), (Weapon::Sentinel, SENTINELG, SN_MUZZLE)] {
+        for (w, group, muzzle) in [(Weapon::Wingman, WINGMAN, WM_MUZZLE), (Weapon::R99, R99G, R9_MUZZLE), (Weapon::Flatline, FLATLINEG, FL_MUZZLE), (Weapon::Sentinel, SENTINELG, SN_MUZZLE), (Weapon::Mastiff, MASTIFFG, MS_MUZZLE)] {
         let _ = muzzle;
         for ads in [0.0, 1.0] {
             let mut g = Graph::new_for(w);

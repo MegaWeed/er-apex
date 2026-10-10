@@ -243,7 +243,7 @@ Step 7 'first-person base pose (about 1 min)' {
     Run 'er-data\s4\fuse_er.anim' python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS
 }
 
-Step 8 'the Wingman, the R-99, the Flatline, the Sentinel and the kunai (about 20 min)' {
+Step 8 'the Wingman, the R-99, the Flatline, the Sentinel, the Mastiff and the kunai (about 25 min)' {
     Run 'apex-data\assets\wingman\verification.json' python tools/apexassets/wingman_assets.py
     Run 'apex-data\assets\r99\verification.json' python tools/apexassets/r99_assets.py
     Run 'apex-data\assets\flatline_base\verification.json' python tools/apexassets/flatline_base_assets.py
@@ -255,14 +255,15 @@ Step 8 'the Wingman, the R-99, the Flatline, the Sentinel and the kunai (about 2
     }
     Run 'apex-data\assets\kunai\verification.json' python tools/apexassets/kunai_assets.py
     Run 'apex-data\assets\sentinel\verification.json' python tools/apexassets/sentinel_assets.py
-    # (its last output: the Sentinel's table, so a pack baked before the Sentinel is baked again; the
+    Run 'apex-data\assets\mastiff\verification.json' python tools/apexassets/mastiff_assets.py
+    # (its last output: the Mastiff's table, so a pack baked before the Mastiff is baked again; the
     # pack and model 998 are made again when the models change: the mark below)
     $mark = Join-Path $Root 'er-data\s3\octane_pov_wingman\skins.txt'
     $models = if ($SkinModels) { 'skin-models' } else { 'default-models' }
     $had = if (Test-Path $mark) { (Get-Content $mark -Raw).Trim() } else { '' }
-    $baked = Join-Path $Root 'apex-data\pov\octane_wingman\sentinel_sequences.json'
+    $baked = Join-Path $Root 'apex-data\pov\octane_wingman\mastiff_sequences.json'
     if ((Test-Path $baked) -and -not $had.StartsWith($models)) { [IO.File]::Delete($baked) }
-    Run 'apex-data\pov\octane_wingman\sentinel_sequences.json' python tools/apexpov/bake_wingman.py
+    Run 'apex-data\pov\octane_wingman\mastiff_sequences.json' python tools/apexpov/bake_wingman.py
     # optional skins (not in git): each folder that is there replaces that weapon's textures; model 998
     # is made again when the set of skins changes
     $skinArgs = @()
@@ -274,8 +275,8 @@ Step 8 'the Wingman, the R-99, the Flatline, the Sentinel and the kunai (about 2
         if (Test-Path (Join-Path $Root $d)) { $skinArgs += $k[1], $d }
     }
     $built = 'er-data\s3\octane_pov_wingman\wingman-verification.json'
-    # (the mark names the models and the weapons too: a 998 made before the Sentinel is made again)
-    $want = (@("$models wingman r99 kunai flatline sentinel") + $skinArgs) -join ' '
+    # (the mark names the models and the weapons too: a 998 made before the Mastiff is made again)
+    $want = (@("$models wingman r99 kunai flatline sentinel mastiff") + $skinArgs) -join ' '
     if ($had -ne $want -and (Test-Path (Join-Path $Root $built))) {
         Write-Host "skins changed ($(if ($skinArgs) { $skinArgs -join ' ' } else { 'none' })): model 998 again" -ForegroundColor DarkGray
         [IO.File]::Delete((Join-Path $Root $built))
@@ -287,12 +288,14 @@ Step 8 'the Wingman, the R-99, the Flatline, the Sentinel and the kunai (about 2
     Run 'apex-data\audio\kunai\manifest.json' python tools/fuseaudio/export_audio.py --set kunai
     Run 'apex-data\audio\flatline\manifest.json' python tools/fuseaudio/export_audio.py --set flatline
     Run 'apex-data\audio\sentinel\manifest.json' python tools/fuseaudio/export_audio.py --set sentinel
+    Run 'apex-data\audio\mastiff\manifest.json' python tools/fuseaudio/export_audio.py --set mastiff
     Run 'apex-data\audio\hits\manifest.json' python tools/fuseaudio/export_audio.py --set hits
     Run 'apex-data\audio\grapple\manifest.json' python tools/fuseaudio/export_audio.py --set grapple
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_wingman.png' python tools/apexhud/export_wingman.py --legend octane
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_r97.png' python tools/apexhud/export_wingman.py --legend octane --weapon r99
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_flatline.png' python tools/apexhud/export_wingman.py --legend octane --weapon flatline
     Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_sentinel.png' python tools/apexhud/export_wingman.py --legend octane --weapon sentinel
+    Run 'apex-data\hud\octane\extra\rui\weapon_icons\r5\weapon_mastiff.png' python tools/apexhud/export_wingman.py --legend octane --weapon mastiff
     Run 'apex-data\hud\octane\extra\rui\menu\buttons\melee_skins\wraith_kunai.png' python tools/apexhud/export_wingman.py --legend octane --weapon kunai
     Run 'apex-data\hud\octane\extra\rui\hud\tactical_icons\tactical_pathfinder.png' python tools/apexhud/export_wingman.py --legend octane --weapon grapple
     # the kill-streak badge's pictures: Apex's Diamond, Master and Apex Predator rank emblems

@@ -77,6 +77,22 @@ pub struct Spec {
     homing: bool,
     /// every hit is a headshot (its damage, the headshot mark: the Sentinel, the user's 2026-10-09 ask)
     head_only: bool,
+    /// a shotgun's pellets (`blast_pattern`): each one's offset, yaw and pitch degrees at the hip
+    /// (aimed: times ADS_PELLETS); empty: one bullet
+    pellets: &'static [(f32, f32)],
+    /// a shell-by-shell reload (`reload_is_segmented`): see Segmented; None: a magazine
+    segmented: Option<Segmented>,
+}
+
+/// A shell-by-shell reload's times (seconds, the weapon settings'): the start with its first shell
+/// (`reload_time`), the empty one (`reloadempty_time`: it racks too), each further shell
+/// (`reloadsegment_time_loop`) and the end (`reloadsegment_time_end`). Firing stops it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Segmented {
+    pub start: f32,
+    pub start_empty: f32,
+    pub shell: f32,
+    pub end: f32,
 }
 
 /// The R-301 (`apex-data/fuse_data.json`, `mp_weapon_rspn101`): 15 a round, fire_rate 13.5,
@@ -122,6 +138,8 @@ pub const R301: Spec = Spec {
     regen: None,
     homing: false,
     head_only: false,
+    pellets: &[],
+    segmented: None,
 };
 
 /// The R-99 (`apex-data/export/weapon/mp_weapon_r97.txt`): 12 a round, fire_rate 18, ammo_clip_size
@@ -171,6 +189,8 @@ pub const R99: Spec = Spec {
     regen: None,
     homing: false,
     head_only: false,
+    pellets: &[],
+    segmented: None,
 };
 
 /// The Wingman (`apex-data/export/weapon/mp_weapon_wingman.txt`): `is_semi_auto` 1, 50 a round,
@@ -214,6 +234,8 @@ pub const WINGMAN: Spec = Spec {
     regen: None,
     homing: false,
     head_only: false,
+    pellets: &[],
+    segmented: None,
 };
 
 /// The VK-47 Flatline (`apex-data/export/weapon/mp_weapon_vinson.txt`): 20 a round, fire_rate 10,
@@ -269,6 +291,8 @@ pub const FLATLINE: Spec = Spec {
     regen: None,
     homing: false,
     head_only: false,
+    pellets: &[],
+    segmented: None,
 };
 
 /// The Sentinel (`apex-data/export/weapon/mp_weapon_sentinel.txt`) as the user asked on 2026-10-09:
@@ -310,11 +334,117 @@ pub const SENTINEL: Spec = Spec {
     regen: Some(0.4),
     homing: true,
     head_only: true,
+    pellets: &[],
+    segmented: None,
 };
+
+/// The Mastiff (`apex-data/export/weapon/mp_weapon_mastiff.txt`): semi-automatic, `fire_rate` 1.1,
+/// 5 shells; `blast_pattern` `mastiff_4` (blast_patterns.txt: 5 pellets in a row, 12 / 6 / 0 / -6 /
+/// -12 at `blast_pattern_zero_distance` 512, scaled 1.4 at the hip and 0.8 aimed), 19 a pellet, no
+/// headshot or leg scale, no spread of its own; a shell-by-shell reload (0.9 s with its first
+/// shell, empty 1.6, 0.51 a shell, 0.55 to end); its view kick; sounds `--set mastiff`.
+pub const MASTIFF: Spec = Spec {
+    gun: super::weapons::Gun::Mastiff,
+    damage: 19.0,
+    fire_rate: 1.1,
+    clip: 5,
+    reload: 0.9,
+    reload_empty: 1.6,
+    head_scale: 1.0,
+    leg_scale: 1.0,
+    spread_hip: [0.0, 0.0, 0.0, 0.0, 0.0],
+    spread_ads: [0.0, 0.0, 0.0, 0.0, 0.0],
+    spread_up: 0.0,
+    spread_down: 0.0,
+    kick_hip: [0.0, 0.0, 0.0],
+    kick_max_hip: [0.0, 0.0, 0.0],
+    kick_delay: 0.1,
+    kick_decay: 4.0,
+    semi_auto: true,
+    view_kick: None,
+    fire_sounds: &[
+        "weapon_mastiff_fire_1p",
+        "weapon_mastiff_fire_1p_layer1",
+        "weapon_mastiff_fire_1p_layer2",
+        "weapon_mastiff_fire_1p_layer3",
+        "weapon_mastiff_fire_1p_layer4",
+        "weapon_mastiff_fire_1p_layer5",
+        "weapon_mastiff_fire_1p_layer6",
+        "weapon_mastiff_fire_1p_layer7",
+    ],
+    fire_volume: 1.0,
+    burst: None,
+    ads_in: "weapon_mastiff_ads_in",
+    ads_out: "weapon_mastiff_ads_out",
+    dry: "shotgun_dryfire",
+    // the segments' sounds play from pov/mod.rs as each segment starts (the view model's QC)
+    reload_sounds: &[],
+    reload_frames: 33.0,
+    fill: (1.0, 1.0),
+    regen: None,
+    homing: false,
+    head_only: false,
+    pellets: &PELLETS_MASTIFF,
+    segmented: Some(Segmented { start: 0.9, start_empty: 1.6, shell: 0.51, end: 0.55 }),
+};
+
+/// `mastiff_4` at the hip: atan(x * 1.4 / 512) degrees of yaw.
+const PELLETS_MASTIFF: [(f32, f32); 5] = [(1.8793, 0.0), (0.9399, 0.0), (0.0, 0.0), (-0.9399, 0.0), (-1.8793, 0.0)];
+/// Aimed, the pattern scaled 0.8 against the hip's 1.4.
+const ADS_PELLETS: f32 = 0.8 / 1.4;
+
+
+/// A shell-by-shell reload going on: seconds into it, the shells it had and has to load, empty.
+#[derive(Clone, Copy, Debug)]
+struct SegState {
+    elapsed: f32,
+    from: u32,
+    shells: u32,
+    empty: bool,
+}
+
+/// Where in its segment each shell goes in (the view model's AE_WPN_SEGMENTED_RELOAD_ADD_AMMO):
+/// `reload_segStart` 27 of 33, `reload_empty_segStart` 31 of 46 (its loop starts at 46),
+/// `reload_segLoop` 11 of 17.
+const SEG_ADD_START: f32 = 27.0 / 33.0;
+const SEG_ADD_START_EMPTY: f32 = 31.0 / 46.0;
+const SEG_ADD_LOOP: f32 = 11.0 / 17.0;
+
+impl SegState {
+    fn start(&self, seg: Segmented) -> f32 {
+        if self.empty { seg.start_empty } else { seg.start }
+    }
+
+    fn total(&self, seg: Segmented) -> f32 {
+        self.start(seg) + self.shells.saturating_sub(1) as f32 * seg.shell + seg.end
+    }
+
+    /// Shells in so far.
+    fn loaded(&self, seg: Segmented) -> u32 {
+        let first = self.start(seg) * if self.empty { SEG_ADD_START_EMPTY } else { SEG_ADD_START };
+        if self.elapsed < first || self.shells == 0 {
+            return 0;
+        }
+        let more = ((self.elapsed - self.start(seg)) / seg.shell - SEG_ADD_LOOP).floor() + 1.0;
+        (1 + more.max(0.0) as u32).min(self.shells)
+    }
+}
+
+static SEG: Mutex<Option<SegState>> = Mutex::new(None);
+
+/// The shell-by-shell reload going on (pov/mod.rs plays its segments): seconds into it, the shells
+/// to load, empty, the gun's times.
+pub fn segmented_reload() -> Option<(f32, u32, bool, Segmented)> {
+    let seg = spec().segmented?;
+    let g = GUN.lock().unwrap_or_else(|e| e.into_inner());
+    g.reloading?;
+    SEG.lock().unwrap_or_else(|e| e.into_inner()).map(|s| (s.elapsed, s.shells, s.empty, seg))
+}
 
 /// A gun's numbers.
 pub fn spec_of(gun: super::weapons::Gun) -> &'static Spec {
     match gun {
+        super::weapons::Gun::Mastiff => &MASTIFF,
         super::weapons::Gun::R301 => &R301,
         super::weapons::Gun::R99 => &R99,
         super::weapons::Gun::Wingman => &WINGMAN,
@@ -368,7 +498,7 @@ static WAS_FIRING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool
 struct Gun {
     /// slot 1's gun these numbers are of (the magazines of the others in `stash`)
     gun: super::weapons::Gun,
-    stash: [u32; 5],
+    stash: [u32; 6],
     /// Movement spread now (degrees) and the kick on top, seconds since the last shot.
     spread: f32,
     kick: f32,
@@ -388,7 +518,7 @@ struct Gun {
 
 static GUN: Mutex<Gun> = Mutex::new(Gun {
     gun: super::weapons::Gun::Wingman,
-    stash: [R301.clip, R99.clip, WINGMAN.clip, FLATLINE.clip, SENTINEL.clip],
+    stash: [R301.clip, R99.clip, WINGMAN.clip, FLATLINE.clip, SENTINEL.clip, MASTIFF.clip],
     spread: 3.0,
     kick: 0.0,
     since_shot: 1.0,
@@ -414,6 +544,7 @@ impl Gun {
         let old = spec_of(self.gun);
         self.gun = gun;
         self.reloading = None;
+        *SEG.lock().unwrap_or_else(|e| e.into_inner()) = None;
         self.reload_wanted = false;
         self.cooldown = 0.0;
         if self.burst.take().is_some()
@@ -599,9 +730,10 @@ static DEV_FIRE: Mutex<Option<std::time::Instant>> = Mutex::new(None);
 pub fn interrupt_reload() {
     let mut g = GUN.lock().unwrap_or_else(|e| e.into_inner());
     if g.reloading.take().is_some() {
+        *SEG.lock().unwrap_or_else(|e| e.into_inner()) = None;
         g.reload_wanted = false;
         drop(g);
-        for s in [&R301, &R99, &WINGMAN, &FLATLINE, &SENTINEL] {
+        for s in [&R301, &R99, &WINGMAN, &FLATLINE, &SENTINEL, &MASTIFF] {
             for (name, _, _) in s.reload_sounds {
                 crate::audio::stop(name);
             }
@@ -679,6 +811,31 @@ pub fn update(dt: f32) {
             start.iter().chain(looped).for_each(|n| crate::audio::stop(n));
             end.iter().for_each(|n| crate::audio::play(n, GUN_VOLUME));
             g.burst = None;
+        }
+    }
+    // a shell-by-shell reload: the shells go in one by one; the trigger stops it (with a shell in)
+    if let (Some(left), Some(seg)) = (g.reloading, sp.segmented) {
+        let mut st = SEG.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(s) = st.as_mut() {
+            s.elapsed += dt;
+            let loaded = s.loaded(seg);
+            g.ammo = (s.from + loaded).min(sp.clip);
+            if (fire || PULL.load(Ordering::Relaxed)) && g.ammo > 0 && loaded > 0 && s.elapsed < s.total(seg) - seg.end {
+                log(format!("gun: {} reload stopped by the trigger, {} shells in", sp.gun.name(), g.ammo));
+                g.reloading = None;
+                *st = None;
+            } else if left - dt <= 0.0 {
+                g.reloading = None;
+                g.ammo = (s.from + s.shells).min(sp.clip);
+                *st = None;
+                log(format!("gun: reloaded, {} shells", g.ammo));
+                PULL.store(false, Ordering::Relaxed);
+                return;
+            } else {
+                g.reloading = Some(left - dt);
+                PULL.store(false, Ordering::Relaxed);
+                return;
+            }
         }
     }
     if let Some(left) = g.reloading {
@@ -761,7 +918,7 @@ pub fn update(dt: f32) {
         g.since_shot = 0.0;
         let r = (next(&mut g.rng), next(&mut g.rng));
         // the shot goes along the camera with the kick the view does not show, then kicks it
-        let out = shoot(sp, spread, r);
+        let out = shoot(sp, spread, r, aim);
         if let Some(k) = sp.view_kick {
             let u = [next(&mut g.rng), next(&mut g.rng), next(&mut g.rng), next(&mut g.rng), next(&mut g.rng), next(&mut g.rng)];
             let (soft, hard) = view_kick(k, u);
@@ -818,6 +975,16 @@ fn view_kick(k: [[f32; 5]; 3], u: [f32; 6]) -> (Vec3, Vec3) {
 fn start_reload(sp: &Spec, g: &mut Gun) {
     let empty = g.ammo == 0;
     RELOAD_IS_EMPTY.store(empty, Ordering::Relaxed);
+    if let Some(seg) = sp.segmented {
+        let s = SegState { elapsed: 0.0, from: g.ammo, shells: sp.clip - g.ammo, empty };
+        let t = s.total(seg);
+        *SEG.lock().unwrap_or_else(|e| e.into_inner()) = Some(s);
+        g.reloading = Some(t);
+        g.reload_wanted = false;
+        *RELOAD_TOTAL.lock().unwrap_or_else(|e| e.into_inner()) = t;
+        log(format!("gun: {} reloading {} shells ({t:.2} s)", sp.gun.name(), s.shells));
+        return;
+    }
     let t = if empty { sp.reload_empty } else { sp.reload };
     g.reloading = Some(t);
     g.reload_wanted = false;
@@ -840,7 +1007,7 @@ fn next(s: &mut u32) -> f32 {
 
 /// One shot of slot 1's gun (its damage, head and legs scales, ini `gun_damage_mult`), along the
 /// camera with the part of the view kick the view does not show (viewfx.rs).
-fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
+fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32), aim: bool) -> Option<String> {
     let (damage, head, legs) = (sp.damage, sp.head_scale, sp.leg_scale);
     // a homing gun (the Sentinel): a round that flies to an enemy in the cone ahead (homing.rs),
     // else the shot goes as any other
@@ -860,7 +1027,7 @@ fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
         return Some(line);
     }
     HEAD_ONLY.store(sp.head_only, Ordering::Relaxed);
-    let out = fire_ray(spread_deg, r, crate::viewfx::weapon_aim_offset(), 0, |zone, _| {
+    let damage_at = |zone: Zone, _: f32| {
         let scale = match zone {
             Zone::Head => head,
             Zone::Legs => legs,
@@ -868,7 +1035,17 @@ fn shoot(sp: &Spec, spread_deg: f32, r: (f32, f32)) -> Option<String> {
         };
         // ini `gun_damage_mult` (read fresh; the user's 3 on 2026-10-05)
         damage * (scale * damage_mult())
-    });
+    };
+    let kick = crate::viewfx::weapon_aim_offset();
+    let out = if sp.pellets.is_empty() {
+        fire_ray(spread_deg, r, kick, 0, damage_at)
+    } else {
+        // a shotgun: each pellet its own ray, turned by its place in the pattern (yaw, pitch);
+        // what the first one that hit did is the shot's line
+        let k = if aim { ADS_PELLETS } else { 1.0 };
+        let lines: Vec<String> = sp.pellets.iter().filter_map(|&(yaw, pitch)| fire_ray(spread_deg, r, kick + Vec3::new(pitch * k, yaw * k, 0.0), 0, damage_at)).collect();
+        (!lines.is_empty()).then(|| format!("{} of {} pellets: {}", lines.len(), sp.pellets.len(), lines[0]))
+    };
     HEAD_ONLY.store(false, Ordering::Relaxed);
     out
 }

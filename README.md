@@ -12,7 +12,8 @@ Forked from [umiiii/er-apex](https://github.com/umiiii/er-apex). On top of it:
 
 **Weapons**
 
-- **Six guns**: the Wingman (in hand at the start), the R-99, the R-301, the VK-47 Flatline, the Sentinel and the Charge Rifle.
+- **Seven guns**: the Wingman (in hand at the start), the R-99, the R-301, the VK-47 Flatline, the Sentinel, the Mastiff and the Charge Rifle.
+- **Mastiff**: as Apex's settings have it: semi-automatic, 1.1 shots a second, 5 shells, 5 pellets of 19 in a horizontal row (`mastiff_4`, tighter aimed), reloaded shell by shell (firing stops the reload).
 - **Sentinel** (changed on purpose): automatic, a shot every 0.8 s with Apex's bolt action, 7 rounds, a round back into the magazine every 0.4 s (no reload), the amped shot's sound, every hit a headshot (70 x 1.8, the kill feed's headshot mark), and **homing rounds**: with an enemy in a cone straight ahead (60 m, 30° each side; the crosshair does not move), a shot is a glowing round that flies from the muzzle, curves after the enemy and hits it when it gets there (ini `homing`, `homing_range`, `homing_angle`, `homing_height`, `homing_speed`; the defaults are at the top of `src/spike/homing.rs`). Their first-person models, animations, sounds and HUD icons are all exported from your Apex install by `export-assets.ps1` step 8.
 - **Weapon wheel**: hold Tab, turn the view (or press 1-3) to pick a gun, let go to switch. Key 2 is still the Charge Rifle.
 - **Default models and textures**: every gun uses its default model and textures, which every Apex install has. The R-99's Cutting Edge and the Flatline's Teal Zeal models are opt-in (`export-assets.ps1 -SkinModels`), and so are the skins below.
@@ -261,9 +262,9 @@ python tools/fusemesh/convert_fuse.py --geometry-only   # skeleton alignment onl
 python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS   # -> er-data\s4\fuse_er.anim
 ```
 
-**8. The Wingman, the R-99, the Flatline, the Sentinel and the kunai (about 20 min; this fork)**
+**8. The Wingman, the R-99, the Flatline, the Sentinel, the Mastiff and the kunai (about 25 min; this fork)**
 
-The Wingman, the R-99, the Flatline, the Sentinel and Wraith's heirloom kunai, from your Apex install like the steps before, with their default models. `build_wingman.py` adds them to model 998 and its animation pack, on top of step 6's `octane_pov_weapons` stage, and takes the optional skins.
+The Wingman, the R-99, the Flatline, the Sentinel, the Mastiff and Wraith's heirloom kunai, from your Apex install like the steps before, with their default models. `build_wingman.py` adds them to model 998 and its animation pack, on top of step 6's `octane_pov_weapons` stage, and takes the optional skins.
 
 ```powershell
 python tools/apexassets/wingman_assets.py
@@ -271,6 +272,7 @@ python tools/apexassets/r99_assets.py
 python tools/apexassets/flatline_base_assets.py       # VK-47 Flatline (flatline_base_v)
 python tools/apexassets/kunai_assets.py               # Wraith's heirloom kunai (heirloom_wraith_v18_kunai_v)
 python tools/apexassets/sentinel_assets.py            # Sentinel (sentinel_base_v)
+python tools/apexassets/mastiff_assets.py             # Mastiff (mastiff_base_v)
 python tools/apexpov/bake_wingman.py                  # -> apex-data\pov\octane_wingman\fuse_pov.anim
 python tools/fusepov/build_wingman.py                 # -> er-data\s3\octane_pov_wingman (model 998); skins: see below
 python tools/fuseaudio/export_audio.py --set wingman
@@ -278,12 +280,14 @@ python tools/fuseaudio/export_audio.py --set r99
 python tools/fuseaudio/export_audio.py --set kunai
 python tools/fuseaudio/export_audio.py --set flatline
 python tools/fuseaudio/export_audio.py --set sentinel
+python tools/fuseaudio/export_audio.py --set mastiff
 python tools/fuseaudio/export_audio.py --set hits
 python tools/fuseaudio/export_audio.py --set grapple
 python tools/apexhud/export_wingman.py --legend octane
 python tools/apexhud/export_wingman.py --legend octane --weapon r99
 python tools/apexhud/export_wingman.py --legend octane --weapon flatline
 python tools/apexhud/export_wingman.py --legend octane --weapon sentinel
+python tools/apexhud/export_wingman.py --legend octane --weapon mastiff
 python tools/apexhud/export_wingman.py --legend octane --weapon kunai
 python tools/apexhud/export_wingman.py --legend octane --weapon grapple
 python tools/apexhud/export_rank.py --legend octane    # the streak badge: Apex's rank emblems

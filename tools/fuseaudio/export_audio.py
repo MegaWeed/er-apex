@@ -38,6 +38,7 @@ R99_OUT = OUT / 'r99'
 KUNAI_OUT = OUT / 'kunai'
 FLATLINE_OUT = OUT / 'flatline'
 SENTINEL_OUT = OUT / 'sentinel'
+MASTIFF_OUT = OUT / 'mastiff'
 HITS_OUT = OUT / 'hits'
 GRAPPLE_OUT = OUT / 'grapple'
 R5_SCRIPTS = s3record.R5_ROOT / 'platform/scripts'  # S3's scripts, as tools/s3_evidence.json recorded them
@@ -85,7 +86,7 @@ def read_wave(path, *, include_loop_data=False):
     if cursor != len(data) or fmt is None or payload is None:
         raise ValueError(f'Missing WAV chunks: {path}')
     encoding, channels, rate, byte_rate, align, bits = fmt
-    if encoding != 3 or bits != 32 or channels not in (1, 2, 6) or rate == 0:
+    if encoding != 3 or bits != 32 or channels not in (1, 2, 4, 6) or rate == 0:
         raise ValueError(f'Unsupported RSX WAV format: {fmt}')
     if align != channels * 4 or byte_rate != rate * align or not payload or len(payload) % align:
         raise ValueError(f'Invalid WAV frame alignment: {path}')
@@ -476,6 +477,30 @@ def sentinel_references():
     return _refs_from_specs(specs) + [{'logical': e.lower(), 'requested_event': e, 'use': 'a shot (amped), its own layers', 'input': 'stand-in', 'field': '', 'event': e, 'evidence': []} for e in stand_ins]
 
 
+def mastiff_references():
+    """The Mastiff in slot 1 (the weapon wheel): its retail weapon settings' sounds and its view
+    model's QC sounds (tools/apexassets/mastiff_assets.py), its reload's segments' among them."""
+    retail = REPO / 'apex-data/export/weapon/mp_weapon_mastiff.txt'
+    qc = REPO / 'apex-data/assets/mastiff/ability_sequences.json'
+    specs = [
+        ('Weapon_Mastiff_Fire_1P', 'a shot', [(retail, 'fire_sound_1_player_1p')]),
+        ('weapon_mastiff_ads_in', 'aim in', [(retail, 'sound_zoom_in')]),
+        ('weapon_mastiff_ads_out', 'aim out', [(retail, 'sound_zoom_out')]),
+        ('shotgun_dryfire', 'an empty trigger', [(retail, 'sound_dryfire')]),
+        ('weapon_mastiff_equip', 'drawn (draw frame 0)', [(qc, 'draw')]),
+        ('weapon_mastiff_unequip', 'put away (holster frame 0)', [(qc, 'holster')]),
+        ('Weapon_Mastiff_Reload_Start', 'reload start (segStart frame 0)', [(qc, 'reload_segStart')]),
+        ('Weapon_Mastiff_Reload_LoadShell', 'a shell in (QC frame)', [(qc, 'reload_segStart'), (qc, 'reload_segLoop')]),
+        ('Weapon_Mastiff_Reload_End', 'reload end (segEnd frame 2)', [(qc, 'reload_segEnd')]),
+        ('weapon_mastiff_reloadempty_start_pt1', 'empty reload (QC frame)', [(qc, 'reload_empty_segStart')]),
+        ('weapon_mastiff_reloadempty_start_pt2', 'empty reload (QC frame)', [(qc, 'reload_empty_segStart')]),
+        ('weapon_mastiff_reloadempty_start_pt3', 'empty reload (QC frame)', [(qc, 'reload_empty_segStart')]),
+    ]
+    for event in ['Weapon_Inspect_Shotgun_Start', 'Weapon_Inspect_Shotgun_Mid', 'Weapon_Inspect_Shotgun_End']:
+        specs.append((event, 'inspect (QC frame)', [(qc, 'inspect_basic')]))
+    return _refs_from_specs(specs)
+
+
 def flatline_references():
     """The VK-47 Flatline in slot 1 (the weapon wheel): its retail weapon settings' sounds and its view
     model's QC sounds (tools/apexassets/flatline_assets.py)."""
@@ -604,7 +629,7 @@ def frag_references():
 
 def set_root(root):
     """Read apex-data/ and the RSX build of another checkout (a worktree has neither)."""
-    global REPO, OUT, OCTANE_OUT, DEFENDER_OUT, FRAG_OUT, WINGMAN_OUT, R99_OUT, KUNAI_OUT, FLATLINE_OUT, SENTINEL_OUT, HITS_OUT, GRAPPLE_OUT, RSX
+    global REPO, OUT, OCTANE_OUT, DEFENDER_OUT, FRAG_OUT, WINGMAN_OUT, R99_OUT, KUNAI_OUT, FLATLINE_OUT, SENTINEL_OUT, MASTIFF_OUT, HITS_OUT, GRAPPLE_OUT, RSX
     REPO = Path(root).resolve()
     OUT = REPO / 'apex-data/audio'
     OCTANE_OUT = OUT / 'octane'
@@ -615,13 +640,14 @@ def set_root(root):
     KUNAI_OUT = OUT / 'kunai'
     FLATLINE_OUT = OUT / 'flatline'
     SENTINEL_OUT = OUT / 'sentinel'
+    MASTIFF_OUT = OUT / 'mastiff'
     HITS_OUT = OUT / 'hits'
     GRAPPLE_OUT = OUT / 'grapple'
     RSX = REPO / 'tools/apexassets/rsx_source/bin/Release_NoGui/rsx.exe'
 
 
 def output_directory(set_name, requested=None):
-    own = {'octane': OCTANE_OUT, 'defender': DEFENDER_OUT, 'frag': FRAG_OUT, 'wingman': WINGMAN_OUT, 'r99': R99_OUT, 'kunai': KUNAI_OUT, 'flatline': FLATLINE_OUT, 'sentinel': SENTINEL_OUT, 'hits': HITS_OUT, 'grapple': GRAPPLE_OUT}.get(set_name)
+    own = {'octane': OCTANE_OUT, 'defender': DEFENDER_OUT, 'frag': FRAG_OUT, 'wingman': WINGMAN_OUT, 'r99': R99_OUT, 'kunai': KUNAI_OUT, 'flatline': FLATLINE_OUT, 'sentinel': SENTINEL_OUT, 'mastiff': MASTIFF_OUT, 'hits': HITS_OUT, 'grapple': GRAPPLE_OUT}.get(set_name)
     output = (requested if requested is not None else own if own is not None else OUT).resolve()
     if own is not None and not output.is_relative_to(own.resolve()):
         raise ValueError(f'The {set_name} output directory must stay inside {own}')
@@ -630,7 +656,7 @@ def output_directory(set_name, requested=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--set', choices=('r301', 'octane', 'defender', 'frag', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'hits', 'grapple'), default='r301', help='Sound set (default: r301)')
+    parser.add_argument('--set', choices=('r301', 'octane', 'defender', 'frag', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'mastiff', 'hits', 'grapple'), default='r301', help='Sound set (default: r301)')
     parser.add_argument('--output-dir', type=Path, help='Override output root; Octane stays inside audio/octane/, the Charge Rifle inside audio/defender/, frag inside audio/frag_grenade/')
     parser.add_argument('--root', type=Path, help="Checkout whose apex-data/ and RSX build are used (default: this script's)")
     parser.add_argument('--analyze-only', action='store_true', help='Verify/rebuild manifests from exported raw WAVs')
@@ -641,8 +667,8 @@ def main():
     out = output_directory(args.set, args.output_dir)
     # the ability-style sets (exact spellings, every play action kept, loop data): Octane's, the
     # Charge Rifle's, the frag's
-    octane = args.set in ('octane', 'defender', 'frag', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'hits', 'grapple')
-    defender = args.set in ('defender', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'hits', 'grapple')
+    octane = args.set in ('octane', 'defender', 'frag', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'mastiff', 'hits', 'grapple')
+    defender = args.set in ('defender', 'wingman', 'r99', 'kunai', 'flatline', 'sentinel', 'mastiff', 'hits', 'grapple')
     playback_folder = 'playback' if octane else 'r301'
     matrix = np.asarray(json.loads(args.matrix.read_text()) if args.matrix else DEFAULT_MATRIX, dtype=np.float64)
     if matrix.shape != (2, 6) or not np.isfinite(matrix).all():
@@ -651,7 +677,7 @@ def main():
     matrix /= np.maximum(1, np.abs(matrix).sum(axis=1))[:, None]
     for folder in (playback_folder, 'raw', 'logs', 'logs/rsx_runtime'):
         (out / folder).mkdir(parents=True, exist_ok=True)
-    refs = grapple_references() if args.set == 'grapple' else hits_references() if args.set == 'hits' else sentinel_references() if args.set == 'sentinel' else flatline_references() if args.set == 'flatline' else kunai_references() if args.set == 'kunai' else r99_references() if args.set == 'r99' else wingman_references() if args.set == 'wingman' else defender_references() if defender else frag_references() if args.set == 'frag' else octane_references() if octane else references()
+    refs = grapple_references() if args.set == 'grapple' else hits_references() if args.set == 'hits' else sentinel_references() if args.set == 'sentinel' else mastiff_references() if args.set == 'mastiff' else flatline_references() if args.set == 'flatline' else kunai_references() if args.set == 'kunai' else r99_references() if args.set == 'r99' else wingman_references() if args.set == 'wingman' else defender_references() if defender else frag_references() if args.set == 'frag' else octane_references() if octane else references()
     events = {r['asset_name'].lower(): r for r in csv.DictReader(
         (REPO / 'apex-data/assets/lists/audio_events.csv').open(encoding='utf8'))}
     available = {(r['asset_name'], r['file_name']): r for r in csv.DictReader(
@@ -745,6 +771,10 @@ def main():
             raise ValueError(f'Decoded/source frame count discrepancy: {path}')
         if info['channels'] == 6:
             stereo = samples @ matrix.T
+        elif info['channels'] == 4:
+            # quad (the Mastiff's shot: front left, front right, back left, back right; 推断 the
+            # order): each side's back at -3 dB onto its front
+            stereo = samples[:, 0:2] + 0.70710678 * samples[:, 2:4]
         elif info['channels'] == 1:
             stereo = np.repeat(samples, 2, axis=1)
         else:

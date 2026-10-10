@@ -90,6 +90,9 @@ const FLATLINE_ICON: &str = "rui/weapon_icons/r5/weapon_flatline";
 /// The Sentinel (the weapon wheel; tools/apexhud/export_wingman.py `--weapon sentinel`): its
 /// `hud_icon`, sniper ammo, automatic here (the user's), the sniper's slots.
 const SENTINEL_ICON: &str = "rui/weapon_icons/r5/weapon_sentinel";
+/// The Mastiff (the weapon wheel; export_wingman.py `--weapon mastiff`): its `hud_icon`, shotgun
+/// ammo (`AMMO_SHUTGUN_COLOR`, the palette's spelling; the bullet badge stands in: 推断).
+const MASTIFF_ICON: &str = "rui/weapon_icons/r5/weapon_mastiff";
 /// Pathfinder's grapple (Q's other ability: spike/grapple.rs): its item flavour's icon
 /// (`settings/itemflav/ability/pathfinder_tac_grapple.rpak`; export_wingman.py `--weapon grapple`).
 pub const GRAPPLE_ICON: &str = "rui/hud/tactical_icons/tactical_pathfinder";
@@ -113,6 +116,7 @@ pub const IMAGES: &[(&str, tex::Kind)] = &[
     (R99_ICON, tex::Kind::Color),
     (FLATLINE_ICON, tex::Kind::Color),
     (SENTINEL_ICON, tex::Kind::Color),
+    (MASTIFF_ICON, tex::Kind::Color),
     (KUNAI_ICON, tex::Kind::Color),
     (GRAPPLE_ICON, tex::Kind::Color),
     // the frag grenade's `hud_icon` (U9; tools/apexhud/export_extra.py)
@@ -178,6 +182,17 @@ fn look(slot: u8) -> Look {
             icon: FLATLINE_ICON,
             ammo_key: "AMMO_HEAVY_COLOR",
             ammo_fallback: [86, 160, 128],
+            badge: AMMO_BADGE,
+            mode: FIRE_MODE,
+            slots: &EMPTY_SLOTS,
+        }
+    } else if slot == 0 && crate::spike::weapons::primary_gun() == crate::spike::weapons::Gun::Mastiff {
+        Look {
+            name_key: "#WPN_MASTIFF_SHORT",
+            fallback: "Mastiff",
+            icon: MASTIFF_ICON,
+            ammo_key: "AMMO_SHUTGUN_COLOR",
+            ammo_fallback: [176, 46, 30],
             badge: AMMO_BADGE,
             mode: FIRE_MODE,
             slots: &EMPTY_SLOTS,
@@ -575,7 +590,7 @@ fn weapon_wheel(p: &Pen, pack: &Pack, hovered: Option<usize>, c: &Colors) {
     let (cx, cy) = (960.0, 540.0);
     let (r0, r1) = (110.0, 260.0);
     let held = match spike::weapons::active() {
-        Slot::ChargeRifle => 5,
+        Slot::ChargeRifle => 6,
         // the kunai is not on the wheel: slot 1's gun marked
         Slot::R301 | Slot::Melee => match spike::weapons::primary_gun() {
             Gun::R301 => 0,
@@ -583,13 +598,14 @@ fn weapon_wheel(p: &Pen, pack: &Pack, hovered: Option<usize>, c: &Colors) {
             Gun::Wingman => 2,
             Gun::Flatline => 3,
             Gun::Sentinel => 4,
+            Gun::Mastiff => 5,
         },
     };
-    let icons = ["weapon_slot", R99_ICON, WINGMAN_ICON, FLATLINE_ICON, SENTINEL_ICON, CHARGE_RIFLE_ICON, "tactical", GRAPPLE_ICON];
+    let icons = ["weapon_slot", R99_ICON, WINGMAN_ICON, FLATLINE_ICON, SENTINEL_ICON, MASTIFF_ICON, CHARGE_RIFLE_ICON, "tactical", GRAPPLE_ICON];
     // Q's ability in use marked as well
     let q_held = match spike::grapple::q_ability() {
-        spike::grapple::QAbility::Stim => 6,
-        spike::grapple::QAbility::Grapple => 7,
+        spike::grapple::QAbility::Stim => 7,
+        spike::grapple::QAbility::Grapple => 8,
     };
     let n = spike::weapons::WHEEL.len();
     let sector = std::f32::consts::TAU / n as f32;
@@ -1206,6 +1222,9 @@ fn hip_ticks(tri: &[f32]) -> Vec<f32> {
     match spike::weapons::primary_gun() {
         Gun::R301 => tri.to_vec(),
         Gun::R99 | Gun::Wingman | Gun::Flatline | Gun::Sentinel => vec![0.0, 90.0, 180.0, 270.0],
+        // the Mastiff's pellets go out in a row: its ticks left and right only (its own RUI is not
+        // decoded, 推断)
+        Gun::Mastiff => vec![90.0, 270.0],
     }
 }
 
