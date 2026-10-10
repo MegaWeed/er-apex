@@ -5,20 +5,19 @@
 //!
 //! - the hook flies at `grapple_shootVel` 2000 u/s, out to `grapple_maxLength` 850; a miss reels back;
 //! - attached, the pull's speed ramps from `grapple_speedRampMin` 50 to `grapple_speedRampMax` 800
-//!   over `grapple_speedRampTime` 1.5 s, the velocity turned onto it at `grapple_accel` 1500 u/s²,
-//!   gravity at `grapple_gravityFracMin`..`Max` 0.25..0.7 of itself (the less, the steeper up the
-//!   pull: 推断 how the game picks between them), `grapple_attachVerticalBoost` 200 up off the ground;
-//!   only along the cable: the speed across it is kept, so the body swings, and the move keys
-//!   push across the cable at `grapple_airAccel` 650 u/s² up to `grapple_airSpeedMax` 420 in the
-//!   keys' direction (Apex's air strafing; the user's 2026-10-09 report: WASD did nothing);
+//!   over `grapple_speedRampTime` 1.5 s, reached at `grapple_accel` 1500 u/s² along the cable;
+//!   across it the speed decays at `grapple_decel` 425 u/s² but for what goes the move keys' way
+//!   and what falls; gravity `grapple_gravityFracMin`..`Max` 0.25..0.7 of itself (whole with the
+//!   hook steeply below); the move keys push at `grapple_airAccel` 650 u/s² up to
+//!   `grapple_airSpeedMax` 420; `grapple_attachVerticalBoost` 200 up off the ground;
 //! - it lets go within `grapple_detachLengthMax` 50 of the hook, on a jump or Q, after
 //!   `grapple_detachLowSpeedTime` 1.5 s under `grapple_detachLowSpeedThreshold` 250 u/s, or after
 //!   MAX_ATTACHED; letting go adds `grapple_detachVerticalBoost` 200 up to
 //!   `grapple_detachVerticalMaxSpeed` 200 and, above `grapple_detachSpeedLossMin` 460 u/s, takes
 //!   `grapple_detachSpeedLoss` 300 off the horizontal speed (not below 460).
 //!
-//! The game's C++ pull is not in the data (待定): the rules above are its settings read at their
-//! word. The sounds are Apex's (`--set grapple`); hud/beam.rs draws the cable.
+//! The pull itself follows Season 3's r5apex.exe (the R5Reloaded build: the code that reads these
+//! settings, 0x1406441B0 / 0x1406444C0 / 0x140A04401, read 2026-10-10; see `update`). The sounds are Apex's (`--set grapple`); hud/beam.rs draws the cable.
 
 use std::sync::Mutex;
 
@@ -33,6 +32,10 @@ const RAMP_MIN: f32 = 50.0;
 const RAMP_MAX: f32 = 800.0;
 const RAMP_TIME: f32 = 1.5;
 const ACCEL: f32 = 1500.0;
+const DECEL: f32 = 425.0;
+/// The hook this far below the line of the body (the sine of its angle): gravity whole (推断:
+/// a convar the code reads, its value not in the data).
+const STEEP_BELOW: f32 = 0.5;
 const AIR_ACCEL: f32 = 650.0;
 const AIR_SPEED_MAX: f32 = 420.0;
 const GRAVITY_MIN: f32 = 0.25;
@@ -189,25 +192,52 @@ pub fn update(dt: f32) {
                 return;
             }
             let dir = to / dist;
+            // r5apex.exe's pull (Season 3, 0x1406444C0), per frame:
+            // - along the cable only speeding up, at ACCEL, to the ramped speed (0x1406441B0); never
+            //   braked by the cable when faster;
+            // - across it the speed decays at DECEL, except what goes the way of the move keys and
+            //   what falls (kept whole: the swing, gravity not fought);
+            // - the move keys' own push is the air acceleration (AIR_ACCEL up to AIR_SPEED_MAX).
             let speed = RAMP_MIN + (RAMP_MAX - RAMP_MIN) * (t / RAMP_TIME).min(1.0);
-            // the pull works along the cable; across it the body keeps its speed (the swing)
             let along = v.dot(dir);
-            let across = v - dir * along;
-            let step = ACCEL * dt;
-            let along = if (speed - along).abs() <= step { speed } else { along + (speed - along).signum() * step };
-            // the move keys push across the cable, Quake-style: up to AIR_SPEED_MAX their way
+            let mut across = v - dir * along;
+            let along = if along < speed { (along + ACCEL * dt).min(speed) } else { along };
+            let mut kept = Vec3::ZERO;
+            if across.y < 0.0 {
+                kept.y = across.y;
+                across.y = 0.0;
+            }
             let wish = super::kcc::wish();
             let wish = wish - dir * wish.dot(dir);
-            let mut across = across;
             if wish.length() > 1e-3 {
                 let w = wish.normalize();
-                let room = AIR_SPEED_MAX * wish.length().min(1.0) - across.dot(w);
+                let d = across.dot(w);
+                if d > 0.0 {
+                    kept += w * d;
+                    across -= w * d;
+                }
+                // the keys' push, Quake-style: up to AIR_SPEED_MAX their way
+                let room = AIR_SPEED_MAX * wish.length().min(1.0) - (across + kept).dot(w);
                 if room > 0.0 {
-                    across += w * (AIR_ACCEL * dt).min(room);
+                    kept += w * (AIR_ACCEL * dt).min(room);
                 }
             }
-            let v = dir * along + across;
-            let gravity = GRAVITY_MAX - (GRAVITY_MAX - GRAVITY_MIN) * dir.y.max(0.0);
+            let left = across.length();
+            if left > 1e-3 {
+                across *= (left - DECEL * dt).max(0.0) / left;
+            }
+            let v = dir * along + across + kept;
+            // gravity (0x140A04401): all of it when the hook is steeply below; else the least
+            // (GRAVITY_MIN) towards GRAVITY_MAX as the body falls along the swing or moves away
+            // from the hook (推断: the scale of those speeds, STEEP_BELOW)
+            let gravity = if dir.y < -STEEP_BELOW {
+                1.0
+            } else {
+                let flat = Vec3::new(dir.x, 0.0, dir.z).normalize_or_zero();
+                let away = (-v.dot(flat) / 100.0).clamp(0.0, 1.0);
+                let falling = if v.y < 0.0 { (-v.y / 100.0).clamp(0.0, 1.0) } else { 0.0 };
+                GRAVITY_MIN + (GRAVITY_MAX - GRAVITY_MIN) * away.max(falling)
+            };
             super::kcc::pull(v / UPM, gravity);
             State::Attached { anchor, t: t + dt, slow }
         }
