@@ -667,21 +667,23 @@ pub fn step(dt: f32, i: &Inputs) {
         }
     }
     // the Sentinel's bolt (`rechamber`, additive) after each shot, sped up to the mod's shot every
-    // 0.6 s; a new shot cuts it, the old one fading out under the new
-    if a.view == Weapon::Sentinel && !melee {
+    // 0.8 s; a new shot cuts it, the old one fading out under the new. Not with the stim: its
+    // `rechamber_onehanded` is not a delta on this pose (the right hand 60 units off, the gun 40°
+    // turned: the user's 2026-10-10 report of a wrong pose shooting with the stim)
+    if a.view == Weapon::Sentinel && !melee && !onehanded {
         if shot {
             a.rechamber_out = a.rechamber.map(|t| (t, 0.0));
             a.rechamber = Some(0.0);
         }
         let mut layers = Vec::new();
         if let Some((t, s)) = a.rechamber_out {
-            let mut l = rechamber_layer(t, onehanded, i.ads, m.duck_frac);
+            let mut l = rechamber_layer(t, i.ads, m.duck_frac);
             l.weight *= 1.0 - s / RECHAMBER_BLEND;
             layers.push(l);
             a.rechamber_out = Some((t + dt, s + dt)).filter(|(_, s)| *s < RECHAMBER_BLEND);
         }
         if let Some(t) = a.rechamber {
-            layers.push(rechamber_layer(t, onehanded, i.ads, m.duck_frac));
+            layers.push(rechamber_layer(t, i.ads, m.duck_frac));
             for (frame, name) in RECHAMBER_SOUNDS {
                 let at = *frame as f32 / 63.0 * RECHAMBER_SECONDS;
                 if t <= at && at < t + dt {
@@ -1070,25 +1072,21 @@ fn with_swap(ab: Option<&ability::Out>, swap: Option<(Vec<(String, f32)>, f32)>)
 }
 
 /// The Sentinel's `rechamber` (64 frames, additive; `sentinel_base_v_animRig.qc`) played over
-/// this many seconds (retail: 2.1 s; sped up for the mod's shot every 0.6 s: ready to fire, frame
+/// this many seconds (retail: 2.1 s; sped up for the mod's shot every 0.8 s: ready to fire, frame
 /// 50, at the next shot; the bolt's back and front at frames 12 and 22), and its QC sounds.
-const RECHAMBER_SECONDS: f32 = 0.75;
+const RECHAMBER_SECONDS: f32 = 1.0;
 const RECHAMBER_BLEND: f32 = 0.08;
 const RECHAMBER_SOUNDS: &[(u32, &str)] = &[(12, "weapon_sentinel_boltback"), (12, "weapon_sentinel_boltback_layer1"), (22, "weapon_sentinel_boltfront")];
 
-/// The bolt's layer `t` seconds in: by `ads_blend` and `crouchFraction` (one-handed, with the stim:
-/// `rechamber_onehanded` by `ads_blend`), in over 0.05 s, out over its last 0.15 s.
-fn rechamber_layer(t: f32, onehanded: bool, ads: f32, crouch: f32) -> ability::Layer {
+/// The bolt's layer `t` seconds in: by `ads_blend` and `crouchFraction`, in over 0.05 s, out over
+/// its last 0.15 s.
+fn rechamber_layer(t: f32, ads: f32, crouch: f32) -> ability::Layer {
     let (a, c) = (ads.clamp(0.0, 1.0), crouch.clamp(0.0, 1.0));
-    let samples: Vec<(String, f32)> = if onehanded {
-        [(0, 1.0 - a), (1, a)].into_iter().filter(|s| s.1 > 0.0).map(|(k, w)| (format!("sn_rechamber_onehanded_{k}"), w)).collect()
-    } else {
-        [(0, (1.0 - a) * (1.0 - c)), (1, a * (1.0 - c)), (2, (1.0 - a) * c), (3, a * c)]
-            .into_iter()
-            .filter(|s| s.1 > 0.0)
-            .map(|(k, w)| (format!("sn_rechamber_{k}"), w))
-            .collect()
-    };
+    let samples: Vec<(String, f32)> = [(0, (1.0 - a) * (1.0 - c)), (1, a * (1.0 - c)), (2, (1.0 - a) * c), (3, a * c)]
+        .into_iter()
+        .filter(|s| s.1 > 0.0)
+        .map(|(k, w)| (format!("sn_rechamber_{k}"), w))
+        .collect();
     let weight = (t / 0.05).min((RECHAMBER_SECONDS - t) / 0.15).clamp(0.0, 1.0);
     ability::Layer { samples, cycle: (t / RECHAMBER_SECONDS).clamp(0.0, 1.0), weight, mode: ability::Mode::Add }
 }
