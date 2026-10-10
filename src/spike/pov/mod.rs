@@ -721,6 +721,7 @@ pub fn step(dt: f32, i: &Inputs) {
     let t0 = Instant::now();
     let vis = Vis { show, hide, weapon: a.view };
     MELEE_POSE.store(melee, std::sync::atomic::Ordering::Relaxed);
+    SN_STIM_POSE.store(sn_stim, std::sync::atomic::Ordering::Relaxed);
     a.posed = with_pack(|p| pose_pack(p, &out, &a.sway, posing.as_ref().or(a.ability_out.as_ref()), vis)).flatten();
     let us = t0.elapsed().as_secs_f32() * 1e6;
     if a.trace_until.is_some_and(|t| Instant::now() < t) {
@@ -1028,8 +1029,13 @@ fn clip_for<'a>(p: &'a Pack, name: &str, w: Weapon) -> Option<&'a Clip> {
 /// offhand's clips bone by bone by their weight lists, the additive ones added on by them.
 fn apply_ability(p: &Pack, ab: &ability::Out, local: &mut [Xf], w: Weapon) {
     let nb = local.len();
+    let sn_stim = SN_STIM_POSE.load(std::sync::atomic::Ordering::Relaxed);
     for l in &ab.layers {
+        let stim_clip = sn_stim && l.samples.first().is_some_and(|s| s.0.starts_with("stim_"));
         for (b, x) in local.iter_mut().enumerate() {
+            if stim_clip && p.names.get(b).is_some_and(|n| body_bone(n)) {
+                continue;
+            }
             let Some((s, (wt, wr))) = blend_named(p, l, b, nb, w) else { break };
             *x = match l.mode {
                 ability::Mode::Over => Xf { t: x.t.lerp(s.t, l.weight), r: x.r.slerp(s.r, l.weight).normalize() },
@@ -1159,6 +1165,16 @@ fn gun_group(w: Weapon) -> usize {
 
 /// The kunai is the hands' this frame (`clip_for`).
 static MELEE_POSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Set before pose_pack: the Sentinel with the stim, whose body (the root, the camera and pov
+/// joints, the hip and spine) the stim's clips leave alone: they turned it with the one-handed
+/// sprint in mind, and the Sentinel hangs off the spine, so its barrel pointed left on the run
+/// (the user, 2026-10-10). The stim's clips move the left arm and the injector only.
+static SN_STIM_POSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn body_bone(name: &str) -> bool {
+    matches!(name, "jx_c_delta" | "jx_c_start" | "jx_c_pov" | "jx_c_camera" | "def_c_hip" | "def_c_spineA" | "def_c_spineB" | "def_c_spineC")
+}
 
 /// What shows this frame and how the rest is put away.
 #[derive(Clone, Copy)]
