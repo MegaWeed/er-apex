@@ -58,6 +58,7 @@ pub fn before_menu() {
     if !hidden() || !state::in_world() {
         return;
     }
+    log_ui_changes();
     let Ok(fe) = (unsafe { CSFeManImp::instance_mut() }) else { return };
     let names = NAMES.lock().unwrap_or_else(|e| e.into_inner());
     let missing = fe.boss_health_displays.iter().any(|d| !d.field_ins_handle.is_empty() && !names.as_ref().is_some_and(|n| n.contains_key(&key(&d.field_ins_handle))));
@@ -66,6 +67,21 @@ pub fn before_menu() {
         PEEKING.store(true, Ordering::Relaxed);
     } else if fe.hud_state == CSFeManHudState::Default {
         fe.hud_state = CSFeManHudState::HideAll;
+    }
+}
+
+/// The menu manager's UI elements on screen, logged when they change: which one is the NPC
+/// dialogue (待定: the user's 2026-10-10 report that it is gone with the game's HUD hidden).
+static UI_SEEN: Mutex<Vec<usize>> = Mutex::new(Vec::new());
+
+fn log_ui_changes() {
+    let Ok(m) = (unsafe { CSMenuManImp::instance() }) else { return };
+    let now: Vec<usize> = m.ui_states.iter().enumerate().filter(|(_, u)| u.visible()).map(|(i, _)| i).collect();
+    let mut seen = UI_SEEN.lock().unwrap_or_else(|e| e.into_inner());
+    if *seen != now {
+        let job = top_menu_job().map_or("-".into(), |j| format!("{j:#x}"));
+        log(format!("fe: ui visible {now:?} (was {:?}), top menu job {job}", *seen));
+        *seen = now;
     }
 }
 

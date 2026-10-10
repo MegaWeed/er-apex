@@ -71,6 +71,9 @@ struct Round {
     born: Instant,
 }
 
+/// Elden Ring's team of the NPCs not (yet) hostile (NpcParam `teamType`).
+const FRIENDLY_NPC_TEAM: u8 = 26;
+
 static ROUNDS: Mutex<Vec<Round>> = Mutex::new(Vec::new());
 
 /// The last shot of a homing gun (homing or not): the HUD's muzzle flash (hud/beam.rs).
@@ -105,7 +108,10 @@ fn acquire(eye: Vec3, fwd: Vec3, s: Settings) -> Option<(FieldInsHandle, u32, Ve
     let mut best: Option<(f32, FieldInsHandle, u32, Vec3)> = None;
     for c in wcm.chr_sets.iter().flatten().flat_map(|set| set.characters()) {
         let c: &ChrIns = c;
-        if c.modules.data.hp <= 0 || !super::body::is_enemy_team(c.team_type) {
+        // not the friendly NPCs (team 26: Kalé, Varré, Boc, Irina... in NpcParam; angered they
+        // turn 27): a round homing onto one turned Kalé and Varré against the player (2026-10-10).
+        // Shot at on purpose they are hit, as in Elden Ring.
+        if c.modules.data.hp <= 0 || !super::body::is_enemy_team(c.team_type) || c.team_type == FRIENDLY_NPC_TEAM {
             continue;
         }
         let at = aim_point(c, s.height);
