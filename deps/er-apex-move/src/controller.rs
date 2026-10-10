@@ -1,5 +1,9 @@
 use crate::{MoveParams, ParamsError, PoseParams, Vec3, World};
 
+/// Lumps up to this share of the step height (raw units above the feet) are ridden over at
+/// LUMP_RIDE_ANGLE degrees rather than stepped (推断: the values are ours, not Apex's).
+const LOW_LUMP_FRACTION: f32 = 0.5;
+const LUMP_RIDE_ANGLE: f32 = 40.0;
 pub const FIXED_DT: f32 = 1.0 / 60.0;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -1473,7 +1477,16 @@ impl Controller {
                 lowest_block = lowest_block.min(hit.point.y - position.y);
             }
             let mut normal = hit.normal;
-            if block_uphill_walls
+            // a low lump under the feet (a bone, a stone: Elden Ring's floors are full of them;
+            // each one stopped him dead, 2026-10-10): ridden over as a walkable slope, not a wall
+            let low_lump = block_uphill_walls
+                && hit.point.y - position.y <= self.params.step_height * LOW_LUMP_FRACTION
+                && horizontal(hit.normal).norm_squared() > 1.0e-8;
+            if low_lump {
+                let h = horizontal(hit.normal).normalize();
+                let (sin, cos) = LUMP_RIDE_ANGLE.to_radians().sin_cos();
+                normal = (h * sin + Vec3::y() * cos).normalize();
+            } else if block_uphill_walls
                 && normal.y > 0.0
                 && (hit.surface_normal.y < self.slope_cos() || normal.y < self.slope_cos() || edge)
             {
@@ -1519,29 +1532,29 @@ impl Controller {
         let raised = start + Vec3::y() * rise;
         let (across, _, _) = self.slide_move(raised, horizontal(delta), pose, true);
         let drop = rise + self.params.step_height + self.params.skin * 2.0;
-        // down onto a walkable face only, as `probe_ground` does: on stairs the capsule coming down
-        // touched the next riser first (a wall face) and the step was refused, so the feet caught
-        // on every step (Elden Ring's stairs, 2026-10-10); the landing must still be clear
-        let hit = self.world.sweep_support(
-            across,
-            -Vec3::y() * drop,
-            pose.radius,
-            pose.height,
-            self.params.skin,
-            self.slope_cos(),
-        )?;
-        if hit.surface_normal.y < self.slope_cos()
-            || hit.point.y - start.y > self.params.step_height + self.params.skin * 3.0
-        {
-            return None;
-        }
-        let landing = across - Vec3::y() * (drop * hit.fraction);
-        if self
+        // down onto a walkable face first, as `probe_ground` does: on stairs the capsule coming
+        // down touched the next riser first (a wall face) and the step was refused, so the feet
+        // caught on every step (Elden Ring's stairs, 2026-10-10); else onto whatever is there (a
+        // stone's crest, a bone: no walkable face on top, each one stopped him); clear either way
+        let max_rise = self.params.step_height + self.params.skin * 3.0;
+        let clear = |hit: &crate::world::Hit| {
+            let landing = across - Vec3::y() * (drop * hit.fraction);
+            (hit.point.y - start.y <= max_rise
+                && !self.world.overlaps(landing, pose.radius, pose.height, self.params.skin * 2.0))
+            .then_some(landing)
+        };
+        let walkable = self
             .world
-            .overlaps(landing, pose.radius, pose.height, self.params.skin * 2.0)
-        {
-            return None;
-        }
+            .sweep_support(across, -Vec3::y() * drop, pose.radius, pose.height, self.params.skin, self.slope_cos())
+            .filter(|hit| hit.surface_normal.y >= self.slope_cos())
+            .and_then(|hit| clear(&hit));
+        let landing = match walkable {
+            Some(l) => l,
+            None => self
+                .world
+                .sweep(across, -Vec3::y() * drop, pose.radius, pose.height, self.params.skin)
+                .and_then(|hit| clear(&hit))?,
+        };
         if landing.y - start.y > self.params.step_height + self.params.skin * 3.0
             || landing.y < start.y - self.params.step_height - self.params.skin * 3.0
             || horizontal(landing - start).norm_squared()
