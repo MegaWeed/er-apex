@@ -1030,18 +1030,26 @@ fn clip_for<'a>(p: &'a Pack, name: &str, w: Weapon) -> Option<&'a Clip> {
 fn apply_ability(p: &Pack, ab: &ability::Out, local: &mut [Xf], w: Weapon) {
     let nb = local.len();
     let sn_stim = SN_STIM_POSE.load(std::sync::atomic::Ordering::Relaxed);
+    let spine = p.names.iter().position(|n| n == "def_c_spineC");
+    // (relative to `jx_c_pov`, which the view model is drawn from)
+    let before = if sn_stim { spine.map(|s| world_of(p, local, p.pov).inverse().mul(world_of(p, local, s))) } else { None };
     for l in &ab.layers {
-        let stim_clip = sn_stim && l.samples.first().is_some_and(|s| s.0.starts_with("stim_"));
         for (b, x) in local.iter_mut().enumerate() {
-            if stim_clip && p.names.get(b).is_some_and(|n| body_bone(n)) {
-                continue;
-            }
             let Some((s, (wt, wr))) = blend_named(p, l, b, nb, w) else { break };
             *x = match l.mode {
                 ability::Mode::Over => Xf { t: x.t.lerp(s.t, l.weight), r: x.r.slerp(s.r, l.weight).normalize() },
                 ability::Mode::Masked => Xf { t: x.t.lerp(s.t, wt * l.weight), r: x.r.slerp(s.r, wr * l.weight).normalize() },
                 ability::Mode::Add => Xf { t: x.t + s.t * (wt * l.weight), r: (x.r * Quat::IDENTITY.slerp(s.r, wr * l.weight)).normalize() },
             };
+        }
+    }
+    // the Sentinel with the stim: the gun and the right arm back where the spine had them
+    if let (Some(s), Some(before)) = (spine, before) {
+        let fix = world_of(p, local, s).inverse().mul(world_of(p, local, p.pov)).mul(before);
+        for (b, n) in p.names.iter().enumerate() {
+            if p.parents[b] == s as i16 && (n == "def_r_clav" || n.starts_with("sn:")) {
+                local[b] = fix.mul(local[b]);
+            }
         }
     }
 }
@@ -1166,14 +1174,22 @@ fn gun_group(w: Weapon) -> usize {
 /// The kunai is the hands' this frame (`clip_for`).
 static MELEE_POSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// Set before pose_pack: the Sentinel with the stim, whose body (the root, the camera and pov
-/// joints, the hip and spine) the stim's clips leave alone: they turned it with the one-handed
-/// sprint in mind, and the Sentinel hangs off the spine, so its barrel pointed left on the run
-/// (the user, 2026-10-10). The stim's clips move the left arm and the injector only.
+/// Set before pose_pack: the Sentinel with the stim. The stim's clips turn the body (hip, spine)
+/// with the one-handed sprint in mind; the Sentinel and the right arm hang off the spine, so its
+/// barrel pointed left on the run (the user, 2026-10-10). Left alone, the body put the injector
+/// in the right side. So the body turns as the stim has it (the left arm's stab lands), and the
+/// gun and the right arm are carried back to where the body without the stim had them.
 static SN_STIM_POSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-fn body_bone(name: &str) -> bool {
-    matches!(name, "jx_c_delta" | "jx_c_start" | "jx_c_pov" | "jx_c_camera" | "def_c_hip" | "def_c_spineA" | "def_c_spineB" | "def_c_spineC")
+/// A bone's world transform from local ones.
+fn world_of(p: &Pack, local: &[Xf], b: usize) -> Xf {
+    let mut x = local[b];
+    let mut i = p.parents[b];
+    while i >= 0 {
+        x = local[i as usize].mul(x);
+        i = p.parents[i as usize];
+    }
+    x
 }
 
 /// What shows this frame and how the rest is put away.
