@@ -10,7 +10,8 @@
 //!   and what falls; gravity `grapple_gravityFracMin`..`Max` 0.25..0.7 of itself (whole with the
 //!   hook steeply below); the move keys push at `grapple_airAccel` 650 u/s² up to
 //!   `grapple_airSpeedMax` 420; `grapple_attachVerticalBoost` 200 up off the ground;
-//! - it lets go within `grapple_detachLengthMax` 50 of the hook, on a jump or Q, after
+//! - it lets go within `grapple_detachLengthMax` 50 of the hook, on a jump, crouch or Q, with the
+//!   view turned past ini `grapple_detach_angle` (90°) from the hook or the hook out of sight, after
 //!   `grapple_detachLowSpeedTime` 1.5 s under `grapple_detachLowSpeedThreshold` 250 u/s, or after
 //!   MAX_ATTACHED; letting go adds `grapple_detachVerticalBoost` 200 up to
 //!   `grapple_detachVerticalMaxSpeed` 200 and, above `grapple_detachSpeedLossMin` 460 u/s, takes
@@ -79,13 +80,25 @@ enum State {
     Idle,
     /// the hook flying: from, direction, how far it has gone, where it will catch (None: a miss)
     Shooting { from: Vec3, dir: Vec3, gone: f32, hit: Option<f32> },
-    Attached { anchor: Vec3, t: f32, slow: f32 },
+    /// `blocked`: seconds the line from the eye to the hook has been cut by the map
+    Attached { anchor: Vec3, t: f32, slow: f32, blocked: f32 },
     /// reeling back from `at` over RETRACT
     Retracting { at: Vec3, t: f32 },
 }
 
 static STATE: Mutex<State> = Mutex::new(State::Idle);
 static KEYS_WERE: Mutex<bool> = Mutex::new(false);
+static CROUCH_WERE: Mutex<bool> = Mutex::new(false);
+
+/// The line to the hook cut this long lets go (推断: Apex's exact rule not read).
+const BLOCKED_TIME: f32 = 0.15;
+/// The view turned this many degrees from the hook lets go (ini `grapple_detach_angle`; 推断: the
+/// value Apex uses not found in its code).
+const DETACH_ANGLE: f32 = 90.0;
+
+fn detach_angle() -> f32 {
+    crate::paths::config("grapple_detach_angle").and_then(|v| v.trim().parse::<f32>().ok()).unwrap_or(DETACH_ANGLE).clamp(10.0, 180.0)
+}
 
 fn eye() -> Option<(Vec3, Vec3)> {
     let (eye, fwd, _, _) = crate::camera::view()?;
@@ -151,6 +164,8 @@ fn jump_down() -> bool {
 pub fn update(dt: f32) {
     let jump = jump_down();
     let jumped = jump && !std::mem::replace(&mut *KEYS_WERE.lock().unwrap_or_else(|e| e.into_inner()), jump);
+    let crouch = crate::input::move_keys().is_some_and(|k| k.crouch || k.crouch_toggle);
+    let crouched = crouch && !std::mem::replace(&mut *CROUCH_WERE.lock().unwrap_or_else(|e| e.into_inner()), crouch);
     let state = *STATE.lock().unwrap_or_else(|e| e.into_inner());
     let next = match state {
         State::Idle => State::Idle,
@@ -167,7 +182,7 @@ pub fn update(dt: f32) {
                         super::kcc::pull(v / UPM, GRAVITY_MAX);
                     }
                     log(format!("grapple: attached {d:.1} m out"));
-                    State::Attached { anchor, t: 0.0, slow: 0.0 }
+                    State::Attached { anchor, t: 0.0, slow: 0.0, blocked: 0.0 }
                 }
                 None if gone >= MAX_LENGTH / UPM => {
                     crate::audio::play("pilot_grapple_retract_1p", 0.6);
@@ -176,7 +191,7 @@ pub fn update(dt: f32) {
                 _ => State::Shooting { from, dir, gone, hit },
             }
         }
-        State::Attached { anchor, t, slow } => {
+        State::Attached { anchor, t, slow, blocked } => {
             let (Some(feet), Some((v, _))) = (super::kcc::feet(), super::kcc::velocity()) else {
                 release("no controller");
                 return;
@@ -187,7 +202,21 @@ pub fn update(dt: f32) {
             let dist = to.length();
             let v = v * UPM;
             let slow = if v.length() < LOW_SPEED { slow + dt } else { 0.0 };
-            if dist < DETACH_LENGTH || jumped || slow > LOW_SPEED_TIME || t > MAX_ATTACHED {
+            // Apex's other ways to let go (the user, 2026-10-10): crouch, the view turned too far
+            // from the hook (ini `grapple_detach_angle`, degrees), the hook out of sight (the map
+            // between the eye and it for BLOCKED_TIME)
+            let mut blocked = blocked;
+            let mut away = false;
+            if let Some((eye, fwd)) = eye() {
+                let to_hook = anchor - eye;
+                let d = to_hook.length();
+                if d > 0.5 {
+                    away = fwd.dot(to_hook / d) < detach_angle().to_radians().cos();
+                    let cut = super::gun::map_ray(eye, to_hook * ((d - 0.5) / d)).is_some();
+                    blocked = if cut { blocked + dt } else { 0.0 };
+                }
+            }
+            if dist < DETACH_LENGTH || jumped || crouched || away || blocked > BLOCKED_TIME || slow > LOW_SPEED_TIME || t > MAX_ATTACHED {
                 detach(anchor);
                 return;
             }
@@ -239,7 +268,7 @@ pub fn update(dt: f32) {
                 GRAVITY_MIN + (GRAVITY_MAX - GRAVITY_MIN) * away.max(falling)
             };
             super::kcc::pull(v / UPM, gravity);
-            State::Attached { anchor, t: t + dt, slow }
+            State::Attached { anchor, t: t + dt, slow, blocked }
         }
         State::Retracting { at, t } => {
             if t + dt >= RETRACT {
