@@ -464,6 +464,8 @@ def sentinel_references():
         ('weapon_sentinel_drawfirst', 'drawn the first time (drawfirst frame 0)', [(qc, 'drawfirst')]),
         ('weapon_sentinel_holster', 'put away (holster frame 0)', [(qc, 'holster')]),
     ]
+    for event in ['weapon_sentinel_boltback', 'weapon_sentinel_boltfront']:
+        specs.append((event, 'the bolt after a shot (rechamber QC frame)', [(qc, 'rechamber')]))
     for event in ['weapon_sentinel_reload_gunup', 'weapon_sentinel_reload_magout', 'weapon_sentinel_reload_maggrab',
                   'weapon_sentinel_reload_magslot', 'weapon_sentinel_reload_maginsert', 'weapon_sentinel_reload_gundown']:
         specs.append((event, 'reload (QC frame)', [(qc, 'reload')]))

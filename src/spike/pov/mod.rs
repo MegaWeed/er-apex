@@ -303,6 +303,10 @@ struct Anim {
     kunai_inspect: Option<(usize, f32)>,
     /// the one a new press cut: which, seconds into it, its weight then and the seconds since
     kunai_inspect_out: Option<(usize, f32, f32, f32)>,
+    /// the Sentinel's bolt after a shot: seconds into it, and the one a new shot cut (seconds into
+    /// it, seconds since cut)
+    rechamber: Option<f32>,
+    rechamber_out: Option<(f32, f32)>,
 }
 
 /// The kunai's clips (retail `heirloom_wraith_v18_kunai_v_animRig.qc` through
@@ -504,6 +508,8 @@ pub fn step(dt: f32, i: &Inputs) {
         kunai: Kunai::default(),
         kunai_inspect: None,
         kunai_inspect_out: None,
+        rechamber: None,
+        rechamber_out: None,
     });
     let mut s = sway_input(dt, i, a.last_eye);
     // the kunai's inspect on the run: the hands as when standing (no run bob or sway under it)
@@ -652,6 +658,37 @@ pub fn step(dt: f32, i: &Inputs) {
         if let Some((k, _)) = a.kunai_inspect.take() {
             stop_kunai_sounds(k);
         }
+    }
+    // the Sentinel's bolt (`rechamber`, additive) after each shot, sped up to the mod's 3 shots a
+    // second; a new shot cuts it, the old one fading out under the new
+    if a.view == Weapon::Sentinel && !melee {
+        if shot {
+            a.rechamber_out = a.rechamber.map(|t| (t, 0.0));
+            a.rechamber = Some(0.0);
+        }
+        let mut layers = Vec::new();
+        if let Some((t, s)) = a.rechamber_out {
+            let mut l = rechamber_layer(t, onehanded, i.ads, m.duck_frac);
+            l.weight *= 1.0 - s / RECHAMBER_BLEND;
+            layers.push(l);
+            a.rechamber_out = Some((t + dt, s + dt)).filter(|(_, s)| *s < RECHAMBER_BLEND);
+        }
+        if let Some(t) = a.rechamber {
+            layers.push(rechamber_layer(t, onehanded, i.ads, m.duck_frac));
+            for (frame, name) in RECHAMBER_SOUNDS {
+                let at = *frame as f32 / 63.0 * RECHAMBER_SECONDS;
+                if t <= at && at < t + dt {
+                    crate::audio::play(name, 0.7);
+                }
+            }
+            a.rechamber = Some(t + dt).filter(|t| *t < RECHAMBER_SECONDS);
+        }
+        if !layers.is_empty() {
+            let o = posing.get_or_insert_with(|| a.ability_out.clone().unwrap_or(ability::Out { show_gun: true, ..Default::default() }));
+            o.layers.extend(layers);
+        }
+    } else {
+        (a.rechamber, a.rechamber_out) = (None, None);
     }
     // the Charge Rifle's discharge: `sustained_discharge` and its `charge_loop_layer` added on
     if a.view == Weapon::ChargeRifle
@@ -1028,6 +1065,30 @@ fn with_swap(ab: Option<&ability::Out>, swap: Option<(Vec<(String, f32)>, f32)>)
 /// The Charge Rifle's `sustained_discharge` (105 frames, 30 fps, looping, by ads x crouch) and its
 /// addlayer `charge_loop_layer` (by ads x chargeFraction: still at no charge, its 105-frame loop
 /// at full), both added on, `t` seconds into the discharge (U3; T022's clips).
+/// The Sentinel's `rechamber` (64 frames, additive; `sentinel_base_v_animRig.qc`) played over
+/// this many seconds (retail: 2.1 s; sped up for the mod's 3 shots a second, the bolt's back and
+/// front at frames 12 and 22 before the next shot), and its QC sounds.
+const RECHAMBER_SECONDS: f32 = 0.6;
+const RECHAMBER_BLEND: f32 = 0.08;
+const RECHAMBER_SOUNDS: &[(u32, &str)] = &[(12, "weapon_sentinel_boltback"), (12, "weapon_sentinel_boltback_layer1"), (22, "weapon_sentinel_boltfront")];
+
+/// The bolt's layer `t` seconds in: by `ads_blend` and `crouchFraction` (one-handed, with the stim:
+/// `rechamber_onehanded` by `ads_blend`), in over 0.05 s, out over its last 0.15 s.
+fn rechamber_layer(t: f32, onehanded: bool, ads: f32, crouch: f32) -> ability::Layer {
+    let (a, c) = (ads.clamp(0.0, 1.0), crouch.clamp(0.0, 1.0));
+    let samples: Vec<(String, f32)> = if onehanded {
+        [(0, 1.0 - a), (1, a)].into_iter().filter(|s| s.1 > 0.0).map(|(k, w)| (format!("sn_rechamber_onehanded_{k}"), w)).collect()
+    } else {
+        [(0, (1.0 - a) * (1.0 - c)), (1, a * (1.0 - c)), (2, (1.0 - a) * c), (3, a * c)]
+            .into_iter()
+            .filter(|s| s.1 > 0.0)
+            .map(|(k, w)| (format!("sn_rechamber_{k}"), w))
+            .collect()
+    };
+    let weight = (t / 0.05).min((RECHAMBER_SECONDS - t) / 0.15).clamp(0.0, 1.0);
+    ability::Layer { samples, cycle: (t / RECHAMBER_SECONDS).clamp(0.0, 1.0), weight, mode: ability::Mode::Add }
+}
+
 fn discharge_layers(t: f32, charge: f32, ads: f32, crouch: f32) -> [ability::Layer; 2] {
     let cycle = (t.max(0.0) * 30.0 / 104.0).rem_euclid(1.0);
     let grid = |name: &str, a: f32, b: f32| {
