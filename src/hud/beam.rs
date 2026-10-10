@@ -254,25 +254,36 @@ fn warm_up(t: f32) -> f32 {
     1.0 - (1.0 - x) * (1.0 - x)
 }
 
-/// The Sentinel's homing rounds in flight (spike/homing.rs): a bright streak each, its tail along
-/// where it came from, a glow at its head (推断: Apex's amped Sentinel tracer is a particle system
-/// no local tool reads).
+/// The Sentinel's shots (the user's 2026-10-10 ask: brighter): an amped blue flash at the muzzle
+/// for SN_FLASH s after each, and its homing rounds in flight (spike/homing.rs), a bright streak
+/// each, its tail along where it came from, a glow at its head (推断: Apex's amped Sentinel tracer
+/// is a particle system no local tool reads).
+const SN_FLASH: f32 = 0.15;
+
 pub fn draw_rounds(dl: &DrawListMut, size: [f32; 2]) {
     let rounds = crate::spike::homing::rounds();
-    if rounds.is_empty() {
+    let flash = crate::spike::homing::since_shot().filter(|t| *t < SN_FLASH).map(|t| 1.0 - t / SN_FLASH);
+    if rounds.is_empty() && flash.is_none() {
         return;
     }
     make_textures();
     let k = size[1] / 1080.0;
-    let col = [0.55, 0.85, 1.0];
+    let col = [0.45, 0.8, 1.0];
+    if let Some(a) = flash
+        && let Some(p) = muzzle().and_then(|m| project(m, size))
+    {
+        flare(dl, p, 190.0 * k, col, a * a);
+        soft(dl, p, 420.0 * k, rgba(col, 0.25 * a));
+    }
     for (pos, dir) in rounds {
-        let tail = pos - dir * 1.5;
+        let tail = pos - dir * 4.0;
         let Some((a, b)) = clip(tail, pos) else { continue };
         let (Some(pa), Some(pb)) = (project(a, size), project(b, size)) else { continue };
-        let w = px(pos, 0.12, size).unwrap_or(0.0).clamp(3.0 * k, 40.0 * k);
-        band(dl, pa, pb, w * 0.3, w, rgba(col, 0.55));
-        band(dl, pa, pb, w * 0.12, w * 0.4, rgba(CORE, 0.95));
-        soft(dl, pb, w * 2.0, rgba(col, 0.7));
+        let w = px(pos, 0.25, size).unwrap_or(0.0).clamp(6.0 * k, 70.0 * k);
+        band(dl, pa, pb, w * 0.5, w * 1.6, rgba(col, 0.45));
+        band(dl, pa, pb, w * 0.3, w, rgba(col, 0.8));
+        band(dl, pa, pb, w * 0.12, w * 0.45, rgba(CORE, 1.0));
+        flare(dl, pb, w * 3.0, col, 1.0);
     }
 }
 

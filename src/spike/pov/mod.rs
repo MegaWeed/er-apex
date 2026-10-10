@@ -549,7 +549,11 @@ pub fn step(dt: f32, i: &Inputs) {
         }
         m
     });
-    a.signals = Signals { ads: i.ads, shot: r301_shot && !onehanded, reload: i.reload, moving: graph_moving };
+    // the Sentinel with the stim: its shots are the graph's two-handed ones (the right hand's fire,
+    // raised out of the sprint as without it; the stim's arms keep the left hand: the user's
+    // 2026-10-10 ask), not the one-handed fire
+    let sn_stim = onehanded && a.view == Weapon::Sentinel;
+    a.signals = Signals { ads: i.ads, shot: r301_shot && (!onehanded || sn_stim), reload: i.reload, moving: graph_moving };
     a.graph.step(dt, &a.signals);
     a.cr_graph.step(dt, &Signals { ads: i.ads, shot: cr_shot && !onehanded, reload: i.cr_reload, moving: graph_moving });
     let out = if a.view == Weapon::ChargeRifle { a.cr_graph.out() } else { a.graph.out() };
@@ -576,7 +580,7 @@ pub fn step(dt: f32, i: &Inputs) {
     if a.view == Weapon::Sentinel
         && let Some(o) = a.ability_out.as_mut()
     {
-        o.layers.retain(|l| l.samples.first().is_none_or(|s| !s.0.starts_with("sprint_onehanded")));
+        o.layers.retain(|l| l.samples.first().is_none_or(|s| !s.0.starts_with("sprint_onehanded") && !s.0.starts_with("fire_onehanded")));
     }
     // U9: the frag grenade out (spike/grenade.rs) takes the hands, over any ability
     if let Some(v) = crate::spike::grenade::view() {
