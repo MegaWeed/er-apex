@@ -556,8 +556,8 @@ pub fn step(dt: f32, i: &Inputs) {
     let (jumped, landed) = moving.map_or((false, false), |m| (m.jumped, m.landed));
     // the Sentinel with the stim: the gun and the right hand as without it, the graph's two-handed
     // pose, shots, jumps and landings (the stim's arms take the left hand: the user's 2026-10-10
-    // ask), none of the one-handed clips; the Mastiff too (its one-handed idle put its sight over
-    // the crosshair, crouched more: the user, 2026-10-10)
+    // ask), none of the one-handed clips; the other guns but the R-301 and the Wingman too
+    // (`two_handed_stim`)
     let sn_stim = onehanded && two_handed_stim(a.view);
     let graph_moving = moving.map(|mut m| {
         if onehanded && !sn_stim {
@@ -573,7 +573,7 @@ pub fn step(dt: f32, i: &Inputs) {
     let reload = if a.view == Weapon::Mastiff { None } else { i.reload };
     a.signals = Signals { ads: i.ads, shot: r301_shot && (!onehanded || sn_stim), reload, moving: graph_moving };
     a.graph.step(dt, &a.signals);
-    a.cr_graph.step(dt, &Signals { ads: i.ads, shot: cr_shot && !onehanded, reload: i.cr_reload, moving: graph_moving });
+    a.cr_graph.step(dt, &Signals { ads: i.ads, shot: cr_shot && (!onehanded || sn_stim), reload: i.cr_reload, moving: graph_moving });
     let out = if a.view == Weapon::ChargeRifle { a.cr_graph.out() } else { a.graph.out() };
     let (hold, hide, frame) = {
         let mut d = dev_state();
@@ -1266,10 +1266,12 @@ fn gun_group(w: Weapon) -> usize {
 /// The kunai is the hands' this frame (`clip_for`).
 static MELEE_POSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// The guns held two-handed under the stim's arms (its clips only on the left arm): the Sentinel
-/// and the Mastiff, whose one-handed clips turned them across the view.
+/// The guns held two-handed under the stim's arms (its clips only on the left arm): all but the
+/// R-301 and the Wingman. The Sentinel's and the Mastiff's one-handed clips turned them across the
+/// view; the R-99's, the Flatline's and the Charge Rifle's (the R-301's, it has none) raised them
+/// over the crosshair, crouched as aiming (the user, 2026-10-10).
 fn two_handed_stim(w: Weapon) -> bool {
-    matches!(w, Weapon::Sentinel | Weapon::Mastiff)
+    matches!(w, Weapon::Sentinel | Weapon::Mastiff | Weapon::R99 | Weapon::Flatline | Weapon::ChargeRifle)
 }
 
 /// Set before pose_pack: the Sentinel (the Mastiff) with the stim. The stim's clips turn the body (hip, spine)
@@ -1957,24 +1959,26 @@ mod tests {
         assert_eq!(posed.carriers.len(), p.carriers.len());
     }
 
-    /// The guns held two-handed under the stim (the Sentinel, the Mastiff): standing and crouched
-    /// their bones as near the view's centre as without it (the Mastiff's one-handed idle put its
-    /// sight over the crosshair: the user, 2026-10-10); each gun's nearest bone printed.
+    /// The guns held two-handed under the stim (`two_handed_stim`): standing and crouched, at the hip
+    /// and aiming, their bones as near the view's centre as without it (the Mastiff's one-handed
+    /// idle put its sight over the crosshair, the others' raised them: the user, 2026-10-10); each
+    /// gun's nearest bone printed.
     #[test]
     fn stim_keeps_the_crosshair_clear() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("apex-data/pov/octane_wingman/fuse_pov.anim");
         let Ok(d) = std::fs::read(&path) else { return };
         let p = pack::parse(&d).unwrap();
-        for w in [Weapon::R301, Weapon::Wingman, Weapon::R99, Weapon::Flatline, Weapon::Sentinel, Weapon::Mastiff] {
-            let Some(gun) = p.gun_bones(w).0.filter(|_| w == Weapon::R301 || p.gun_bones(w).0 != p.gun) else { continue };
-            for crouch in [0.0f32, 1.0] {
+        for w in [Weapon::R301, Weapon::Wingman, Weapon::R99, Weapon::Flatline, Weapon::Sentinel, Weapon::Mastiff, Weapon::ChargeRifle] {
+            let gun = if w == Weapon::ChargeRifle { p.cr_gun } else { p.gun_bones(w).0.filter(|_| w == Weapon::R301 || p.gun_bones(w).0 != p.gun) };
+            let Some(gun) = gun else { continue };
+            for (crouch, ads) in [(0.0f32, 0.0f32), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)] {
                 let mut g = Graph::new_for(w);
                 let moving = Moving { crouched: crouch > 0.5, duck_frac: crouch, ..Default::default() };
                 for _ in 0..120 {
-                    g.step(1.0 / 60.0, &Signals { moving: Some(moving), ..Default::default() });
+                    g.step(1.0 / 60.0, &Signals { ads, moving: Some(moving), ..Default::default() });
                 }
                 let o = g.out();
-                let params = ability::Params { crouch, ..Default::default() };
+                let params = ability::Params { crouch, ads, ..Default::default() };
                 let mut ab = ability::Ability::new(ability::Kind::Stim(0));
                 for _ in 0..90 {
                     ab.step(1.0 / 60.0, params);
@@ -2008,9 +2012,9 @@ mod tests {
                     best
                 };
                 let (plain, stim) = (nearest(None), nearest(Some(&aout)));
-                println!("{w:?} crouch {crouch}: plain {:.1}° {} | stim {:.1}° {}", plain.0, plain.1, stim.0, stim.1);
+                println!("{w:?} crouch {crouch} ads {ads}: plain {:.1}° {} | stim {:.1}° {}", plain.0, plain.1, stim.0, stim.1);
                 if two_handed_stim(w) {
-                    assert!((stim.0 - plain.0).abs() < 0.5, "{w:?} crouch {crouch}: {stim:?} vs {plain:?}");
+                    assert!((stim.0 - plain.0).abs() < 0.5, "{w:?} crouch {crouch} ads {ads}: {stim:?} vs {plain:?}");
                 }
             }
         }

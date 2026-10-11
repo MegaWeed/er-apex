@@ -1224,7 +1224,7 @@ fn hip_ticks(tri: &[f32]) -> Vec<f32> {
         Gun::R99 | Gun::Wingman | Gun::Flatline | Gun::Sentinel => vec![0.0, 90.0, 180.0, 270.0],
         // the Mastiff's pellets go out in a row: its ticks left and right only (its own RUI is not
         // decoded, 推断)
-        Gun::Mastiff => vec![90.0, 270.0],
+        Gun::Mastiff => vec![0.0, 180.0],
     }
 }
 
