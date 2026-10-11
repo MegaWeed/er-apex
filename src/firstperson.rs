@@ -425,6 +425,13 @@ pub fn muzzle_world() -> Option<Vec3> {
     Some(origin + axes * (eye + rot * m))
 }
 
+/// The shown gun's iron sight centre in the world (dev `fp mark`).
+pub fn sight_world() -> Option<Vec3> {
+    let m = spike::pov::sight_view()?;
+    let (rot, eye, axes, origin) = (*FRAME.lock().unwrap_or_else(|e| e.into_inner()))?;
+    Some(origin + axes * (eye + rot * m))
+}
+
 /// Whether the jump pad on the ground was drawn as a model this frame (else the HUD rings it).
 static WORLD_PAD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 

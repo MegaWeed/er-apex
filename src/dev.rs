@@ -94,6 +94,10 @@ fn run(line: &str) -> String {
             (None, _, _) | (_, None, _) => "usage: setflag <id> <0|1>".into(),
             (_, _, Err(e)) => format!("no event flag manager: {e:?}"),
         },
+        "aim" => match args.first().and_then(|a| a.parse().ok()) {
+            Some(ms) => spike::gun::dev_aim(ms),
+            None => "usage: aim <ms>".into(),
+        },
         "pad" if args.first() == Some(&"connect") => {
             crate::input::set_virtual(true);
             "virtual pad connected".into()
@@ -137,7 +141,7 @@ fn run(line: &str) -> String {
         "autorot" => crate::camera::auto_rotation(args.first().copied()),
         "fp" if args.first() == Some(&"vm") => spike::pov::describe(),
         "fp" if args.first() == Some(&"trace") => spike::pov::trace(args.get(1).and_then(|a| a.parse().ok()).unwrap_or(10.0)),
-        "fp" if matches!(args.first(), Some(&("hide" | "force" | "flip" | "hold" | "play"))) => spike::pov::dev(&args),
+        "fp" if matches!(args.first(), Some(&("hide" | "force" | "flip" | "hold" | "play" | "sight" | "mark"))) => spike::pov::dev(&args),
         "fp" => crate::firstperson::tune(&args),
         "fpdbg" => crate::firstperson::debug(&args),
         "fpgroup" => spike::pose::probe(&args),

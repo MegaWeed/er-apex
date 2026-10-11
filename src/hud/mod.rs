@@ -319,6 +319,14 @@ impl ImguiRenderLoop for Overlay {
                 beam::draw(&dl, size);
                 apex::draw(&dl, pack, size, fov);
                 debug_overlay(&dl, size);
+                if spike::pov::marking() {
+                    // the muzzle (magenta) and the iron sight's centre (cyan) where the view model put them
+                    for (p, col) in [(crate::firstperson::muzzle_world(), [1.0, 0.2, 1.0, 1.0]), (crate::firstperson::sight_world(), [0.2, 1.0, 1.0, 1.0])] {
+                        if let Some(a) = p.and_then(|p| project(p, size)) {
+                            dl.add_circle(a, 4.0, col).thickness(1.5).build();
+                        }
+                    }
+                }
                 octane_overlay(&dl, size);
                 grenade::draw(&dl, size);
             }

@@ -664,7 +664,15 @@ pub fn hud() -> Option<HudState> {
 
 /// Whether the aim button is held (either weapon's).
 pub fn aim_held() -> bool {
-    HELD.load(Ordering::Relaxed) & 2 != 0
+    HELD.load(Ordering::Relaxed) & 2 != 0 || AIM_UNTIL.lock().unwrap_or_else(|e| e.into_inner()).is_some_and(|t| std::time::Instant::now() < t)
+}
+
+/// Dev `aim <ms>`: aiming held for that long without the pad (screenshots with the game out of focus).
+static AIM_UNTIL: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+
+pub fn dev_aim(ms: u64) -> String {
+    *AIM_UNTIL.lock().unwrap_or_else(|e| e.into_inner()) = Some(std::time::Instant::now() + std::time::Duration::from_millis(ms));
+    format!("aiming for {ms} ms")
 }
 
 /// The last hit of either weapon: when, whether on the head (the hit marker).

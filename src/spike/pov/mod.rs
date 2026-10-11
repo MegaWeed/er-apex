@@ -277,6 +277,8 @@ struct Posed {
     /// the shown weapon's muzzle where the view model is held (the carriers' mirrored frame,
     /// metres): the Charge Rifle's when its group shows, else the R-301's when it shows
     muzzle_view: Option<Vec3>,
+    /// the shown gun's iron sight centre (its QC's `ADS_CENTER_SIGHT_*`) in the same frame
+    sight_view: Option<Vec3>,
 }
 
 struct Anim {
@@ -881,6 +883,31 @@ pub fn pose() -> Option<Vec<(Vec3, Quat, Vec3, bool)>> {
 
 /// The shown weapon's muzzle in the carriers' mirrored `jx_c_pov` frame (metres), as this frame's
 /// `step` posed it (firstperson.rs puts that frame at the eye: `muzzle_world`).
+/// The iron sight's centre as `muzzle_view` (dev `fp mark`).
+pub fn sight_view() -> Option<Vec3> {
+    ANIM.lock().unwrap_or_else(|e| e.into_inner()).as_ref()?.posed.as_ref()?.sight_view
+}
+
+/// Dev `fp mark on|off`: the HUD rings the muzzle and the iron sight's centre where they were put.
+static MARK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn marking() -> bool {
+    MARK.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Each gun's iron sight centre on its `def_c_base` (inches; the QCs' `ADS_CENTER_SIGHT_<gun>`:
+/// apex-data/assets/*/smd; the R-301's firstperson.rs `SIGHT`).
+fn ads_sight(w: Weapon) -> Option<Vec3> {
+    match w {
+        Weapon::R301 => Some(Vec3::new(0.0, 6.063_558, 20.820_164)),
+        Weapon::R99 => Some(Vec3::new(0.0, 5.982_553, 15.002_318)),
+        Weapon::Flatline => Some(Vec3::new(0.0, 5.745_549, 7.566_643)),
+        Weapon::Mastiff => Some(Vec3::new(0.0, 6.144_299, 30.647_472)),
+        Weapon::Wingman => Some(Vec3::new(0.0, 4.468_248, 7.669_888)),
+        Weapon::Sentinel | Weapon::ChargeRifle => None,
+    }
+}
+
 pub fn muzzle_view() -> Option<Vec3> {
     ANIM.lock().unwrap_or_else(|e| e.into_inner()).as_ref()?.posed.as_ref()?.muzzle_view
 }
@@ -995,10 +1022,40 @@ fn hold_offset(p: Params, w: Weapon) -> Vec3 {
         // centre point (`viewmodel_offset_ads_by_centerpoint`), which ours does not do (推断: none)
         Weapon::Mastiff => (Vec3::ZERO, Vec3::ZERO),
     };
+    let ads = ads + sight_fix(w).0;
     let o = hip.lerp(ads, e) + Vec3::new(0.0, OFFSET_BACK, 0.0);
     let duck = DUCK_OFFSET * (p.crouch.clamp(0.0, 1.0) * std::f32::consts::FRAC_PI_2).sin() * (1.0 - a);
     // (right, forward, up) -> (left, up, forward)
     Vec3::new(-o.x, o.z + duck, o.y)
+}
+
+/// Dev `fp sight <right> <forward> <up> [pitch]`: in place of `SIGHT_FIX` for the weapon in hand.
+static SIGHT_TUNE: std::sync::Mutex<[Option<(Vec3, f32)>; 7]> = std::sync::Mutex::new([None; 7]);
+
+/// Aiming, how each gun is moved past Apex's pose (its sight's centre on the line of sight) so its
+/// iron sights line up on the screen's centre (measured in game, 2026-10-11: the user's "the sights
+/// and the dot centred, the sights not over the view"): (right, forward, up) inches, and a pitch up
+/// about the eye, degrees. The R-301 drew 0.07 in to the left of its bones (its rear sight 17 px
+/// left at 1080p); the R-99's and the Flatline's front sights sat under the centre (the R-99's
+/// about 30 px), turned up about the eye till their tips meet it, their rear sights below it. The
+/// others' sights meet it as Apex poses them. `fp mark on` rings the sight's centre and the muzzle.
+fn sight_fix(w: Weapon) -> (Vec3, f32) {
+    if let Some(t) = SIGHT_TUNE.lock().unwrap_or_else(|e| e.into_inner())[w as usize] {
+        return t;
+    }
+    match w {
+        Weapon::R301 => (Vec3::new(0.07, 0.0, 0.0), 0.0),
+        Weapon::R99 => (Vec3::ZERO, 2.2),
+        Weapon::Flatline => (Vec3::ZERO, 1.4),
+        _ => (Vec3::ZERO, 0.0),
+    }
+}
+
+/// The aiming pitch of `sight_fix`, eased in with the zoom as the offsets are.
+fn sight_turn(p: Params, w: Weapon) -> Quat {
+    let e = (1.0 - (std::f32::consts::PI * p.ads.clamp(0.0, 1.0)).cos()) / 2.0;
+    // `jx_c_pov`'s axes: x left, y up, z forward; about x by a negative angle the front goes up
+    Quat::from_rotation_x(-(sight_fix(w).1 * e).to_radians())
 }
 
 /// A pass with its samples' clips and weights: clips, cycle, weight.
@@ -1344,7 +1401,8 @@ fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis
         base.mul(Xf { t, r }).mul(base.inverse())
     });
     // the root where Apex holds it from the eye, put through the sway in its own space
-    let held = Xf { t: hold_offset(o.params, o.w), r: Quat::IDENTITY }.mul(swayed).mul(pov_inv);
+    // (`sight_fix`'s pitch about the eye itself)
+    let held = Xf { t: Vec3::ZERO, r: sight_turn(o.params, o.w) }.mul(Xf { t: hold_offset(o.params, o.w), r: Quat::IDENTITY }).mul(swayed).mul(pov_inv);
     // where each hidden group collapses (`Hide`)
     let hand = |name: &str| {
         let at = p.carriers.iter().find(|c| c.bone == name).map(|c| mirror_point(held.mul(world[c.owner]).t * INCH))?;
@@ -1381,7 +1439,8 @@ fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis
     }
     .map(|m| mirror_point(m.t * INCH));
     let gun = p.gun_bones(o.w).0;
-    Some(Posed { carriers, camera_turn: pov_inv.mul(world[p.camera]).r, muzzle: gun.map(|g| pov_inv.mul(world[g]).mul(muzzle_of(o.w))), muzzle_view })
+    let sight_view = gun.zip(ads_sight(o.w)).map(|(g, at)| mirror_point(held.mul(world[g]).mul(Xf { t: at, r: Quat::IDENTITY }).t * INCH));
+    Some(Posed { carriers, camera_turn: pov_inv.mul(world[p.camera]).r, muzzle: gun.map(|g| pov_inv.mul(world[g]).mul(muzzle_of(o.w))), muzzle_view, sight_view })
 }
 
 /// Each bone's pose in the model's space from the local poses.
@@ -1506,6 +1565,23 @@ pub fn dev(args: &[&str]) -> String {
             a.ability = Some(ab);
             return line;
         }
+        ["sight", r, f, u] | ["sight", r, f, u, _] => {
+            let (Ok(r), Ok(f), Ok(u)) = (r.parse::<f32>(), f.parse::<f32>(), u.parse::<f32>()) else { return "usage: fp sight <right> <forward> <up> [pitch] | off".into() };
+            let pitch = args.get(4).and_then(|p| p.parse::<f32>().ok()).unwrap_or(0.0);
+            drop(d);
+            let w = ANIM.lock().unwrap_or_else(|e| e.into_inner()).as_ref().map_or(Weapon::R301, |a| a.view);
+            SIGHT_TUNE.lock().unwrap_or_else(|e| e.into_inner())[w as usize] = Some((Vec3::new(r, f, u), pitch));
+            return format!("pov dev: {w:?} aiming offset ({r} {f} {u}), pitch {pitch}");
+        }
+        ["sight", "off"] => {
+            drop(d);
+            *SIGHT_TUNE.lock().unwrap_or_else(|e| e.into_inner()) = [None; 7];
+            return "pov dev: aiming offsets as built".into();
+        }
+        ["mark", v] => {
+            MARK.store(*v == "on", std::sync::atomic::Ordering::Relaxed);
+            return format!("pov dev: mark {v}");
+        }
         ["hold", "off"] => d.hold = None,
         ["hold", "stim", f, t] => match (f.parse::<usize>().ok().filter(|&f| f < ability::FLOURISHES.len()), secs(Some(t))) {
             (Some(f), Some(t)) => d.hold = Some(ability::Ability::at(ability::Kind::Stim(f), t)),
@@ -1542,18 +1618,18 @@ mod tests {
     }
 
     /// A9's offsets (spec §3): R5R's measured (forward -0.90, up +0.40) at the hip, (-1.62, 0)
-    /// aiming; crouched at the hip 0.751 lower, aiming not.
+    /// aiming (and `sight_fix`'s 0.07 in to the right); crouched at the hip 0.751 lower, aiming not.
     #[test]
     fn hold_offsets() {
         let near = |a: Vec3, b: Vec3| (a - b).length() < 1e-4;
         let p = Params::default();
         assert!(near(hold_offset(p, Weapon::R301), Vec3::new(0.0, 0.4, -0.9)), "{}", hold_offset(p, Weapon::R301));
-        assert!(near(hold_offset(Params { ads: 1.0, ..p }, Weapon::R301), Vec3::new(0.0, 0.0, -1.62)));
+        assert!(near(hold_offset(Params { ads: 1.0, ..p }, Weapon::R301), Vec3::new(-0.07, 0.0, -1.62)));
         assert!(near(hold_offset(Params { crouch: 1.0, ..p }, Weapon::R301), Vec3::new(0.0, 0.4 - 0.751, -0.9)));
-        assert!(near(hold_offset(Params { crouch: 1.0, ads: 1.0, ..p }, Weapon::R301), Vec3::new(0.0, 0.0, -1.62)));
+        assert!(near(hold_offset(Params { crouch: 1.0, ads: 1.0, ..p }, Weapon::R301), Vec3::new(-0.07, 0.0, -1.62)));
         // half way the cosine is half way
         let h = hold_offset(Params { ads: 0.5, ..p }, Weapon::R301);
-        assert!(near(h, Vec3::new(0.0, 0.2 - 0.751 * 0.0, (-0.9 - 1.62) / 2.0)), "{h}");
+        assert!(near(h, Vec3::new(-0.035, 0.2 - 0.751 * 0.0, (-0.9 - 1.62) / 2.0)), "{h}");
     }
 
     /// A5 offline: the camera bone's turn (vmparse's angles, as `fp trace`) through sprint, a slide
