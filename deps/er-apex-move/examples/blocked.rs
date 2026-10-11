@@ -53,7 +53,7 @@ fn main() {
     }
     let moved = c.state.position - from;
     println!(
-        "{path}: {} tris, start {:.1?}, pushing {:.2?} sprint {}: moved {:.1} units in {ticks} ticks ({:.2} m), ended {:.1?} grounded {}",
+        "{path}: {} tris, start {:.1?}, pushing {:.2?} sprint {}: moved {:.1} units in {ticks} ticks ({:.2} m), ended {:.1?} grounded {} stuck {}",
         tris.len(),
         from,
         wish,
@@ -61,6 +61,7 @@ fn main() {
         Vec3::new(moved.x, 0.0, moved.z).norm(),
         Vec3::new(moved.x, 0.0, moved.z).norm() * mpu,
         c.state.position,
-        c.state.grounded
+        c.state.grounded,
+        c.state.stuck
     );
 }

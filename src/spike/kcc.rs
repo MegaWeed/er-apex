@@ -213,6 +213,11 @@ struct Kcc {
     /// feet caught near terrain edges)
     blocked_since: Option<Instant>,
     blocked_dumps: u32,
+    /// Wall sheets left out of the windows: walls ours stopped him at where the game's own map ray
+    /// finds nothing (`unblock`: invisible walls at the Church of Elleh, 2026-10-11): the body, the
+    /// plane (normal, a point on it, world metres) and the triangles of that body on that plane
+    /// within `IGNORE_REACH` of the point are left out
+    ignored: Vec<(u32, Vec3, Vec3)>,
     /// Wall crossings written to dev/ so far.
     cross_dumps: u32,
     /// No ground in the last window: the game keeps the Tarnished until then (no window every
@@ -270,6 +275,7 @@ impl Kcc {
             slow_dumps: 0,
             blocked_since: None,
             blocked_dumps: 0,
+            ignored: Vec::new(),
             cross_dumps: 0,
             retry_at: None,
             stuck_since: None,
@@ -326,7 +332,8 @@ impl Kcc {
     }
 
     /// Keeps a fetched window (for `kcc probe`) and returns it in the controller's units.
-    fn adopt(&mut self, tris: Vec<([Vec3; 3], u32, u32)>) -> Vec<Triangle> {
+    fn adopt(&mut self, mut tris: Vec<([Vec3; 3], u32, u32)>) -> Vec<Triangle> {
+        tris.retain(|(t, _, body)| !ignored(&self.ignored, t, *body));
         let out: Vec<Triangle> = tris.iter().map(|(t, _, _)| t.map(|v| self.local(v))).collect();
         self.last_window = tris;
         self.stats.fetches += 1;
@@ -653,6 +660,9 @@ pub fn update(dt: f32) {
             log(format!("kcc: world origin shifted by {d:.2?}"));
             k.origin += d;
             k.window += d;
+            for (_, _, p) in &mut k.ignored {
+                *p += d;
+            }
             // the predicted landing too (a launch crossed a tile mid-flight and the next window
             // went to the old frame's landing: fell through, 2026-10-05 19:11)
             if let Some((p, _)) = k.landing.as_mut() {
@@ -753,6 +763,7 @@ pub fn update(dt: f32) {
                 let centre = run.center;
                 let origin = k.origin;
                 let (tx, rx) = channel();
+                raw.retain(|(t, _, body)| !ignored(&k.ignored, t, *body));
                 let n = raw.len().min(WINDOW.max_tris);
                 k.stats.fetches += 1;
                 std::thread::spawn(move || {
@@ -877,13 +888,17 @@ pub fn update(dt: f32) {
         let blocked = st.grounded && push > 0.5 && Vec3::new(v.x, 0.0, v.z).length() < 0.8;
         if !blocked {
             k.blocked_since = None;
-        } else if k.blocked_since.get_or_insert_with(Instant::now).elapsed().as_secs_f32() > 0.5 && k.blocked_dumps < 8 {
-            k.blocked_dumps += 1;
+        } else if k.blocked_since.get_or_insert_with(Instant::now).elapsed().as_secs_f32() > 0.5 {
             k.blocked_since = None;
-            let ticks = result.as_ref().map_or(0, |n| *n);
-            let name = format!("kcc_blocked_{}.txt", k.blocked_dumps);
-            let r = k.dump_to(&name, &before, &input, ticks, us);
-            log(format!("kcc: BLOCKED at {:.2?} pushing {:.2?}: {r}", k.origin + g3(&st.position) * MPU, g3(&input.wish)));
+            if k.blocked_dumps < 8 {
+                k.blocked_dumps += 1;
+                let ticks = result.as_ref().map_or(0, |n| *n);
+                let name = format!("kcc_blocked_{}.txt", k.blocked_dumps);
+                let r = k.dump_to(&name, &before, &input, ticks, us);
+                log(format!("kcc: BLOCKED at {:.2?} pushing {:.2?}: {r}", k.origin + g3(&st.position) * MPU, g3(&input.wish)));
+            }
+            let feet = k.origin + g3(&st.position) * MPU;
+            log(unblock(k, feet, Vec3::new(input.wish.x, 0.0, input.wish.z).normalize_or_zero(), player));
         }
     }
     if us > 1000.0 && k.slow_dumps < 5 {
@@ -1076,6 +1091,54 @@ pub fn probe() -> String {
   "));
     log(format!("kcc {s}"));
     s
+}
+
+/// Walking blocked: along the push, at heights from the ankles to the head, the window's nearest
+/// triangle against the game's own map ray. A body ours meets within a metre where the game's ray
+/// passes (or meets something farther) is a wall the game does not have: it is left out of the
+/// windows from now on and the window read again. What was found.
+fn unblock(k: &mut Kcc, feet: Vec3, dir: Vec3, player: &PlayerIns) -> String {
+    if dir == Vec3::ZERO {
+        return "kcc: unblock: no direction".into();
+    }
+    let mut rows = Vec::new();
+    let mut found: Vec<(u32, Vec3, Vec3)> = Vec::new();
+    for h in [0.1, 0.25, 0.5, 0.9, 1.3, 1.7] {
+        let o = feet + Vec3::Y * h;
+        let ours = k.last_window.iter().filter_map(|(t, layer, body)| ray_tri(o, dir, t, 1.0).map(|d| (d, *layer, *body, *t))).min_by(|a, b| a.0.total_cmp(&b.0));
+        let game = wall_between(feet, feet + dir * 2.0, h, player).map(|hit| (hit - o).length());
+        rows.push(format!("h {h}: ours {} game {}", ours.map_or("-".into(), |o| format!("{:.2} (layer {:#x} body {})", o.0, o.1, o.2)), game.map_or("-".into(), |g| format!("{g:.2}"))));
+        if let Some((d, _, body, t)) = ours
+            && game.is_none_or(|g| g > d + 0.3)
+        {
+            let n = (t[1] - t[0]).cross(t[2] - t[0]).normalize_or_zero();
+            // only a wall (a floor the ray grazes is not one)
+            if n.y.abs() < 0.7 && !found.iter().any(|f| f.0 == body && f.1.dot(n).abs() > PLANE_COS) {
+                found.push((body, n, o + dir * d));
+            }
+        }
+    }
+    if !found.is_empty() {
+        k.ignored.extend(found.iter().copied());
+        // read the window again now
+        k.window_read = Instant::now().checked_sub(std::time::Duration::from_secs(600)).unwrap_or(k.window_read);
+    }
+    let what = if found.is_empty() { "none (the game has those walls too)".to_string() } else { format!("left out {:?}", found.iter().map(|f| (f.0, f.1)).collect::<Vec<_>>()) };
+    format!("kcc: unblock {what}: {}", rows.join("; "))
+}
+
+/// `unblock`'s wall sheets: within this (m) of where he met one, its body's triangles on its plane.
+const IGNORE_REACH: f32 = 6.0;
+const PLANE_COS: f32 = 0.98;
+
+fn ignored(list: &[(u32, Vec3, Vec3)], t: &[Vec3; 3], body: u32) -> bool {
+    list.iter().any(|(b, n, p)| {
+        *b == body && {
+            let c = (t[0] + t[1] + t[2]) / 3.0;
+            let tn = (t[1] - t[0]).cross(t[2] - t[0]).normalize_or_zero();
+            tn.dot(*n).abs() > PLANE_COS && (c - *p).dot(*n).abs() < 0.08 && c.distance(*p) < IGNORE_REACH
+        }
+    })
 }
 
 /// Dev channel `kcc layers [r]`: every Havok layer within `r` m (default 4) of the Tarnished, read
