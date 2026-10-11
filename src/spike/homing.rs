@@ -183,7 +183,7 @@ pub fn set_guide(on: bool) -> String {
 }
 
 /// Where homing rounds could go now (each enemy in the cone: its aim point; the user's 2026-10-11
-/// "several, very faint"), with F4 on and the Sentinel in hand; none otherwise.
+/// "several", half transparent), with F4 on and the Sentinel in hand; none otherwise.
 pub fn would_hit() -> Vec<Vec3> {
     let mut v = Vec::new();
     if !guide_on() || super::weapons::active() != super::weapons::Slot::R301 || super::weapons::primary_gun() != super::weapons::Gun::Sentinel {

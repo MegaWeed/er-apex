@@ -1037,8 +1037,9 @@ static SIGHT_TUNE: std::sync::Mutex<[Option<(Vec3, f32)>; 7]> = std::sync::Mutex
 /// and the dot centred, the sights not over the view"): (right, forward, up) inches, and a pitch up
 /// about the eye, degrees. The R-301 drew 0.07 in to the left of its bones (its rear sight 17 px
 /// left at 1080p); the R-99's and the Flatline's front sights sat under the centre (the R-99's
-/// about 30 px), turned up about the eye part of the way (all the way, their sights hid the view
-/// over the centre: the user, 2026-10-11), their rear sights below it. The
+/// about 30 px), the R-99 turned up about the eye part of the way (all the way, its sights hid the
+/// view over the centre: the user, 2026-10-11), the Flatline as Apex has it (turned up, the same).
+/// The
 /// others' sights meet it as Apex poses them. `fp mark on` rings the sight's centre and the muzzle.
 fn sight_fix(w: Weapon) -> (Vec3, f32) {
     if let Some(t) = SIGHT_TUNE.lock().unwrap_or_else(|e| e.into_inner())[w as usize] {
@@ -1047,7 +1048,6 @@ fn sight_fix(w: Weapon) -> (Vec3, f32) {
     match w {
         Weapon::R301 => (Vec3::new(0.07, 0.0, 0.0), 0.0),
         Weapon::R99 => (Vec3::ZERO, 1.2),
-        Weapon::Flatline => (Vec3::ZERO, 0.6),
         _ => (Vec3::ZERO, 0.0),
     }
 }

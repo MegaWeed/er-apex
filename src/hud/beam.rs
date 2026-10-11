@@ -302,13 +302,13 @@ pub fn draw_cable(dl: &DrawListMut, size: [f32; 2]) {
     dl.add_circle(pb, 4.0 * k, [0.2, 0.2, 0.22, 1.0]).filled(true).build();
 }
 
-/// F4 (spike/homing.rs `would_hit`): faint white lines (20 % opaque) from the crosshair to each
+/// F4 (spike/homing.rs `would_hit`): white lines, half transparent, from the crosshair to each
 /// enemy the Sentinel's homing rounds could go to.
 pub fn draw_guide(dl: &DrawListMut, size: [f32; 2]) {
     let k = size[1] / 1080.0;
     for at in crate::spike::homing::would_hit() {
         if let Some(p) = project(at, size) {
-            dl.add_line([size[0] * 0.5, size[1] * 0.5], p, [1.0, 1.0, 1.0, 0.2]).thickness(1.5 * k).build();
+            dl.add_line([size[0] * 0.5, size[1] * 0.5], p, [1.0, 1.0, 1.0, 0.5]).thickness(1.5 * k).build();
         }
     }
 }
