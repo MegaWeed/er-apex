@@ -3,8 +3,8 @@
 //! crosshair itself does not move) and, if there is one, fires a round that flies from the muzzle,
 //! curving after the enemy as it moves, and hits it when it gets there (the damage then: gun.rs
 //! `apply_hit`). With no enemy in the cone the shot is an ordinary one. hud/beam.rs draws the
-//! rounds in flight, and with F4 on (the user's 2026-10-11 ask) a line from the crosshair to the
-//! enemy a shot would home onto now (`would_hit`).
+//! rounds in flight, and with F4 on (the user's 2026-10-11 ask) faint lines from the crosshair to
+//! the enemies a shot could home onto now (`would_hit`).
 //!
 //! Every number is here, and each can be changed in er_apex.ini without a rebuild (read fresh on
 //! every shot):
@@ -104,9 +104,20 @@ fn aim_point(c: &ChrIns, height: f32) -> Vec3 {
 
 /// The enemy in the cone ahead nearest its middle: its handle, npc id, the point the round goes to.
 fn acquire(eye: Vec3, fwd: Vec3, s: Settings) -> Option<(FieldInsHandle, u32, Vec3)> {
-    let cos_max = s.angle_deg.to_radians().cos();
-    let wcm = unsafe { WorldChrMan::instance() }.ok()?;
     let mut best: Option<(f32, FieldInsHandle, u32, Vec3)> = None;
+    in_cone(eye, fwd, s, |cos, c, at| {
+        if best.as_ref().is_none_or(|b| cos > b.0) {
+            best = Some((cos, c.field_ins_handle.clone(), c.npc_param_id as u32, at));
+        }
+    });
+    best.map(|b| (b.1, b.2, b.3))
+}
+
+/// Each enemy a homing round could go to (in the cone ahead): `found` with how near the middle
+/// (the cosine), the character and the point the round goes to.
+fn in_cone(eye: Vec3, fwd: Vec3, s: Settings, mut found: impl FnMut(f32, &ChrIns, Vec3)) {
+    let cos_max = s.angle_deg.to_radians().cos();
+    let Ok(wcm) = (unsafe { WorldChrMan::instance() }) else { return };
     for c in wcm.chr_sets.iter().flatten().flat_map(|set| set.characters()) {
         let c: &ChrIns = c;
         // not the friendly NPCs (team 26: Kalé, Varré, Boc, Irina... in NpcParam; angered they
@@ -122,11 +133,10 @@ fn acquire(eye: Vec3, fwd: Vec3, s: Settings) -> Option<(FieldInsHandle, u32, Ve
             continue;
         }
         let cos = (to / dist).dot(fwd);
-        if cos >= cos_max && best.as_ref().is_none_or(|b| cos > b.0) {
-            best = Some((cos, c.field_ins_handle.clone(), c.npc_param_id as u32, at));
+        if cos >= cos_max {
+            found(cos, c, at);
         }
     }
-    best.map(|b| (b.1, b.2, b.3))
 }
 
 /// A homing gun's shot: a round towards the enemy in the cone ahead, `damage` its damage for the
@@ -172,18 +182,20 @@ pub fn set_guide(on: bool) -> String {
     format!("homing guide line {}", if on { "on" } else { "off" })
 }
 
-/// Where a homing shot fired now would go (the enemy's aim point), with F4 on and the Sentinel in
-/// hand; None otherwise or with no enemy in the cone.
-pub fn would_hit() -> Option<Vec3> {
+/// Where homing rounds could go now (each enemy in the cone: its aim point; the user's 2026-10-11
+/// "several, very faint"), with F4 on and the Sentinel in hand; none otherwise.
+pub fn would_hit() -> Vec<Vec3> {
+    let mut v = Vec::new();
     if !guide_on() || super::weapons::active() != super::weapons::Slot::R301 || super::weapons::primary_gun() != super::weapons::Gun::Sentinel {
-        return None;
+        return v;
     }
     let s = settings();
     if !s.on || s.range <= 0.0 || s.angle_deg <= 0.0 {
-        return None;
+        return v;
     }
-    let (eye, fwd) = view()?;
-    acquire(eye, fwd, s).map(|t| t.2)
+    let Some((eye, fwd)) = view() else { return v };
+    in_cone(eye, fwd, s, |_, _, at| v.push(at));
+    v
 }
 
 pub fn update(dt: f32) {
