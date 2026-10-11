@@ -3,7 +3,8 @@
 //! crosshair itself does not move) and, if there is one, fires a round that flies from the muzzle,
 //! curving after the enemy as it moves, and hits it when it gets there (the damage then: gun.rs
 //! `apply_hit`). With no enemy in the cone the shot is an ordinary one. hud/beam.rs draws the
-//! rounds in flight.
+//! rounds in flight, and with F4 on (the user's 2026-10-11 ask) a line from the crosshair to the
+//! enemy a shot would home onto now (`would_hit`).
 //!
 //! Every number is here, and each can be changed in er_apex.ini without a rebuild (read fresh on
 //! every shot):
@@ -148,7 +149,51 @@ pub fn fire(head_only: bool, damage: impl Fn(Zone) -> f32) -> Option<String> {
 }
 
 /// Once a frame: the rounds fly, turning after their targets; those that get there hit.
+/// F4 (the Sentinel in hand): the line to the enemy a shot would home onto, on or off.
+static GUIDE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static F4_WAS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn f4_down() -> bool {
+    use windows::Win32::System::Threading::GetCurrentProcessId;
+    use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
+    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+    let mut pid = 0u32;
+    unsafe { GetWindowThreadProcessId(GetForegroundWindow(), Some(&mut pid)) };
+    pid == unsafe { GetCurrentProcessId() } && unsafe { GetAsyncKeyState(0x73) } as u16 & 0x8000 != 0
+}
+
+pub fn guide_on() -> bool {
+    GUIDE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Dev `guide [0|1]` and F4.
+pub fn set_guide(on: bool) -> String {
+    GUIDE.store(on, std::sync::atomic::Ordering::Relaxed);
+    format!("homing guide line {}", if on { "on" } else { "off" })
+}
+
+/// Where a homing shot fired now would go (the enemy's aim point), with F4 on and the Sentinel in
+/// hand; None otherwise or with no enemy in the cone.
+pub fn would_hit() -> Option<Vec3> {
+    if !guide_on() || super::weapons::active() != super::weapons::Slot::R301 || super::weapons::primary_gun() != super::weapons::Gun::Sentinel {
+        return None;
+    }
+    let s = settings();
+    if !s.on || s.range <= 0.0 || s.angle_deg <= 0.0 {
+        return None;
+    }
+    let (eye, fwd) = view()?;
+    acquire(eye, fwd, s).map(|t| t.2)
+}
+
 pub fn update(dt: f32) {
+    let down = f4_down();
+    if down && !F4_WAS.swap(true, std::sync::atomic::Ordering::Relaxed) && crate::state::in_world() && crate::mode::apex() {
+        log(set_guide(!guide_on()));
+    }
+    if !down {
+        F4_WAS.store(false, std::sync::atomic::Ordering::Relaxed);
+    }
     let mut rounds = ROUNDS.lock().unwrap_or_else(|e| e.into_inner());
     if rounds.is_empty() {
         return;

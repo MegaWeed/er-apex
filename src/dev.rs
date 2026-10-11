@@ -94,6 +94,7 @@ fn run(line: &str) -> String {
             (None, _, _) | (_, None, _) => "usage: setflag <id> <0|1>".into(),
             (_, _, Err(e)) => format!("no event flag manager: {e:?}"),
         },
+        "guide" => spike::homing::set_guide(args.first() != Some(&"0")),
         "aim" => match args.first().and_then(|a| a.parse().ok()) {
             Some(ms) => spike::gun::dev_aim(ms),
             None => "usage: aim <ms>".into(),
