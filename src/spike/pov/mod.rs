@@ -556,8 +556,9 @@ pub fn step(dt: f32, i: &Inputs) {
     let (jumped, landed) = moving.map_or((false, false), |m| (m.jumped, m.landed));
     // the Sentinel with the stim: the gun and the right hand as without it, the graph's two-handed
     // pose, shots, jumps and landings (the stim's arms take the left hand: the user's 2026-10-10
-    // ask), none of the one-handed clips
-    let sn_stim = onehanded && a.view == Weapon::Sentinel;
+    // ask), none of the one-handed clips; the Mastiff too (its one-handed idle put its sight over
+    // the crosshair, crouched more: the user, 2026-10-10)
+    let sn_stim = onehanded && two_handed_stim(a.view);
     let graph_moving = moving.map(|mut m| {
         if onehanded && !sn_stim {
             (m.jumped, m.landed) = (false, false);
@@ -595,7 +596,7 @@ pub fn step(dt: f32, i: &Inputs) {
     // the Sentinel with the stim: only the stim's own clips (the injector, the left arm) over the
     // graph's two-handed pose; its one-handed ones (the switch, idle, sprint, fire, aim) turned the
     // gun and took the right hand over to the left (the user, 2026-10-10)
-    if a.view == Weapon::Sentinel
+    if two_handed_stim(a.view)
         && let Some(o) = a.ability_out.as_mut()
         && (o.show_stim || o.onehanded > 0.0)
     {
@@ -1066,6 +1067,7 @@ fn clip_for<'a>(p: &'a Pack, name: &str, w: Weapon) -> Option<&'a Clip> {
 fn apply_ability(p: &Pack, ab: &ability::Out, local: &mut [Xf], w: Weapon) {
     let nb = local.len();
     let sn_stim = SN_STIM_POSE.load(std::sync::atomic::Ordering::Relaxed);
+    let gun_bones = format!("{}:", w.prefix().trim_end_matches('_'));
     let spine = p.names.iter().position(|n| n == "def_c_spineC");
     // (relative to `jx_c_pov`, which the view model is drawn from)
     let before = if sn_stim { spine.map(|s| world_of(p, local, p.pov).inverse().mul(world_of(p, local, s))) } else { None };
@@ -1079,11 +1081,11 @@ fn apply_ability(p: &Pack, ab: &ability::Out, local: &mut [Xf], w: Weapon) {
             };
         }
     }
-    // the Sentinel with the stim: the gun and the right arm back where the spine had them
+    // the Sentinel (the Mastiff) with the stim: the gun and the right arm back where the spine had them
     if let (Some(s), Some(before)) = (spine, before) {
         let fix = world_of(p, local, s).inverse().mul(world_of(p, local, p.pov)).mul(before);
         for (b, n) in p.names.iter().enumerate() {
-            if p.parents[b] == s as i16 && (n == "def_r_clav" || n.starts_with("sn:")) {
+            if p.parents[b] == s as i16 && (n == "def_r_clav" || n.starts_with(&gun_bones)) {
                 local[b] = fix.mul(local[b]);
             }
         }
@@ -1264,7 +1266,13 @@ fn gun_group(w: Weapon) -> usize {
 /// The kunai is the hands' this frame (`clip_for`).
 static MELEE_POSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// Set before pose_pack: the Sentinel with the stim. The stim's clips turn the body (hip, spine)
+/// The guns held two-handed under the stim's arms (its clips only on the left arm): the Sentinel
+/// and the Mastiff, whose one-handed clips turned them across the view.
+fn two_handed_stim(w: Weapon) -> bool {
+    matches!(w, Weapon::Sentinel | Weapon::Mastiff)
+}
+
+/// Set before pose_pack: the Sentinel (the Mastiff) with the stim. The stim's clips turn the body (hip, spine)
 /// with the one-handed sprint in mind; the Sentinel and the right arm hang off the spine, so its
 /// barrel pointed left on the run (the user, 2026-10-10). Left alone, the body put the injector
 /// in the right side. So the body turns as the stim has it (the left arm's stab lands), and the
@@ -1291,7 +1299,8 @@ struct Vis {
     weapon: Weapon,
 }
 
-fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis) -> Option<Posed> {
+/// The graph's passes and an ability's layers: each bone's local pose.
+fn pose_local(p: &Pack, o: &Out, ab: Option<&ability::Out>, w: Weapon) -> Option<Vec<Xf>> {
     let nb = p.parents.len();
     // each pass's samples with their weights, found once
     let resolve = |pass: &Pass| -> Option<Resolved> {
@@ -1317,12 +1326,14 @@ fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis
         local.push(x);
     }
     if let Some(ab) = ab {
-        apply_ability(p, ab, &mut local, vis.weapon);
+        apply_ability(p, ab, &mut local, w);
     }
-    let mut world: Vec<Xf> = Vec::with_capacity(nb);
-    for (&l, &parent) in local.iter().zip(&p.parents) {
-        world.push(if parent >= 0 { world[parent as usize].mul(l) } else { l });
-    }
+    Some(local)
+}
+
+fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis) -> Option<Posed> {
+    let local = pose_local(p, o, ab, vis.weapon)?;
+    let world = to_world(p, &local);
     let pov_inv = world[p.pov].inverse();
     // the bob and sway matrix (CAMERA_BASE's axes), in `jx_c_pov`'s
     let base = camera_base();
@@ -1369,6 +1380,15 @@ fn pose_pack(p: &Pack, o: &Out, sway: &Sway, ab: Option<&ability::Out>, vis: Vis
     .map(|m| mirror_point(m.t * INCH));
     let gun = p.gun_bones(o.w).0;
     Some(Posed { carriers, camera_turn: pov_inv.mul(world[p.camera]).r, muzzle: gun.map(|g| pov_inv.mul(world[g]).mul(muzzle_of(o.w))), muzzle_view })
+}
+
+/// Each bone's pose in the model's space from the local poses.
+fn to_world(p: &Pack, local: &[Xf]) -> Vec<Xf> {
+    let mut world: Vec<Xf> = Vec::with_capacity(local.len());
+    for (&l, &parent) in local.iter().zip(&p.parents) {
+        world.push(if parent >= 0 { world[parent as usize].mul(l) } else { l });
+    }
+    world
 }
 
 /// Apex's camera axes (x left, y up, z forward) as (forward, left, up).
@@ -1935,5 +1955,64 @@ mod tests {
         assert!((r - Vec3::new(0.84, 0.09, -95.96)).length() < 0.05, "{r}");
         assert!(turn.length() < 1e-3, "{turn}");
         assert_eq!(posed.carriers.len(), p.carriers.len());
+    }
+
+    /// The guns held two-handed under the stim (the Sentinel, the Mastiff): standing and crouched
+    /// their bones as near the view's centre as without it (the Mastiff's one-handed idle put its
+    /// sight over the crosshair: the user, 2026-10-10); each gun's nearest bone printed.
+    #[test]
+    fn stim_keeps_the_crosshair_clear() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("apex-data/pov/octane_wingman/fuse_pov.anim");
+        let Ok(d) = std::fs::read(&path) else { return };
+        let p = pack::parse(&d).unwrap();
+        for w in [Weapon::R301, Weapon::Wingman, Weapon::R99, Weapon::Flatline, Weapon::Sentinel, Weapon::Mastiff] {
+            let Some(gun) = p.gun_bones(w).0.filter(|_| w == Weapon::R301 || p.gun_bones(w).0 != p.gun) else { continue };
+            for crouch in [0.0f32, 1.0] {
+                let mut g = Graph::new_for(w);
+                let moving = Moving { crouched: crouch > 0.5, duck_frac: crouch, ..Default::default() };
+                for _ in 0..120 {
+                    g.step(1.0 / 60.0, &Signals { moving: Some(moving), ..Default::default() });
+                }
+                let o = g.out();
+                let params = ability::Params { crouch, ..Default::default() };
+                let mut ab = ability::Ability::new(ability::Kind::Stim(0));
+                for _ in 0..90 {
+                    ab.step(1.0 / 60.0, params);
+                }
+                let mut aout = ab.out(params);
+                // as the frame has it: the two-handed guns under the stim's own clips only
+                if two_handed_stim(w) {
+                    aout.layers.retain(|l| l.samples.first().is_none_or(|s| s.0.starts_with("stim_")));
+                }
+                // the gun's bones (the gun bone and all under it): degrees from the view's centre of the nearest
+                let nearest = |ab: Option<&ability::Out>| {
+                    SN_STIM_POSE.store(ab.is_some() && two_handed_stim(w), std::sync::atomic::Ordering::Relaxed);
+                    let world = to_world(&p, &pose_local(&p, &o, ab, w).unwrap());
+                    SN_STIM_POSE.store(false, std::sync::atomic::Ordering::Relaxed);
+                    let held = Xf { t: hold_offset(o.params, o.w), r: Quat::IDENTITY }.mul(world[p.pov].inverse());
+                    let mut best = (f32::MAX, String::new());
+                    for b in 0..world.len() {
+                        let mut k = b as i16;
+                        while k >= 0 && k as usize != gun {
+                            k = p.parents[k as usize];
+                        }
+                        let v = held.mul(world[b]).t;
+                        if k < 0 || v.z <= 0.0 {
+                            continue;
+                        }
+                        let d = Vec3::new(v.x, v.y, 0.0).length().atan2(v.z).to_degrees();
+                        if d < best.0 {
+                            best = (d, p.names[b].clone());
+                        }
+                    }
+                    best
+                };
+                let (plain, stim) = (nearest(None), nearest(Some(&aout)));
+                println!("{w:?} crouch {crouch}: plain {:.1}° {} | stim {:.1}° {}", plain.0, plain.1, stim.0, stim.1);
+                if two_handed_stim(w) {
+                    assert!((stim.0 - plain.0).abs() < 0.5, "{w:?} crouch {crouch}: {stim:?} vs {plain:?}");
+                }
+            }
+        }
     }
 }
