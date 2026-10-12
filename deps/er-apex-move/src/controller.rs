@@ -545,6 +545,7 @@ impl Controller {
         ) {
             // A floor below a steep ramp must not pull the capsule through it.
             // At a stair edge, wall and top-face hits at the same TOI are allowed.
+            let mut hit = hit;
             if hit.fraction > 0.0 {
                 if let Some(obstacle) = self.world.sweep(
                     self.state.position,
@@ -556,7 +557,13 @@ impl Controller {
                     if (hit.fraction - obstacle.fraction) * distance > self.params.skin * 2.0
                         && obstacle.surface_normal.y.abs() > 1.0e-4
                     {
-                        return;
+                        // the round bottom resting on an edge (a stair's nosing) stands on it,
+                        // as Source's ground test takes a contact by its own normal: refused, he
+                        // hung there airborne after every step up (Volcano Manor, 2026-10-12)
+                        if obstacle.normal.y < self.slope_cos() {
+                            return;
+                        }
+                        hit.fraction = obstacle.fraction;
                     }
                 }
             }
@@ -644,7 +651,9 @@ impl Controller {
             let normal = self.state.ground_normal.unwrap();
             // Tangent motion with horizontal speed preserved on walkable slopes.
             delta.y = -(normal.x * delta.x + normal.z * delta.z) / normal.y;
-            self.state.velocity.y = delta.y / dt;
+            // the rise is the ground's, not kept as speed: up a stair's slanted nosing it threw
+            // him into the air off the tread (hopping up stairs: Volcano Manor, 2026-10-12)
+            self.state.velocity.y = delta.y.min(0.0) / dt;
         } else {
             // Exact constant-gravity displacement gives a <1% discrete jump apex.
             let g = self.air_gravity();

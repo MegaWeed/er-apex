@@ -125,10 +125,40 @@ pub fn enabled() -> bool {
 
 /// The eye above the feet (m).
 pub fn eye_height() -> f32 {
-    match VIEW_HEIGHT.load(Ordering::Relaxed) {
+    let view = match VIEW_HEIGHT.load(Ordering::Relaxed) {
         0 => STAND_VIEW * UNIT,
         bits => f32::from_bits(bits) * UNIT,
-    }
+    };
+    view + f32::from_bits(STEP_OFFSET.load(Ordering::Relaxed))
+}
+
+/// Source's (Apex's) smoothing of the view on stairs (`C_BasePlayer::SmoothViewOnStairs`: the
+/// eye's height follows the feet's at 150 units/s on the ground, at most 18 units behind): each
+/// step up threw the view a step at once (Volcano Manor's stairs, 2026-10-12). The eye's offset
+/// from the feet now (m, f32 bits) and the height it follows (the drawn feet's).
+static STEP_OFFSET: AtomicU32 = AtomicU32::new(0);
+static STEP_Z: Mutex<Option<f32>> = Mutex::new(None);
+const STEP_SMOOTH_SPEED: f32 = 150.0 * UNIT;
+const STEP_SMOOTH_MAX: f32 = 18.0 * UNIT;
+
+fn smooth_stairs(dt: f32) {
+    let feet = DRAWN.lock().unwrap_or_else(|e| e.into_inner()).as_ref().map(|d| d.1.y);
+    let grounded = spike::kcc::locomotion().is_some_and(|l| l.grounded);
+    let mut z = STEP_Z.lock().unwrap_or_else(|e| e.into_inner());
+    let offset = match (feet, *z) {
+        (Some(f), Some(old)) if grounded && (f - old).abs() < 1.0 => {
+            let dir = (f - old).signum();
+            let mut s = old + dt.max(0.0) * STEP_SMOOTH_SPEED * dir;
+            s = if dir > 0.0 { s.min(f).max(f - STEP_SMOOTH_MAX) } else { s.max(f).min(f + STEP_SMOOTH_MAX) };
+            *z = Some(s);
+            s - f
+        }
+        (f, _) => {
+            *z = f;
+            0.0
+        }
+    };
+    STEP_OFFSET.store(offset.to_bits(), Ordering::Relaxed);
 }
 
 /// The view height (Apex units) from the movement controller; None when it lets go.
@@ -186,6 +216,7 @@ pub fn update(dt: f32) {
     if view_model {
         spike::pov::step(dt, &view_model_inputs());
     }
+    smooth_stairs(dt);
     step_fx(dt);
     if hands_off && !view_model {
         if POSED.swap(false, Ordering::Relaxed) {
