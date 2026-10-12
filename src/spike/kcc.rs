@@ -326,9 +326,10 @@ impl Kcc {
             "input {} {} {} {} {} {} {ticks} {us}\n",
             input.wish.x, input.wish.y, input.wish.z, input.sprint as u8, input.crouch as u8, input.jump as u8
         );
-        for (t, _, _) in &self.last_window {
+        // each triangle, then its Havok layer and body
+        for (t, layer, body) in &self.last_window {
             let l = t.map(|v| self.local(v));
-            out += &format!("{} {} {} {} {} {} {} {} {}\n", l[0].x, l[0].y, l[0].z, l[1].x, l[1].y, l[1].z, l[2].x, l[2].y, l[2].z);
+            out += &format!("{} {} {} {} {} {} {} {} {} {layer} {body}\n", l[0].x, l[0].y, l[0].z, l[1].x, l[1].y, l[1].z, l[2].x, l[2].y, l[2].z);
         }
         let path = paths::file("dev").join(name);
         match std::fs::write(&path, out) {

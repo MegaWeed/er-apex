@@ -16,7 +16,7 @@ fn main() {
     let input = nums(&lines.next().unwrap()["input".len()..]);
     let tris: Vec<Triangle> = lines
         .map(nums)
-        .filter(|v| v.len() == 9)
+        .filter(|v| v.len() == 9 || v.len() == 11)
         .map(|v| [Vec3::new(v[0], v[1], v[2]), Vec3::new(v[3], v[4], v[5]), Vec3::new(v[6], v[7], v[8])])
         .collect();
     let (mpu, gravity, slope, mult) = (head[0], head[1], head[2], head[3]);
