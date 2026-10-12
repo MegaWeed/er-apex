@@ -252,11 +252,14 @@ impl World {
             }
             // Out of exact casts (dense rubble): stop at this candidate's plane, a lower bound of
             // its time of impact. Never deeper than the true contact; at worst a little early.
-            // Not for a plane the motion does not approach (one through the capsule, its triangle
-            // beside it): its bound is the start, and dense meshes ran out of casts on those
-            // first, so every step up was refused and walking stopped at small ledges, as at an
-            // invisible wall (Church of Elleh, Volcano Manor's stairs: 2026-10-11)
-            if casts >= MAX_CASTS && approach >= -1.0e-6 {
+            // Not for a plane the motion does not approach, nor one already through the capsule
+            // (its triangle beside it, a stair's riser leaning a little over the step below): its
+            // bound is the start, and dense meshes ran out of casts on those first, so every step
+            // up was refused and walking stopped at small ledges and on stairs, as at an invisible
+            // wall (Church of Elleh, Volcano Manor's stairs: 2026-10-11, 2026-10-12)
+            // Nor one the motion runs nearly along (rising past a bump's face): its plane bound
+            // comes far too early.
+            if casts >= MAX_CASTS && (approach >= -0.25 * delta.norm() || gap < -skin) {
                 continue;
             }
             if casts >= MAX_CASTS {

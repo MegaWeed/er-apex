@@ -110,9 +110,15 @@ fn params() -> MoveParams {
         // 5 slide iterations, not the library's 8: rubble made 8-iteration ticks cost over 1 ms
         // (journal 2026-10-04); fewer only stop a slide along very rough walls a little sooner
         collision_iterations: 5,
+        standing: er_apex_move::PoseParams { height: STAND_HEIGHT, ..MoveParams::default().standing },
         ..MoveParams::default()
     }
 }
+
+/// The standing capsule's height (Apex units): Apex's 72 is 1.77 m here, Elden Ring's player
+/// capsule 1.5 m, and beams Elden Ring lets him walk under at 1.6 m stopped ours (a doorway on
+/// Volcano Manor's stairs, 2026-10-12). 64: 1.57 m, over the eye (60).
+pub const STAND_HEIGHT: f32 = 64.0;
 
 /// Step times (µs) of the last frames, and the counts the S5 test reads.
 #[derive(Default)]

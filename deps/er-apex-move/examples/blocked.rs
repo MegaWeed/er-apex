@@ -26,6 +26,8 @@ fn main() {
         meters_per_unit: Some(mpu),
         max_slope_radians: Some(slope.to_radians()),
         collision_iterations: 5,
+        // er-apex's (spike/kcc.rs `STAND_HEIGHT`)
+        standing: er_apex_move::PoseParams { height: 64.0, ..MoveParams::default().standing },
         ..MoveParams::default()
     };
     let start = Vec3::new(state[0], state[1], state[2]);
