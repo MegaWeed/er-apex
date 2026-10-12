@@ -1143,10 +1143,10 @@ pub(super) fn fire_ray_ex(spread_deg: f32, r: (f32, f32), offset: Vec3, weapon: 
         if c.modules.data.hp <= 0 {
             continue;
         }
-        if !crate::spike::body::is_enemy_team(c.team_type) {
+        if !crate::spike::body::is_enemy(c) {
             // which characters the shots pass because of their team (the user, 2026-10-08: "some
             // monsters take no damage"): once per character kind
-            if deal && c.team_type != 1 {
+            if deal && c.team_type != 1 && !crate::spike::body::is_player(c) {
                 let (h, rad) = super::body::cylinder(c);
                 let q = c.modules.physics.position;
                 if ray_cylinder(origin, dir, Vec3::new(q.0, q.1, q.2), h, rad).is_some_and(|t| t < range) {

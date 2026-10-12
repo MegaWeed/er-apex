@@ -11,6 +11,22 @@ use eldenring::cs::ChrIns;
 /// Adan: teams 0, 9, 11, 16, 26, 27, 30, 48, 49, 51, 52, 58). Not hit: ini `friendly_teams` (a
 /// comma list; default 1 the player, 2 white phantoms, 8 allies, 12 fighting allies: the Souls
 /// games' team numbers, 推断 for Elden Ring), and ini `enemy_teams` set instead keeps only those.
+/// Whether the weapons hit `c` and the HUD marks it: an enemy team (`is_enemy_team`) and not the
+/// player himself. Invading (Volcano Manor's contracts) the player's own team is another one, and
+/// the shots found his own body first: he shot himself (the user, 2026-10-12).
+pub fn is_enemy(c: &ChrIns) -> bool {
+    is_enemy_team(c.team_type) && !is_player(c)
+}
+
+/// Whether `c` is the player's own character.
+pub fn is_player(c: &ChrIns) -> bool {
+    use fromsoftware_shared::FromStatic;
+    unsafe { eldenring::cs::WorldChrMan::instance() }
+        .ok()
+        .and_then(|w| w.main_player.as_ref())
+        .is_some_and(|p| std::ptr::eq(c, &p.chr_ins))
+}
+
 pub fn is_enemy_team(team: u8) -> bool {
     static TEAMS: std::sync::OnceLock<(Option<Vec<u8>>, Vec<u8>)> = std::sync::OnceLock::new();
     let (only, friendly) = TEAMS.get_or_init(|| {

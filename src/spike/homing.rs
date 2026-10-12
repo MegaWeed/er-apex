@@ -123,7 +123,7 @@ fn in_cone(eye: Vec3, fwd: Vec3, s: Settings, mut found: impl FnMut(f32, &ChrIns
         // not the friendly NPCs (team 26: Kalé, Varré, Boc, Irina... in NpcParam; angered they
         // turn 27): a round homing onto one turned Kalé and Varré against the player (2026-10-10).
         // Shot at on purpose they are hit, as in Elden Ring.
-        if c.modules.data.hp <= 0 || !super::body::is_enemy_team(c.team_type) || c.team_type == FRIENDLY_NPC_TEAM {
+        if c.modules.data.hp <= 0 || !super::body::is_enemy(c) || c.team_type == FRIENDLY_NPC_TEAM {
             continue;
         }
         let at = aim_point(c, s.height);
