@@ -298,7 +298,10 @@ impl World {
             // vertex contact within the skin returns a slightly different normal every cast, so
             // motion clipped along one still met the next at time 0 by ~1e-5 and the capsule hung
             // in the air for good, gravity piling up (Boss room, 2026-10-04).
-            if delta.dot(&normal) >= -1.0e-3 * delta.norm() {
+            // A contact the motion meets at under 3 degrees (rising past a wall that leans a
+            // fraction of a degree over him) does not stop it either: it refused his steps up
+            // beside such walls (Volcano Manor's stairs, 2026-10-12).
+            if delta.dot(&normal) >= -0.05 * delta.norm() {
                 continue;
             }
             let mut surface_normal = *triangle.normal().expect("nondegenerate triangle");

@@ -1109,11 +1109,18 @@ fn unblock(k: &mut Kcc, feet: Vec3, dir: Vec3, player: &PlayerIns) -> String {
     }
     let mut rows = Vec::new();
     let mut found: Vec<(u32, Vec3, Vec3)> = Vec::new();
-    for h in [0.1, 0.25, 0.5, 0.9, 1.3, 1.7] {
-        let o = feet + Vec3::Y * h;
+    // across the capsule's width too: a corner the body's side meets is off the middle ray (the
+    // tip of a beam at head height, Volcano Manor 2026-10-12)
+    let side = Vec3::new(-dir.z, 0.0, dir.x) * 0.3;
+    for (h, s) in [0.1, 0.25, 0.5, 0.9, 1.3, 1.5].into_iter().flat_map(|h| [(h, 0.0), (h, -1.0), (h, 1.0)]) {
+        let base = feet + side * s;
+        let o = base + Vec3::Y * h;
         let ours = k.last_window.iter().filter_map(|(t, layer, body)| ray_tri(o, dir, t, 1.0).map(|d| (d, *layer, *body, *t))).min_by(|a, b| a.0.total_cmp(&b.0));
-        let game = wall_between(feet, feet + dir * 2.0, h, player).map(|hit| (hit - o).length());
-        rows.push(format!("h {h}: ours {} game {}", ours.map_or("-".into(), |o| format!("{:.2} (layer {:#x} body {})", o.0, o.1, o.2)), game.map_or("-".into(), |g| format!("{g:.2}"))));
+        let game = wall_between(base, base + dir * 2.0, h, player).map(|hit| (hit - o).length());
+        if ours.is_none() && game.is_none() {
+            continue;
+        }
+        rows.push(format!("h {h} side {s}: ours {} game {}", ours.map_or("-".into(), |o| format!("{:.2} (layer {:#x} body {})", o.0, o.1, o.2)), game.map_or("-".into(), |g| format!("{g:.2}"))));
         if let Some((d, _, body, t)) = ours
             && game.is_none_or(|g| g > d + 0.3)
         {

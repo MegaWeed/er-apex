@@ -1556,18 +1556,15 @@ impl Controller {
     }
 
     fn try_step(&self, start: Vec3, delta: Vec3, pose: PoseParams, low: Vec3) -> Option<Vec3> {
-        let rise = self.params.step_height + self.params.skin * 2.0;
-        if self
-            .world
-            .sweep(
-                start,
-                Vec3::y() * rise,
-                pose.radius,
-                pose.height,
-                self.params.skin,
-            )
-            .is_some()
-        {
+        // up as far as there is room, as Source's StepMove traces up (the end of its trace, not
+        // all or nothing): a lantern on the wall beside him over head height refused the 3 cm lip
+        // under his feet (Volcano Manor, 2026-10-12)
+        let full = self.params.step_height + self.params.skin * 2.0;
+        let rise = match self.world.sweep(start, Vec3::y() * full, pose.radius, pose.height, self.params.skin) {
+            Some(hit) => full * hit.fraction - self.params.skin,
+            None => full,
+        };
+        if rise <= self.params.skin * 2.0 {
             return None;
         }
         let raised = start + Vec3::y() * rise;
