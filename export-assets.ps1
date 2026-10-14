@@ -1,12 +1,16 @@
 <#
 Make the game assets (apex-data\, er-data\) from your own Apex Legends and ELDEN RING installs.
 Asks for the two game folders (found through Steam when it can), checks the tool chain, then runs
-the eight steps in order (about 70 minutes, about 45 GB). Step 4 starts the game once.
+the eight steps in order (about 70 minutes, about 45 GB).
 
   pwsh export-assets.ps1                              ask for the folders, run all steps
   pwsh export-assets.ps1 -ApexDir <dir> -EldenRingDir <dir>   no questions
   pwsh export-assets.ps1 -NoArena                     no test area (game.ps1 spawn then does nothing)
   pwsh export-assets.ps1 -Force                       make everything again, even what is already there
+  powershell -File export-assets.ps1 -Bundled ...     a release (release/package.ps1): its own Python
+                                                      in tools\python, ertool, erextract and texconv built
+                                                      already, RSX 2.3.0 downloaded; Rust, .NET and me3
+                                                      not needed (Visual Studio's C++ tools still are)
   pwsh export-assets.ps1 -From 5 -Force               make steps 5 to 8 again
   pwsh export-assets.ps1 -SkinModels                  the R-99's Cutting Edge and the Flatline's Teal Zeal models
                                                       instead of the default ones (their skins need them)
@@ -25,12 +29,14 @@ param(
     [switch]$NoArena,
     [string]$Skins = 'apex-data\skins',
     [switch]$SkinModels,
+    [switch]$Bundled,
     [switch]$Force
 )
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
-$Game = "$Root\tools\dev\game.ps1"
 Set-Location $Root
+# a release's own Python first (the scripts run `python`, some of them run it again)
+if (Test-Path "$Root\tools\python\python.exe") { $env:PATH = "$Root\tools\python;$Root\tools\python\Scripts;$env:PATH" }
 
 # ---- game folders ----
 
@@ -53,6 +59,11 @@ function Get-GameDir([string]$given, [string]$what, [string]$default, [string]$m
     if ($given) {
         if (& $ok $given) { return (Resolve-Path $given).Path }
         throw "$given is not $what (no $mark in it)"
+    }
+    # a release's setup asks nothing: the folder Steam has
+    if ($Bundled) {
+        if (& $ok $default) { return (Resolve-Path $default).Path }
+        throw "no $what found (Steam has none with $mark in it)"
     }
     while ($true) {
         $in = Read-Host "$what$(if ($default) { " [$default]" })"
@@ -82,14 +93,25 @@ Check 'python >= 3.11' {
 Check 'numpy' { Py 'import numpy; print(numpy.__version__)' } 'pip install numpy'
 Check 'pillow' { Py 'import PIL; print(PIL.__version__)' } 'pip install pillow'
 Check 'matplotlib' { Py 'import matplotlib; print(matplotlib.__version__)' } 'pip install matplotlib'
-Test-Rust
+if (-not $Bundled) { Test-Rust }
 Check 'MSBuild (Visual Studio)' { Get-VisualStudio 'Microsoft.Component.MSBuild' } 'install Visual Studio 2022 with "Desktop development with C++" (build_rsx.py builds RSX with it)'
+if (-not $Bundled) {
 Check '.NET SDK 8.0.4xx >= 8.0.425' {
     # global.json pins 8.0.425 with rollForward latestPatch: the same feature band, that patch or later
     & dotnet --list-sdks 2>$null | ForEach-Object { ($_ -split ' ')[0] } |
         Where-Object { $_ -match '^8\.0\.4(\d\d)$' -and [int]$Matches[1] -ge 25 } | Select-Object -Last 1
 } 'install .NET SDK 8.0.425 or a later 8.0.4xx'
 Check 'me3' { $v = & "$Root\tools\bin\me3\bin\me3.exe" --version 2>$null; if ($LASTEXITCODE -eq 0) { ("$v" -split ' ')[-1] } } 'unzip the me3 Windows release into tools\bin\me3\ (see README)'
+}
+if ($Bundled -and -not (Test-Path "$Root\tools\rsx-2.3.0\rsx_nogui.exe")) {
+    # r-ex's own release, fetched from its page on the player's PC
+    Write-Host 'downloading RSX 2.3.0 (github.com/r-ex/rsx)...'
+    $zip = "$Root\scratch\rsx_2.3.0.zip"
+    New-Item -ItemType Directory -Force "$Root\scratch" | Out-Null
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest 'https://github.com/r-ex/rsx/releases/download/2.3.0/rsx_2.3.0.zip' -OutFile $zip -UseBasicParsing
+    Expand-Archive $zip "$Root\tools\rsx-2.3.0" -Force
+}
 Check 'texconv' { Have 'tools\bin\texconv\texconv.exe' } 'put texconv.exe from DirectXTex into tools\bin\texconv\ (see README)'
 Check 'rsx 2.3.0' { Have 'tools\rsx-2.3.0\rsx_nogui.exe' } 'unzip the RSX 2.3.0 release into tools\rsx-2.3.0\ (see README)'
 Assert-Toolchain
@@ -187,34 +209,10 @@ Step 3 'ELDEN RING extraction (about 2 min)' {
     }
 }
 
-Step 4 'the skeleton from the running game (about 1 min)' {
-    Make 'er-data\runtime\c0000_runtime.json', 'er-data\skeleton\c0000_live_skeleton.json' 'game skeleton c0000_runtime.json' {
-        if (Get-Process eldenring -ErrorAction SilentlyContinue) { throw 'the game is running: quit it first (pwsh tools/dev/game.ps1 stop)' }
-        if (-not (Test-Path "$Root\target\x86_64-pc-windows-msvc\release\er_apex.dll")) { & "$Root\build.ps1" }
-        $save = Get-ChildItem "$env:APPDATA\EldenRing\*\ER0000_fuse.sl2" -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($save) {
-            $bak = "$Root\scratch\saves\before-export-$(Get-Date -Format yyyyMMdd-HHmmss)"
-            New-Item -ItemType Directory -Force $bak | Out-Null
-            Copy-Item "$($save.FullName)*" $bak
-        }
-        # no Octane models yet: first person stays off
-        & $Game install -Set 'quickboot = 1;qb_place = first_step' -NoArena
-        & $Game start
-        try {
-            $log = "$Root\scratch\mod\logs\er_apex.log"
-            $t0 = Get-Date
-            while (-not ((Test-Path $log) -and (Select-String -Quiet 'quickboot: done' $log))) {
-                if (((Get-Date) - $t0).TotalSeconds -gt 300) { throw "the quick start did not finish in 300 s: see $log" }
-                Start-Sleep 1
-            }
-            & $Game cmd 'skeleton c0000_runtime.json' | Out-Null
-        } finally { & $Game stop | Out-Null }
-        $dump = "$Root\scratch\mod\dev\c0000_runtime.json"
-        if (-not (Test-Path $dump)) { throw "the game wrote no $dump" }
-        New-Item -ItemType Directory -Force er-data\runtime, er-data\skeleton | Out-Null
-        Copy-Item $dump er-data\runtime\c0000_runtime.json
-        Copy-Item $dump er-data\skeleton\c0000_live_skeleton.json
-    }
+Step 4 'the skeleton (about 1 min)' {
+    # from the game files (Skeleton.hkx, step 3): the same names, parents and reference pose the
+    # running game's dump had (skeleton_map.py checks them), so no game start
+    Run 'er-data\runtime\c0000_runtime.json', 'er-data\skeleton\c0000_live_skeleton.json' python tools/retarget/offline_skeleton.py
     Run 'er-data\s2b\mapping-v0.json' python tools/retarget/skeleton_map.py
 }
 

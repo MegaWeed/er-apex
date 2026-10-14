@@ -1,0 +1,13 @@
+[package]
+name = "er-apex-setup"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Runs er-apex's first-launch asset setup (setup.ps1 beside it) in a console window"
+
+[[bin]]
+name = "er-apex-setup"
+path = "src/main.rs"
+
+[workspace]
