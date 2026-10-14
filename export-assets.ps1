@@ -236,7 +236,9 @@ Step 6 'first-person model 998 and the animation packs (about 17 min)' {
 }
 
 Step 7 'first-person base pose (about 1 min)' {
-    Run 'apex-data\anim\fuse.anim' python tools/fuseanim/export_anim.py
+    # (its check runs a Rust example: a release has no Rust)
+    if ($Bundled) { Run 'apex-data\anim\fuse.anim' python tools/fuseanim/export_anim.py --skip-rust }
+    else { Run 'apex-data\anim\fuse.anim' python tools/fuseanim/export_anim.py }
     Run 'er-data\s3\fuse\align.json' python tools/fusemesh/convert_fuse.py --geometry-only
     Run 'er-data\s4\fuse_er.anim' python tools/retarget/bake_er_anim.py fuse_idle_rifle_ADS
 }
