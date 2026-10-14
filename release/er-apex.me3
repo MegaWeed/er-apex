@@ -1,0 +1,15 @@
+profileVersion = "v1"
+# er-apex through me3 (bundled in me3\): offline, Easy Anti-Cheat off. Its own save file, a copy of
+# the normal one made by me3 on the first start, so the mod never plays on your normal save.
+savefile = "ER0000_apex.sl2"
+
+[[supports]]
+game = "eldenring"
+
+[[natives]]
+path = "er_apex.dll"
+
+# Octane's armour models, made on the first start by setup.ps1
+[[packages]]
+id = "er-apex"
+path = "package"

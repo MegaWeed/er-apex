@@ -3,7 +3,7 @@ Builds the one-click release (for Melty) into scratch\melty\er-apex and zips it 
 scratch\melty\er-apex.zip. It holds no game files: the player's first start makes them
 (setup.ps1, run by er-apex-setup.exe).
 
-What goes in: er_apex.dll, ModEngine2's config_eldenring.toml, the first-start setup
+What goes in: er_apex.dll, me3 (me3\, the loader) and its profile er-apex.me3, the first-start setup
 (er-apex-setup.exe, setup.ps1, er_apex.template.ini), the repository's tools\ and export-assets.ps1,
 and what they would need built or installed: Python 3.11 with numpy, pillow and matplotlib
 (tools\python), erextract and ertool (self-contained .NET 8) built, texconv. What the setup fetches
@@ -27,7 +27,11 @@ Copy-Item "$Root\target\x86_64-pc-windows-msvc\release\er_apex.dll" $Out
 cargo build --release --manifest-path "$Root\release\launcher\Cargo.toml"
 if ($LASTEXITCODE) { throw 'launcher build failed' }
 Copy-Item "$Root\release\launcher\target\x86_64-pc-windows-msvc\release\er-apex-setup.exe" $Out
-foreach ($f in 'setup.ps1', 'er_apex.template.ini', 'config_eldenring.toml', 'THIRD_PARTY.md') { Copy-Item "$Root\release\$f" $Out }
+foreach ($f in 'setup.ps1', 'er_apex.template.ini', 'er-apex.me3', 'THIRD_PARTY.md') { Copy-Item "$Root\release\$f" $Out }
+# me3 (MIT / Apache-2.0), the loader: its programs and licenses
+New-Item -ItemType Directory -Force "$Out\me3" | Out-Null
+Copy-Item "$Root\tools\bin\me3\bin" "$Out\me3\bin" -Recurse
+foreach ($f in 'LICENSE-MIT', 'LICENSE-APACHE') { Copy-Item "$Root\tools\bin\me3\$f" "$Out\me3" }
 
 # the repository's tools and scripts, as git has them
 foreach ($f in git ls-files tools export-assets.ps1 LICENSE README.md README.zh-CN.md) {

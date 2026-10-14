@@ -2,7 +2,7 @@
 er-apex's first-launch setup in a release (release/package.ps1; Melty runs er-apex-setup.exe, which
 runs this, before the game's first start). Makes Octane's models, animations, sounds and HUD from
 the player's own Apex Legends and ELDEN RING installs (export-assets.ps1 -Bundled: about 70
-minutes and about 45 GB the first time), puts them where the mod and ModEngine2 read them, writes
+minutes and about 45 GB the first time), puts them where the mod and me3 read them, writes
 er_apex.ini, and last `assets-ready.txt` (Melty starts the game once that is there).
 
 Windows PowerShell 5.1 (every Windows has it). Needs Visual Studio 2022's C++ tools: RSX, the Apex
@@ -76,7 +76,7 @@ try {
     Stop-Setup "Making the assets failed: $($_.Exception.Message)`n`nThe whole log is in $Root\logs\setup.log. Press Play to try again (finished steps are kept)." $null
 }
 
-# ---- into the mod folder: ModEngine2's package (the armour models), the mod's own files ----
+# ---- into the mod folder: me3's package (the armour models), the mod's own files ----
 $pkg = "$Root\package"
 New-Item -ItemType Directory -Force "$pkg\parts", "$pkg\material" | Out-Null
 $body = @("$Root\er-data\s3\octane_gun\package", "$Root\er-data\s3\octane\package") |

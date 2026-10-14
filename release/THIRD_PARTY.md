@@ -19,6 +19,7 @@ architecture comes from [er-mario](https://github.com/deltarooo/er-mario) (MIT).
 | ertool (this repository, `tools/erdata/ertool`) with [SoulsFormatsNEXT](https://github.com/soulsmods/SoulsFormatsNEXT) and [HKLib](https://github.com/The12thAvenger/HKLib) | same | ertool: MIT; SoulsFormatsNEXT: GPL-3.0; HKLib: MIT. Their sources, at the commits in `tools/erdata/dependencies.lock.json`, are fetched into `tools\third_party` by the setup and are at those links |
 | erextract (this repository, `tools/erdata/erextract`) | `tools\erdata\erextract\target\...` | MIT |
 | texconv ([DirectXTex](https://github.com/microsoft/DirectXTex)) | `tools\bin\texconv` | MIT |
+| [me3](https://me3.help) 0.13.0 ([garyttierney/me3](https://github.com/garyttierney/me3)), the loader | `me3` | MIT or Apache-2.0 (`me3\LICENSE-MIT`, `me3\LICENSE-APACHE`) |
 
 ## Fetched on your PC by the setup
 
