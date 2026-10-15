@@ -58,6 +58,13 @@ try {
 # texconv (DirectXTex, MIT)
 New-Item -ItemType Directory -Force "$Out\tools\bin\texconv" | Out-Null
 Copy-Item "$Root\tools\bin\texconv\texconv.exe" "$Out\tools\bin\texconv"
+# and the Visual C++ runtime it needs beside it (Microsoft's redistributable files, from Visual Studio's
+# Redist folder): not every PC has it installed
+$vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+$redist = Get-ChildItem "$vs\VC\Redist\MSVC" -Directory | Where-Object { $_.Name -match '^\d' } | Sort-Object Name | Select-Object -Last 1
+foreach ($f in 'Microsoft.VC143.CRT\msvcp140.dll', 'Microsoft.VC143.CRT\vcruntime140.dll', 'Microsoft.VC143.CRT\vcruntime140_1.dll', 'Microsoft.VC143.OpenMP\vcomp140.dll') {
+    Copy-Item "$($redist.FullName)\x64\$f" "$Out\tools\bin\texconv"
+}
 
 # Python 3.11.9 (the NuGet package: a whole CPython, pip included) and the three libraries
 $py = "$Out\tools\python"

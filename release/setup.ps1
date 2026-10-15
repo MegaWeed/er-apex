@@ -5,7 +5,7 @@ the player's own Apex Legends and ELDEN RING installs (export-assets.ps1 -Bundle
 minutes and about 45 GB the first time), puts them where the mod and me3 read them, writes
 er_apex.ini, and last `assets-ready.txt` (Melty starts the game once that is there).
 
-Windows PowerShell 5.1 (every Windows has it). Needs Visual Studio 2022's C++ tools: RSX, the Apex
+Windows PowerShell 5.1 (every Windows has it). Needs Visual Studio 2022's C++ tools (installed here when missing): RSX, the Apex
 asset reader, is built from its source here (it holds Epic's audio decoders, which may not be
 handed out built). Run again after a failure: what is done is kept.
 
@@ -41,12 +41,28 @@ function Stop-Setup([string]$why, [string]$url) {
     exit 1
 }
 
-# Visual Studio 2022's C++ tools (MSBuild and MSVC) build RSX
+# Visual Studio 2022's C++ tools (MSBuild, MSVC, a Windows SDK) build RSX. Without them: Microsoft's
+# own Build Tools installer, fetched from Microsoft and run with only the C++ workload (it asks
+# Windows for administrator rights itself); nothing of Microsoft's is in this release
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-$vs = if (Test-Path $vswhere) { & $vswhere -latest -products * -requires Microsoft.Component.MSBuild Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath }
-if (-not $vs) {
-    Stop-Setup ("er-apex needs Visual Studio 2022 with its C++ tools to read Apex Legends' files (once, during this setup).`n`n" +
-        "Install 'Build Tools for Visual Studio 2022' (free) and tick 'Desktop development with C++', then press Play again.") 'https://visualstudio.microsoft.com/visual-cpp-build-tools/'
+function Find-VS { if (Test-Path $vswhere) { & $vswhere -latest -products * -requires Microsoft.Component.MSBuild Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath } }
+if (-not (Find-VS)) {
+    Write-Host "`nInstalling Microsoft's Build Tools for Visual Studio 2022 (C++ only, about 3-6 GB): Windows asks you to allow it." -ForegroundColor Cyan
+    $installer = "$Root\scratch\vs_BuildTools.exe"
+    New-Item -ItemType Directory -Force "$Root\scratch" | Out-Null
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest 'https://aka.ms/vs/17/release/vs_BuildTools.exe' -OutFile $installer -UseBasicParsing
+        $p = Start-Process $installer -ArgumentList '--passive', '--wait', '--norestart', '--nocache', '--add', 'Microsoft.VisualStudio.Workload.VCTools', '--includeRecommended' -Wait -PassThru
+        # 3010: done, a restart is wanted (not needed for building)
+        if ($p.ExitCode -notin 0, 3010) { throw "the installer stopped with code $($p.ExitCode)" }
+    } catch {
+        Stop-Setup ("Installing Build Tools for Visual Studio 2022 did not finish: $($_.Exception.Message)`n`n" +
+            "Install it yourself (free) with 'Desktop development with C++', then press Play again.") 'https://visualstudio.microsoft.com/visual-cpp-build-tools/'
+    }
+    if (-not (Find-VS)) {
+        Stop-Setup "Build Tools for Visual Studio 2022 were installed but not found. Restart Windows and press Play again." $null
+    }
 }
 
 # (a folder that is not one, even with odd characters, is just not used: Steam's are then)
