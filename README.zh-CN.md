@@ -61,7 +61,7 @@
 **系统与磁盘**
 
 - Windows 10/11 x64，PowerShell 7（`pwsh`）。
-- 已安装《艾尔登法环》（游戏绑定支持 2.7.1.0 / 2.7.1.1）和《Apex 英雄》。
+- 已安装《艾尔登法环》（游戏绑定支持 2.7.1.0 / 2.7.1.1 和 2.7.2.0 / 2.7.2.1）和《Apex 英雄》。
 - 仓库路径尽量短（例如 `D:\er-apex`）：导出的文件路径很深，系统没开长路径支持时，路径太长会出错。
 - 生成的资源约占 45 GB 磁盘空间。
 - 第一次生成资源需要联网：要下载 RSX 源码与解码库、`tools/erdata` 的固定版本依赖、NuGet 包和 Rust crate。
@@ -331,7 +331,7 @@ python tools/fusepov/build_wingman.py --skin apex-data\skins\wingman --cr-skin a
 ## 致谢
 
 - [er-mario](https://github.com/deltarooo/er-mario)（Delta）：本模组的架构来源。`tools/erdata/erextract` 的归档、DCX、BND4 读取改编自它（MIT）。
-- [fromsoftware-rs](https://github.com/vswarte/fromsoftware-rs)：《艾尔登法环》游戏绑定，固定提交与 er-mario 相同。
+- [fromsoftware-rs](https://github.com/vswarte/fromsoftware-rs)（MIT NON-AI / Apache-2.0 NON-AI）：《艾尔登法环》游戏绑定，位于 `deps/fromsoftware-rs`，为上游 5702315（1.17.2），并保留 59fbd3b 的 1.17.1 地址。
 - [me3](https://me3.help)：模组加载器。
 - [hudhook](https://crates.io/crates/hudhook)、[ilhook](https://crates.io/crates/ilhook)、[pelite](https://crates.io/crates/pelite)、[glam](https://crates.io/crates/glam) 以及 `Cargo.toml` 里的其他 crate。
 - [RSX](https://github.com/r-ex/rsx)（r-ex）：《Apex 英雄》资源导出（2.3.0 发行版与从源码编译的改版）。

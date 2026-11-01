@@ -16,6 +16,14 @@ $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 Set-Location $Root
 New-Item -ItemType Directory -Force "$Root\logs" | Out-Null
+
+# the programs the setup runs (Python, ertool, erextract, texconv) travel in runtime.zip: opened once, here
+$runtime = "$Root\runtime.zip"
+if (Test-Path $runtime) {
+    Write-Host 'Unpacking the setup programs...' -ForegroundColor Cyan
+    Expand-Archive -LiteralPath $runtime -DestinationPath $Root -Force
+    Remove-Item $runtime -Force
+}
 Start-Transcript -Path "$Root\logs\setup.log" -Append | Out-Null
 $Host.UI.RawUI.WindowTitle = 'er-apex: first-time setup'
 Write-Host 'er-apex: making Octane from your own Apex Legends and ELDEN RING (first time only, about 70 minutes)' -ForegroundColor Cyan

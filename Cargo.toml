@@ -11,9 +11,10 @@ name = "er_apex"
 crate-type = ["cdylib"]
 
 [dependencies]
-# game bindings: the same revision as er-mario (supports exe 2.7.1.0 / 2.7.1.1)
-eldenring = { git = "https://github.com/vswarte/fromsoftware-rs", rev = "59fbd3b3b7daaf14aca47c9f73530493dba6bc79" }
-fromsoftware-shared = { git = "https://github.com/vswarte/fromsoftware-rs", rev = "59fbd3b3b7daaf14aca47c9f73530493dba6bc79" }
+# game bindings: fromsoftware-rs (vswarte, MIT NON-AI / Apache-2.0 NON-AI) in deps/, with the addresses of
+# exe 2.7.1.0 / 2.7.1.1 and 2.7.2.0 / 2.7.2.1
+eldenring = { path = "deps/fromsoftware-rs/crates/eldenring" }
+fromsoftware-shared = { path = "deps/fromsoftware-rs/crates/shared" }
 er-apex-audio = { path = "deps/er-apex-audio" }
 # Apex movement controller (T004) for spike S5
 er-apex-move = { path = "deps/er-apex-move" }

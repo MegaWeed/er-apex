@@ -1,0 +1,406 @@
+use crate::{
+    DLVector,
+    cs::{BlockId, CSGaitemGameData, ChrType, PlayerGameData},
+    fd4::FD4Time,
+};
+use bitfield::bitfield;
+use shared::{F32Vector3, FromStatic, OwnedPtr, load_static_indirect};
+use std::{borrow::Cow, ptr::NonNull};
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum RemotePlayerDataSlotState {
+    /// Player data slot is free / unoccupied
+    Free = 0,
+    /// Player data slot is occupied but not yet synced
+    Occupied = 1 << 0,
+    /// Player data slot has base character data (packet 8)
+    BaseData = 1 << 1,
+    /// Player data slot has equipment data (packet 12)
+    Equipment = 1 << 2,
+    /// Player data slot has character type data (packet 11)
+    Type = 1 << 3,
+    /// Player data slot is fully synced
+    FullySynced = 0xF,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// Source of name: global_event.lua from DS3
+pub enum DeathState {
+    None = -1,
+    Normal = 0,
+    /// DS3 tears of denial style resurrection
+    MagicResurrection = 1,
+    /// Sacrificial Twig
+    RingNormalResurrection = 2,
+    /// Twiggy Cracked Tear
+    RingCurseResurrection = 3,
+}
+
+#[repr(C)]
+pub struct GameDataMan {
+    pub trophy_equip_data: OwnedPtr<TrophyEquipData>,
+    pub main_player_game_data: OwnedPtr<PlayerGameData>,
+    pub player_game_data_list: OwnedPtr<[PlayerGameData; 5]>,
+    /// Pointer to the game data of the player used for the baseline
+    /// for the arena match multiplay scaling in active match.
+    pub quickmatch_scaling_baseline_game_data: Option<NonNull<PlayerGameData>>,
+    pub remote_game_data_states: OwnedPtr<[RemotePlayerDataSlotState; 5]>,
+    pub session_player_game_data_list: OwnedPtr<[Option<OwnedPtr<PlayerGameData>>; 40]>,
+    pub gaitem_game_data: OwnedPtr<CSGaitemGameData>,
+    tutorial_data: usize,
+    pub has_bloodstain: bool,
+    pub bloodstain: OwnedPtr<BloodstainData>,
+    pub bloodstain_entity_id: i32,
+    pub game_settings: OwnedPtr<GameSettings>,
+    menu_system_save_load: usize,
+    menu_profile_save_load: usize,
+    key_config_save_load: usize,
+    profile_summary: usize,
+    pc_option_data: usize,
+    unk88: [u8; 0x4],
+    pub request_full_recovery: bool,
+    unk8d: [u8; 0x2],
+    /// Whether game should give the player the phantom great rune
+    /// Will be true for some time during loading when Mogh's great rune is active and
+    /// the player is invading someone else's world
+    pub award_phantom_great_rune_requested: bool,
+    /// Whether game should give the player the rebreak in item
+    /// Will be true for some time during loading when the player is invading someone else's world
+    pub award_rebreak_in_item_requested: bool,
+    pub death_count: u32,
+    /// Character type to switch to after loading a map
+    /// [ChrType::None] if no switch is requested
+    ///
+    /// Set by `CS::CSLuaEventProxy::SetChrTypeDataGreyNext`
+    pub post_map_load_chr_type: ChrType,
+    unk9c: [u8; 0x4],
+    /// Play time as milliseconds
+    /// will be maxed out at 999:59:59.999
+    pub play_time: u32,
+    unka4: [u8; 0xC],
+    /// Timer for tracking boss fight duration
+    pub boss_fight_timer: FD4Time,
+    /// Whether a boss fight is currently active
+    pub boss_fight_active: bool,
+    /// Count of white phantoms summoned at the start of the boss fight
+    /// Used to apply enemy level scaling
+    pub boss_start_helper_num: u32,
+    pub boss_health_bar_entity_id: u32,
+    pub boss_health_bar_npc_param_id: u32,
+    unkd0: [u8; 0x4],
+    /// State of special death-related effects
+    pub death_state: DeathState,
+    /// Whether the player has a death preventing effect active
+    pub has_death_preventing_effect: bool,
+    /// Whether the player died recently
+    pub just_died: bool,
+    /// Leave request status for each player slot
+    /// Used by lua script imitation to track on leave events
+    pub leave_requests: [bool; 5],
+    pub game_version_data: GameVersionData,
+    unkf0: bool,
+    /// Whether the DLC list is up to date and any pending DLCs have been applied ([`pending_dlc_list`] is empty)
+    ///
+    /// [`pending_dlc_list`]: Self::pending_dlc_list
+    pub dlc_list_up_to_date: bool,
+    /// Vector of indices into `CSDlc` that are not applied to this game data yet
+    pub pending_dlc_list: DLVector<u32>,
+    pub is_net_penalized: bool,
+    pub net_penalty_requested: bool,
+    pub net_penalty_points: u16,
+    pub net_penalty_forgive_item_limit_time: f32,
+    pub ng_lvl: u32,
+    pub random_appear_lot_slot: u32,
+    pub host_ng_level: u32,
+    pub host_random_appear_lot_slot: u32,
+    pub backup_ng_level: u32,
+    pub backup_random_appear_lot_slot: u32,
+    pub host_world_values_update_requested: bool,
+    pub host_world_values_applied: bool,
+    unk13a: [u8; 0x16],
+    pub default_random_appear_lot_slot: i32,
+}
+
+impl FromStatic for GameDataMan {
+    fn name() -> Cow<'static, str> {
+        Cow::Borrowed("GameDataMan")
+    }
+
+    fn instance_ptr() -> shared::InstanceResult<*mut Self> {
+        unsafe { load_static_indirect(crate::rva::get().game_data_man) }
+    }
+}
+
+#[repr(C)]
+pub struct BloodstainData {
+    pub msb_pos: F32Vector3,
+    pub rotation: F32Vector3,
+    unk18: [u8; 0x18],
+    pub hero_points: i32,
+    pub rune_count: i32,
+    pub block_id: BlockId,
+    unk3c: bool,
+}
+
+#[repr(C)]
+pub struct TrophyEquipData {
+    vftable: usize,
+    unk8: u32,
+    /// Stats towards [`Legendary Armaments`] achievement
+    ///
+    /// [`Legendary Armaments`]: crate::cs::trophy::AchievementId::LegendaryArmaments
+    pub weapon_stats: TrophyWeaponStats<[u8; 0x10]>,
+    /// Stats towards [`Legendary Sorceries and Incantations`] and [`Legendary Ashen Remains`] achievements
+    ///
+    /// [`Legendary Sorceries and Incantations`]: crate::cs::trophy::AchievementId::LegendarySorceriesAndIncantations
+    /// [`Legendary Ashen Remains`]: crate::cs::trophy::AchievementId::LegendaryAshenRemains
+    pub goods_stats: TrophyGoodsStats<[u8; 0x10]>,
+    /// Stats towards [`Legendary Talismans`] achievement
+    ///
+    /// [`Legendary Talismans`]: crate::cs::trophy::AchievementId::LegendaryTalismans
+    pub accessory_stats: TrophyAccessoryStats<[u8; 0x10]>,
+}
+
+bitfield! {
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct TrophyWeaponStats([u8]);
+    bool;
+    // Legendary Armaments
+    /// Id: 2140000 Sword of Night and Flame
+    pub sword_of_night_and_flame, set_sword_of_night_and_flame: 0;
+    /// Id: 3090000 Dark Moon Greatsword
+    pub dark_moon_greatsword, set_dark_moon_greatsword: 1;
+    /// Id: 3150000 Marais Executioner's Sword
+    pub marais_executioners_sword, set_marais_executioners_sword: 2;
+    /// Id: 3170000 Golden Order Greatsword
+    pub golden_order_greatsword, set_golden_order_greatsword: 3;
+    /// Id: 4080000 Ruins Greatsword
+    pub ruins_greatsword, set_ruins_greatsword: 4;
+    /// Id: 4100000 Grafted Blade Greatsword
+    pub grafted_blade_greatsword, set_grafted_blade_greatsword: 5;
+    /// Id: 7100000 Eclipse Shotel
+    pub eclipse_shotel, set_eclipse_shotel: 6;
+    /// Id: 12200000 Devourer's Scepter
+    pub devourers_scepter, set_devourers_scepter: 7;
+    /// Id: 16090000 Bolt of Gransax
+    pub bolt_of_gransax, set_bolt_of_gransax: 8;
+    u128;
+    pub unused, set_unused: 127, 9;
+}
+
+bitfield! {
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct TrophyGoodsStats([u8]);
+    bool;
+    // Legendary Sorceries and Incantations
+    /// Id: 4200 Sorcery Comet Azur
+    pub comet_azur, set_comet_azur: 0;
+    /// Id: 4210 Sorcery Founding Rain of Stars
+    pub founding_rain_of_stars, set_founding_rain_of_stars: 1;
+    /// Id: 4220 Sorcery Stars of Ruin
+    pub stars_of_ruin, set_stars_of_ruin: 2;
+    /// Id: 4361 Sorcery Ranni's Dark Moon
+    pub rannis_dark_moon, set_rannis_dark_moon: 3;
+    /// Id: 6110 Incantation Flame of the Fell God
+    pub flame_of_the_fell_god, set_flame_of_the_fell_god: 4;
+    /// Id: 6720 Incantation Elden Stars
+    pub elden_stars, set_elden_stars: 5;
+    /// Id: 7090 Incantation Greyoll's Roar
+    pub greyolls_roar, set_greyolls_roar: 6;
+
+    // Legendary Ashen Remains
+    /// Id: 200000 Black Knife Tiche
+    pub black_knife_tiche, set_black_knife_tiche: 7;
+    /// Id: 207000 Mimic Tear Ashes
+    pub mimic_tear_ashes, set_mimic_tear_ashes: 8;
+    /// Id: 223000 Cleanrot Knight Finlay
+    pub cleanrot_knight_finlay, set_cleanrot_knight_finlay: 9;
+    /// Id: 256000 Ancient Dragon Knight Kristoff
+    pub ancient_dragon_knight_kristoff, set_ancient_dragon_knight_kristoff: 10;
+    /// Id: 257000 Redmane Knight Ogha
+    pub redmane_knight_ogha, set_redmane_knight_ogha: 11;
+    /// Id: 258000 Lhutel the Headless
+    pub lhutel_the_headless, set_lhutel_the_headless: 12;
+    u128;
+    pub unused, set_unused: 127, 13;
+}
+
+bitfield! {
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct TrophyAccessoryStats([u8]);
+    bool;
+    // Legendary Talismans
+    /// Id: 1042 Erdtree's Favor +2
+    pub erdtree_favor_p2, set_erdtree_favor_p2: 0;
+    /// Id: 1051 Radagon's Soreseal
+    pub radagons_soreseal, set_radagons_soreseal: 1;
+    /// Id: 1140 Moon of Nokstella
+    pub moon_of_nokstella, set_moon_of_nokstella: 2;
+    /// Id: 1221 Marika's Soreseal
+    pub marikas_soreseal, set_marikas_soreseal: 3;
+    /// Id: 3060 Old Lord's Talisman
+    pub old_lords_talisman, set_old_lords_talisman: 4;
+    /// Id: 3070 Radagon Icon
+    pub radagon_icon, set_radagon_icon: 5;
+    /// Id: 3090 Godfrey Icon
+    pub godfrey_icon, set_godfrey_icon: 6;
+    /// Id: 4003 Dragoncrest Greatshield Talisman
+    pub dragoncrest_greatshield, set_dragoncrest_greatshield: 7;
+    u128;
+    pub unused, set_unused: 127, 8;
+}
+
+#[repr(C)]
+pub struct GameVersionData {
+    /// First version of the game data structure in the save file
+    pub first_game_data_version: u32,
+    /// Version of the game data read from the last save
+    pub last_saved_game_data_version: u32,
+    /// Whether the saved game data version is the latest
+    pub saved_game_data_version_is_the_latest: bool,
+    pub unused: u32,
+}
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DisplayBlood {
+    Off = 0,
+    On = 1,
+    Mild = 2,
+}
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PerformanceSetting {
+    PrioritizeQuality = 0,
+    PrioritizeFramerate = 1,
+}
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum HudType {
+    Off = 0,
+    On = 1,
+    Auto = 2,
+}
+
+#[repr(C)]
+pub struct GameSettings {
+    /// Camera rotation speed
+    /// Range: 0-10
+    /// Default value is read from Game.Option.Control.RotSpeed property
+    pub camera_speed: u8,
+    /// Controls the strength of controller rumble
+    /// Range: 0-10
+    /// Default value is read from Game.Option.Control.Rumble property
+    pub controller_rumble_strength: u8,
+    /// Controls the brightness of the game
+    /// Range: 0-10
+    /// Default value is read from Game.Option.Disp.Brightness property
+    pub brightness: u8,
+    /// Range: 0-10
+    /// Default value is read from Game.Option.Sound.SoundType property
+    pub sound_type: u8,
+    /// Controls the volume of the music
+    /// Range: 0-10
+    /// Default value is read from Game.Option.Sound.MusicVol property
+    pub music_volume: u8,
+    /// Controls the volume of sound effects
+    /// Range: 0-10
+    /// Default value is read from Game.Option.Sound.SeVol property
+    pub sfx_volume: u8,
+    /// Controls the volume of the voice chat
+    /// Range: 0-10
+    /// Default value is read from Game.Option.Sound.VoiceVol property
+    pub voice_volume: u8,
+    /// Controls how blood is displayed
+    /// Default value is read from Game.Option.Disp.Blood property
+    pub display_blood: DisplayBlood,
+    /// Controls whether subtitles are shown
+    /// Default value is read from Game.Option.Disp.Subtitle property
+    pub show_subtitles: bool,
+    /// Type of HUD display
+    /// Default value is read from Game.Option.Disp.HUD property
+    pub hud_type: HudType,
+    /// Controls whether the camera X axis is reversed
+    /// Default value is read from Game.Option.Control.RotLR property
+    pub reverse_camera_xaxis: bool,
+    /// Controls whether the camera Y axis is reversed
+    /// Default value is read from Game.Option.Control.RotUD property
+    pub reverse_camera_yaxis: bool,
+    /// Controls whether camera should automatically lock on to the next target
+    /// after the current target is defeated or lost
+    pub auto_lock_on: bool,
+    /// Controls whether camera automatically adjusts when near walls
+    pub camera_auto_wall_recovery: bool,
+    unke: u8,
+    /// Unused, but read from
+    /// Game.Option.Control.JumpButtonL3 property
+    pub jump_button_l3: bool,
+    /// Controls whether camera recenters vertically when resetting
+    /// Default value is read from Game.Option.Control.CameraResetUD property
+    pub reset_camera_yaxis: bool,
+    /// Controls whether game allowed or not to take control of camera during
+    /// certain cinematic moments
+    /// Default value is read from Game.Option.Control.CameraDirection property
+    pub cinematic_effects: bool,
+    unk12: u8,
+    /// Controls whether cross-region play is enabled
+    /// Doesn't work on PC version
+    pub enable_cross_region_play: bool,
+    /// Controls whether voice chat is enabled
+    /// Locked behind release flag 51 on PC release
+    pub voice_chat: bool,
+    /// Controls whether gamer tags are shown instead of character names
+    /// Locked behind release flag 49 on PC release
+    pub show_gamer_tags: bool,
+    /// Controls whether manual attack aiming is enabled
+    /// Only works on Ringed Finger weapon
+    pub manual_attack_aiming: bool,
+    /// Controls whether camera automatically targets enemies when attacking
+    /// with no lock-on
+    pub auto_target: bool,
+    /// Controls whether game starts in offline mode
+    pub start_offline: bool,
+    /// Default value is read from Game.Option.Network.HideWhiteSignInSignEnemyWorld property
+    pub send_summon_signs: bool,
+    /// Unused setting enabled by release flag 37
+    /// Uses GR System Message 103000 for the name
+    /// and 3001 for the description
+    pub unused_gr_system_103000: bool,
+    unk1b: u8,
+    /// Controls HDR brightness level
+    /// Range: 0-10
+    pub hdr_brightness: u8,
+    /// Controls HDR max brightness level
+    /// Range: 0-10
+    pub hdr_max_brightness: u8,
+    /// Controls HDR contrast level
+    /// Range: 0-10
+    pub hdr_contrast: u8,
+    /// Controls how game utilizes system resources
+    /// Locked behind release flag 39 on PC release
+    pub performance_setting: PerformanceSetting,
+    /// Controls the master volume
+    /// Range: 0-10
+    pub master_volume: u8,
+    /// Controls whether ray tracing is enabled
+    /// Locked behind release flag 38 on PC release
+    pub enable_ray_tracing: bool,
+    /// Controls whether newly acquired items are marked in inventory
+    pub mark_new_items: bool,
+    /// Controls whether recent items tab is shown in inventory
+    pub show_recent_items: bool,
+    unka4: [u8; 10],
+    /// Controls whether tutorials are shown
+    pub show_tutorials: bool,
+    /// Controls whether camera automatically rotates to follow player movement
+    pub camera_auto_rotation: bool,
+    /// Unused space, will allways be memset on deserialization
+    pub unused_space: [u8; 0x110],
+}

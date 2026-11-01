@@ -395,7 +395,7 @@ pub fn drawn_view() -> Option<((Vec3, Vec3, Vec3, Vec3), f32)> {
 /// Dev channel `cam`: the game's character camera, the render camera and ours, and the lock-on.
 pub fn status() -> String {
     let wcm = unsafe { WorldChrMan::instance() }.ok();
-    let chr = wcm.and_then(|w| w.chr_cam).map(|c| unsafe { c.as_ref() });
+    let chr = wcm.and_then(|w| w.chr_cam_any_version()).map(|c| unsafe { c.as_ref() });
     let render = unsafe { CSCamera::instance() }.ok().map(|c| rows_of(&c.pers_cam_1.matrix));
     let chr_rows = chr.map(|c| rows_of(&c.pers_cam.matrix));
     let f = |r: Option<[Vec3; 4]>| {

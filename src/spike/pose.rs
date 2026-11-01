@@ -458,8 +458,12 @@ fn rig_bones(names: &[String], parents: usize) -> Option<(usize, usize)> {
     Some((root, right))
 }
 
-/// er-mario: where the game's animation job has just written a pose (exe 2.7.1.0).
-const ANIM_DONE_RVAS: [usize; 2] = [0x41da14, 0x402194];
+/// er-mario: where the game's animation job has just written a pose (exe 2.7.1.x; 2.7.2.x from
+/// er-mario 3889990, each found by the bytes around it).
+const ANIM_DONE_RVAS_2_7_1: [usize; 2] = [0x41da14, 0x402194];
+const ANIM_DONE_RVAS_2_7_2: [usize; 2] = [0x41daa4, 0x402224];
+/// The first bytes at each (the same on both builds); a hook goes in only where they are.
+const ANIM_DONE_BYTES: [[u8; 8]; 2] = [[0x48, 0x8b, 0x4b, 0x28, 0x48, 0x85, 0xc9, 0x74], [0xf3, 0x41, 0x0f, 0x10, 0x4e, 0x08, 0x48, 0x8b]];
 
 fn install_anim_hook() {
     static DONE: AtomicBool = AtomicBool::new(false);
@@ -468,9 +472,14 @@ fn install_anim_hook() {
     }
     use ilhook::x64::{CallbackOption, HookFlags, hook_closure_jmp_back};
     let Ok(base) = (unsafe { windows::Win32::System::LibraryLoader::GetModuleHandleW(None) }) else { return };
-    for rva in ANIM_DONE_RVAS {
+    let rvas = if crate::version::is_2_7_1() { ANIM_DONE_RVAS_2_7_1 } else { ANIM_DONE_RVAS_2_7_2 };
+    for (rva, want) in rvas.into_iter().zip(ANIM_DONE_BYTES) {
         let at = base.0 as usize + rva;
         let bytes = unsafe { *(at as *const [u8; 8]) };
+        if bytes != want {
+            log(format!("pose: no animation job at +{rva:#x} (bytes {bytes:02x?}); not hooked"));
+            continue;
+        }
         let hook = |_: *mut ilhook::x64::Registers| {
             let _ = std::panic::catch_unwind(apply);
         };

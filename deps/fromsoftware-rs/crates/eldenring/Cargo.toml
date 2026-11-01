@@ -1,0 +1,28 @@
+[package]
+name = "eldenring"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = false
+description = "Structures, bindings, and utilities for From Software's title Elden Ring"
+
+[dependencies]
+fromsoftware-shared.workspace = true
+thiserror.workspace = true
+glam.workspace = true
+pelite.workspace = true
+vtable-rs.workspace = true
+windows.workspace = true
+bitfield.workspace = true
+bitflags.workspace = true
+encoding_rs.workspace = true
+num_enum.workspace = true
+
+[dependencies.fromsoftware-shared-stl]
+workspace = true
+features = ["msvc2015"]
+
+[package.metadata.docs.rs]
+default-target = "x86_64-pc-windows-msvc"
+targets = ["x86_64-pc-windows-msvc"]

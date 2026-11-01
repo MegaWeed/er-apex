@@ -81,6 +81,14 @@ Remove-Item $tmp -Recurse -Force
 if ($LASTEXITCODE) { throw 'pip install failed' }
 Get-ChildItem $py -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
 
+# the setup's own programs go into runtime.zip, which setup.ps1 opens on the player's PC (so the
+# release's file list is the mod, its loader and the setup, not hundreds of tool libraries)
+$rt = "$Out\runtime.zip"
+Push-Location $Out
+Compress-Archive -Path 'tools\python', 'tools\erdata\ertool\bin', 'tools\erdata\erextract\target', 'tools\bin\texconv' -DestinationPath $rt
+Pop-Location
+Remove-Item "$Out\tools\python", "$Out\tools\erdata\ertool\bin", "$Out\tools\erdata\erextract\target", "$Out\tools\bin\texconv" -Recurse -Force
+
 $zip = "$Root\scratch\melty\er-apex.zip"
 if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive "$Out\*" $zip

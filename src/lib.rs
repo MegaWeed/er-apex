@@ -76,18 +76,32 @@ fn guarded(name: &'static str, f: fn(&FD4TaskData)) -> impl Fn(&FD4TaskData) + S
 fn boot() {
     log(format!("er-apex {} loaded from {}", env!("CARGO_PKG_VERSION"), paths::mod_dir().display()));
     std::panic::set_hook(Box::new(|info| log(format!("PANIC: {info}"))));
-    let cs_task = match CSTaskImp::wait_for_instance(Duration::MAX) {
-        Ok(t) => t,
-        Err(e) => {
-            log(format!("CSTaskImp never appeared ({e:?}); ER-Apex stays off"));
-            return;
+    // the game may not have its code in place yet when the loader attaches (an InvalidRva then):
+    // try again for up to two minutes before giving up
+    let mut tries = 0;
+    let cs_task = loop {
+        match CSTaskImp::wait_for_instance(Duration::MAX) {
+            Ok(t) => break t,
+            Err(e) if tries < 240 => {
+                if tries == 0 {
+                    log(format!("CSTaskImp not ready yet ({e:?}); trying again"));
+                }
+                tries += 1;
+                std::thread::sleep(Duration::from_millis(500));
+            }
+            Err(e) => {
+                log(format!("CSTaskImp never appeared ({e:?}); ER-Apex stays off"));
+                return;
+            }
         }
     };
-    if let Err(e) = version::check() {
-        log(format!("this game version is not supported ({e}); ER-Apex stays off"));
-        return;
+    match version::check() {
+        Ok(v) => log(format!("game version ok ({v:?}); dev channel {}", if dev::enabled() { "on" } else { "off" })),
+        Err(e) => {
+            log(format!("this game version is not supported ({e}); ER-Apex stays off"));
+            return;
+        }
     }
-    log(format!("game version ok; dev channel {}", if dev::enabled() { "on" } else { "off" }));
     // ini fps_limit: the game's frame cap
     fps::install();
     unsafe { input::install() };

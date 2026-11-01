@@ -61,7 +61,7 @@ Help me get https://github.com/MegaWeed/er-apex up and running
 **System and disk**
 
 - Windows 10/11 x64, PowerShell 7 (`pwsh`).
-- ELDEN RING (the game bindings support 2.7.1.0 / 2.7.1.1) and Apex Legends installed.
+- ELDEN RING (the game bindings support 2.7.1.0 / 2.7.1.1 and 2.7.2.0 / 2.7.2.1) and Apex Legends installed.
 - Keep the repository path short (for example `D:\er-apex`): the exported file paths are deep, and they fail when Windows long paths are off.
 - About 45 GB of disk for the generated assets.
 - The first asset run needs a network connection: it downloads the RSX source and its audio decoders, `tools/erdata`'s pinned dependencies, NuGet packages and Rust crates.
@@ -331,7 +331,7 @@ Most of `apex-data` and `er-data` is intermediate data. The game reads about 490
 ## Credits
 
 - [er-mario](https://github.com/deltarooo/er-mario) by Delta: the architecture of this mod. `tools/erdata/erextract`'s archive, DCX and BND4 readers are adapted from it (MIT).
-- [fromsoftware-rs](https://github.com/vswarte/fromsoftware-rs): the ELDEN RING game bindings, at the same pinned commit as er-mario.
+- [fromsoftware-rs](https://github.com/vswarte/fromsoftware-rs) (MIT NON-AI / Apache-2.0 NON-AI): the ELDEN RING game bindings, in `deps/fromsoftware-rs` at upstream 5702315 (1.17.2) with 59fbd3b's 1.17.1 addresses kept beside them.
 - [me3](https://me3.help): the mod loader.
 - [hudhook](https://crates.io/crates/hudhook), [ilhook](https://crates.io/crates/ilhook), [pelite](https://crates.io/crates/pelite), [glam](https://crates.io/crates/glam) and the other crates in `Cargo.toml`.
 - [RSX](https://github.com/r-ex/rsx) by r-ex: the Apex Legends asset exports (2.3.0 release and a patched build from source).

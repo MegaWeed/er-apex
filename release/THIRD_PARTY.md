@@ -5,7 +5,12 @@ from your own installs (`setup.ps1`); your game folders are only read.
 
 er-apex is MIT (`LICENSE`), by umi ([umiiii/er-apex](https://github.com/umiiii/er-apex)), with this
 fork's additions by MegaWeed ([MegaWeed/er-apex](https://github.com/MegaWeed/er-apex)); its
-architecture comes from [er-mario](https://github.com/deltarooo/er-mario) (MIT).
+architecture comes from [er-mario](https://github.com/deltarooo/er-mario) (MIT), whose 1.17.2 hook
+addresses it uses too.
+
+`er_apex.dll` is built with [fromsoftware-rs](https://github.com/vswarte/fromsoftware-rs) by Vincent
+Swarte and its contributors (MIT NON-AI or Apache-2.0 NON-AI: neither it nor its derivatives may be
+used to train machine learning; the licence texts are in the repository's `deps/fromsoftware-rs`).
 
 ## Shipped built
 

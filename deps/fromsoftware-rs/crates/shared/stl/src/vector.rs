@@ -1,0 +1,205 @@
+use crate::allocator::*;
+use std::ops::{Deref, DerefMut};
+
+#[repr(C)]
+/// Implementation of MSVC C++ `std::vector`.
+///
+/// # References
+///
+/// - [cppreference - `std::vector`]
+/// - [MSVC STL source - `vector`]
+/// - [Raymond Chen's breakdown of `std::vector`]
+///
+/// [cppreference - `std::vector`]: https://en.cppreference.com/w/cpp/container/vector.html
+/// [MSVC STL source - `vector`]: https://github.com/microsoft/STL/blob/main/stl/inc/vector
+/// [Raymond Chen's breakdown of `std::vector`]: https://devblogs.microsoft.com/oldnewthing/20230802-00/?p=108524
+pub struct Vector<T, A: StlAllocator> {
+    #[cfg(any(not(feature = "msvc2012"), feature = "msvc2015"))]
+    pub allocator: A,
+    first: *mut T,
+    last: *mut T,
+    end: *mut T,
+    #[cfg(all(feature = "msvc2012", not(feature = "msvc2015")))]
+    pub allocator: A,
+}
+
+impl<T, A: StlAllocator> Vector<T, A> {
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        if self.first.is_null() {
+            return 0;
+        }
+        unsafe { self.end.offset_from(self.first) as usize }
+    }
+
+    /// Creates an empty vector backed by `allocator`.
+    ///
+    /// Equivalent to `std::vector<T>()` with a custom allocator
+    pub fn new_in(allocator: A) -> Self {
+        Self {
+            allocator,
+            first: std::ptr::null_mut(),
+            last: std::ptr::null_mut(),
+            end: std::ptr::null_mut(),
+        }
+    }
+
+    /// Creates a vector from a slice, copying all elements into it
+    pub fn from_slice_in(items: &[T], allocator: A) -> Self
+    where
+        T: Copy,
+    {
+        let len = items.len();
+
+        if len == 0 {
+            return Self::new_in(allocator);
+        }
+
+        let ptr = allocator.allocate_n::<T>(len).as_ptr() as _;
+        unsafe {
+            std::ptr::copy_nonoverlapping(items.as_ptr(), ptr, len);
+        }
+
+        Self {
+            allocator,
+            first: ptr,
+            last: unsafe { ptr.add(len) },
+            end: unsafe { ptr.add(len) },
+        }
+    }
+
+    /// Inserts `value` at `index`, shifting all elements after it to the right.
+    ///
+    /// # Panics
+    /// Panics if `index > len()`.
+    pub fn insert(&mut self, index: usize, value: T) {
+        assert!(index <= self.len(), "index out of bounds");
+        if self.last == self.end {
+            self.grow();
+        }
+        unsafe {
+            let p = self.first.add(index);
+            // Shift [index, len) one slot right to make room
+            std::ptr::copy(p, p.add(1), self.len() - index);
+            p.write(value);
+            self.last = self.last.add(1);
+        }
+    }
+
+    /// Removes and returns the element at `index`, shifting all elements
+    /// after it to the left.
+    ///
+    /// # Panics
+    /// Panics if `index >= len()`.
+    pub fn remove(&mut self, index: usize) -> T {
+        assert!(index < self.len(), "index out of bounds");
+        unsafe {
+            let p = self.first.add(index);
+            let value = p.read();
+            // Shift [index+1, len) one slot left to fill the gap
+            std::ptr::copy(p.add(1), p, self.len() - index - 1);
+            self.last = self.last.sub(1);
+            value
+        }
+    }
+
+    pub fn push_back(&mut self, value: T) {
+        if self.last == self.end {
+            self.grow();
+        }
+
+        unsafe {
+            self.last.write(value);
+            self.last = self.last.add(1);
+        }
+    }
+
+    pub fn pop_back(&mut self) -> Option<T> {
+        if self.is_empty() {
+            return None;
+        }
+        unsafe {
+            self.last = self.last.sub(1);
+            Some(self.last.read())
+        }
+    }
+
+    pub fn push_front(&mut self, value: T) {
+        self.insert(0, value);
+    }
+
+    pub fn pop_front(&mut self) -> Option<T> {
+        (!self.is_empty()).then(|| self.remove(0))
+    }
+
+    pub fn clear(&mut self) {
+        if self.capacity() == 0 {
+            return;
+        }
+        let old_last = self.last;
+        self.last = self.first;
+        unsafe {
+            std::ptr::drop_in_place(std::ptr::slice_from_raw_parts_mut(
+                self.first,
+                old_last.offset_from(self.first) as usize,
+            ));
+        }
+    }
+
+    /// MSVC growth policy: 1.5x capacity
+    fn grow(&mut self) {
+        let old_len = self.len();
+        let old_cap = self.capacity();
+        let new_cap = (old_cap + old_cap / 2).max(old_cap + 1).max(4);
+
+        let new_ptr = self.allocator.allocate_n::<T>(new_cap).as_ptr() as _;
+
+        unsafe {
+            std::ptr::copy_nonoverlapping(self.first, new_ptr, old_len);
+            if old_cap > 0 {
+                self.allocator.deallocate_raw(self.first as _);
+            }
+        }
+
+        self.first = new_ptr;
+        self.last = unsafe { new_ptr.add(old_len) };
+        self.end = unsafe { new_ptr.add(new_cap) };
+    }
+}
+
+impl<T, A: StlAllocator> Deref for Vector<T, A> {
+    type Target = [T];
+    #[inline]
+    fn deref(&self) -> &[T] {
+        if self.first.is_null() {
+            return &[];
+        }
+        // Safety: both pointers belong to the same allocation
+        let len = unsafe { self.last.offset_from(self.first) as usize };
+        // Safety: [first, last) is always a valid, initialized slice
+        unsafe { std::slice::from_raw_parts(self.first, len) }
+    }
+}
+
+impl<T, A: StlAllocator> DerefMut for Vector<T, A> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [T] {
+        if self.first.is_null() {
+            return &mut [];
+        }
+        // Safety: both pointers belong to the same allocation
+        let len = unsafe { self.last.offset_from(self.first) as usize };
+        // Safety: [first, last) is always a valid, initialized slice
+        unsafe { std::slice::from_raw_parts_mut(self.first, len) }
+    }
+}
+
+impl<T, A: StlAllocator> Drop for Vector<T, A> {
+    fn drop(&mut self) {
+        self.clear();
+        // guard against empty vectors
+        if self.capacity() > 0 {
+            unsafe { self.allocator.deallocate_raw(self.first as _) };
+        }
+    }
+}

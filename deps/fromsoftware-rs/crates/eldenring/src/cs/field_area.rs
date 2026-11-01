@@ -1,0 +1,228 @@
+use std::{borrow::Cow, ptr::NonNull};
+
+use crate::{DLMap, UnkDLTree, param::CEREMONY_PARAM_ST, position::HavokPosition, rva};
+use shared::{FromStatic, InstanceResult, OwnedPtr, Subclass, Superclass};
+
+use super::BlockId;
+
+// Source of name: RTTI
+#[repr(C)]
+pub struct FieldArea {
+    vtable: usize,
+    unk8: usize,
+    pub world_info_owner: OwnedPtr<WorldInfoOwner>,
+    world_info_owner_2: NonNull<WorldInfoOwner>,
+    // TODO: rest
+    unk20: [u8; 0x80],
+    // Flag to check if fast travel should be enabled.
+    pub enable_fast_travel_event_flag: i32,
+    unka4: [u8; 0x3c],
+    pub map_place_name_id: i32,
+    pub save_map_name_id: i32,
+    pub current_play_region_id: u32,
+    unkec: [u8; 0x5A4],
+}
+
+impl FromStatic for FieldArea {
+    fn name() -> Cow<'static, str> {
+        "FieldArea".into()
+    }
+
+    fn instance_ptr() -> InstanceResult<*mut Self> {
+        unsafe { shared::load_static_indirect(rva::get().field_area_ptr) }
+    }
+}
+
+// Source of name: RTTI
+#[repr(C)]
+pub struct WorldInfoOwner {
+    pub world_res: WorldRes,
+}
+
+// Source of name: RTTI
+#[repr(C)]
+pub struct WorldRes {
+    pub world_info: WorldInfo,
+}
+
+// Source of name: RTTI
+#[repr(C)]
+pub struct WorldInfo {
+    vtable: usize,
+
+    /// Count of legacy + ordinary dungeons area infos.
+    pub world_area_info_count: u32,
+    _padc: u32,
+    /// Pointer to start of list of world area infos for legacy + ordinary dungeons.
+    pub world_area_info_list_ptr: NonNull<WorldAreaInfo>,
+    /// Count of overworld area infos.
+    pub world_grid_area_info_count: u32,
+    _pad1c: u32,
+    /// Pointer to start of list of world area infos for overworld areas.
+    pub world_grid_area_info_list_ptr: NonNull<WorldGridAreaInfo>,
+    /// Count of combined dungeon + overworld area infos.
+    pub world_area_info_all_count: u32,
+    _pad2c: u32,
+    /// Combined list of pointers to all overworld and dungeon world area infos.
+    pub world_area_info_all: [Option<NonNull<WorldAreaInfoBase>>; 34],
+    /// Count of block infos.
+    pub world_block_info_count: u32,
+    /// Pointer to start of list of world block infos.
+    pub world_block_info_list_ptr: NonNull<WorldBlockInfo>,
+    unk150: u64,
+    unk158: u64,
+    _world_area_info: [WorldAreaInfo; 28],
+    _world_block_info: [WorldBlockInfo; 192],
+    _world_grid_area_info: [WorldGridAreaInfo; 6],
+    // TODO: Add resource stuff
+}
+
+impl WorldInfo {
+    pub fn world_area_info(&self) -> &[WorldAreaInfo] {
+        &self._world_area_info[0..self.world_area_info_count as usize]
+    }
+
+    pub fn world_grid_area_info(&self) -> &[WorldGridAreaInfo] {
+        &self._world_grid_area_info[0..self.world_grid_area_info_count as usize]
+    }
+
+    pub fn world_block_info(&self) -> &[WorldBlockInfo] {
+        &self._world_block_info[0..self.world_block_info_count as usize]
+    }
+
+    pub fn world_block_info_by_map(&self, map: &BlockId) -> Option<&WorldBlockInfo> {
+        match map.is_overworld() {
+            true => self
+                .world_grid_area_info()
+                .iter()
+                .find_map(|a| a.blocks.find(map))
+                .map(|entry| entry.as_ref()),
+            false => {
+                let blocks = self.world_block_info();
+                let index = blocks
+                    .binary_search_by(|entry| entry.block_id.0.cmp(&map.0))
+                    .ok()?;
+                Some(&blocks[index])
+            }
+        }
+    }
+}
+
+// Source of name: RTTI
+#[repr(C)]
+#[derive(Superclass)]
+#[superclass(children(WorldAreaInfo, WorldGridAreaInfo))]
+pub struct WorldAreaInfoBase {
+    vtable: usize,
+    pub block_id: BlockId,
+    pub area_id: u32,
+    pub world_info_owner: NonNull<WorldInfoOwner>,
+    /// Points to _99 MSB for this area.
+    overlay_msb_res_cap: Option<NonNull<()>>,
+    unk20: u64,
+    unk28: u64,
+    unk30: u8,
+    _pad31: [u8; 0x7],
+}
+
+// Source of name: RTTI
+#[repr(C)]
+#[derive(Subclass)]
+pub struct WorldAreaInfo {
+    pub base: WorldAreaInfoBase,
+    /// List index in the WorldInfoOwner
+    pub list_index: u32,
+    /// Starting offset of the areas blocks in the block list in WorldInfoOwner
+    pub block_list_start_index: u32,
+    /// Amount of blocks associated with this area in the blocks list.
+    pub block_count: u32,
+    _pad44: u32,
+    /// Pointer to start of the areas block in the WorldInfoOwner block list.
+    blocks: *const WorldBlockInfo,
+}
+
+// Source of name: RTTI
+#[repr(C)]
+#[derive(Subclass)]
+pub struct WorldGridAreaInfo {
+    pub base: WorldAreaInfoBase,
+    unk38: [u32; 3],
+    unk44: u32,
+    unk48: u32,
+    unk4c: u32,
+    unk50: [u32; 3],
+    unk5c: [f32; 4],
+    unk6c: [f32; 4],
+    pub skybox_block_id: BlockId,
+    pub skybox_block_info: NonNull<WorldBlockInfo>,
+    pub blocks: DLMap<BlockId, OwnedPtr<WorldBlockInfo>>,
+    unka0: UnkDLTree<()>,
+    unkb8: u64,
+    unkc0: UnkDLTree<()>,
+    unkd8: u64,
+}
+
+// Source of name: RTTI
+#[repr(C)]
+pub struct WorldBlockInfo {
+    vtable: usize,
+    pub block_id: BlockId,
+    unkc: u32,
+    pub world_info_owner: NonNull<WorldInfoOwner>,
+    /// Effective world area info. Either area or grid area.
+    pub area_info: NonNull<WorldAreaInfoBase>,
+    /// World area info. Seemingly only used if block is not part of the overworld.
+    pub world_area_info: Option<NonNull<WorldAreaInfo>>,
+    /// World area info. Seemingly only used if block is part of the overworld.
+    pub world_grid_area_info: Option<NonNull<WorldGridAreaInfo>>,
+    unk30: u32,
+    block_id_2: BlockId,
+    /// Index in WorldAreaInfo's block list. Will be -1 if this is an overworld block.
+    pub world_area_info_index: i32,
+    unk3c: u32,
+    unk40: bool,
+    unk41: [u8; 0x7],
+    msb_res_cap: NonNull<()>,
+    unk50: u64,
+    unk58: u64,
+    unk60: u64,
+    unk68: u64,
+    /// Havok position of the blocks center.
+    pub physics_center: HavokPosition,
+    unk80: u64,
+    btl_file_cap: NonNull<()>,
+    unk90: u64,
+    fvb_file_cap: NonNull<()>,
+    unka0: u64,
+    pre_map_decal_file_cap: NonNull<()>,
+    unkb0: u64,
+    unkb8: bool,
+    unkb9: [u8; 0x7],
+    pub ceremony: WorldBlockInfoCeremony,
+    unkd0: u32,
+    _padd4: u32,
+    unkd8: u64,
+}
+
+#[repr(C)]
+pub struct WorldBlockInfoCeremony {
+    pub param_id: i32,
+    _pad4: u32,
+    pub param_row: Option<NonNull<CEREMONY_PARAM_ST>>,
+}
+
+#[cfg(test)]
+mod test {
+    use std::mem::size_of;
+
+    use crate::cs::{FieldArea, WorldAreaInfo, WorldBlockInfo, WorldGridAreaInfo, WorldInfo};
+
+    #[test]
+    fn proper_sizes() {
+        assert_eq!(0x690, size_of::<FieldArea>());
+        assert_eq!(0xb760, size_of::<WorldInfo>());
+        assert_eq!(0xe0, size_of::<WorldBlockInfo>());
+        assert_eq!(0xe0, size_of::<WorldGridAreaInfo>());
+        assert_eq!(0x50, size_of::<WorldAreaInfo>());
+    }
+}
