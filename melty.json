@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "mode": "standalone",
+  "games": [
+    { "role": "primary", "slug": "elden-ring", "version": ">=2.7.1.0 <=2.7.2.1" },
+    { "role": "companion", "slug": "apex-legends" }
+  ],
+  "notes": {
+    "firstLaunch": "The first start makes Octane from your Apex Legends files in a console window (about 70 minutes); later starts go straight to the game."
+  },
+  "setup": {
+    "label": "Octane (first time only)",
+    "launch": { "kind": "exe", "path": "{managed}/er-apex-setup.exe" },
+    "done": { "file": "{managed}/assets-ready.txt" }
+  },
+  "launch": {
+    "kind": "exe",
+    "path": "{managed}/me3/bin/me3.exe",
+    "args": ["launch", "-e", "{game}/Game/eldenring.exe", "-p", "{managed}/er-apex.me3"]
+  },
+  "mappings": [{ "component": "main", "from": "", "to": "{managed}" }],
+  "settings": [
+    { "file": "{managed}/game_dirs.ini", "set": { "elden_ring": "{game}", "apex_legends": "{game:apex-legends}" } }
+  ],
+  "components": [
+    { "id": "main", "kind": "main", "label": "ER Apex: Octane", "fileName": "er-apex-*.zip", "required": true }
+  ],
+  "runtimeData": ["{managed}/logs", "{managed}/apex-data", "{managed}/er-data", "{managed}/scratch", "{managed}/package"],
+  "requirements": []
+}
